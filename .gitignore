@@ -1,21 +1,93 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.npm
+.yarn-integrity
+.pnp.*
+.pnp.js
 
-.idea
-node_modules
-dist
-.vscode
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Tests
+coverage/
+.nyc_output/
+
+# IDEs et éditeurs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
 .DS_Store
-.env
+*.sublime*
+
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
-# Dependency directories
-jspm_packages/
-# Build output
-coverage/
-# Temporary files
+yarn-error.log*
+lerna-debug.log*
+
+# Build
+build/
+out/
+.next/
+.nuxt/
+
+# Environnement
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporaire
+tmp/
 temp/
-# System files
-Thumbs.db
-# IDE specific files
-*.sublime-workspace
-*.sublime-project
+
+# Yeoman
+.yo-repository/
+
+# Specific to generator-spring-fullstack-speed
+examples/*/node_modules/
+examples/*/dist/
+examples/*/target/
+examples/*/build/
+examples/*/.gradle/
+
+# Java
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Spring Boot
+spring-boot-*.pid

@@ -1,102 +1,97 @@
 import { BaseGenerator } from "../base-generator.js";
-import Generator from "yeoman-generator";
 import chalk from "chalk";
 
+/**
+ * Générateur d'entités
+ * Permet de créer de nouvelles entités avec leurs repository, service et controller
+ */
 export default class EntityGenerator extends BaseGenerator {
-  // Initialisation de entityName pour éviter l'erreur "has no initializer"
-  entityName: string = "";
-  // Utilisation de declare pour indiquer qu'il s'agit d'une redéfinition intentionnelle
   declare answers: any;
 
   constructor(args: string | string[], options: any) {
     super(args, options);
 
     // Options pour le générateur d'entités
-    this.option("name", {
-      description: "Nom de l'entité",
+    this.option("entity-name", {
+      description: "Nom de l'entité à générer",
       type: String,
     });
 
-    this.argument("name", {
+    this.option("package-name", {
+      description: "Nom du package pour l'entité",
       type: String,
-      required: false,
-      description: "Nom de l'entité à générer",
     });
   }
 
   initializing() {
-    this.log(chalk.blue("Initialisation du générateur d'entités..."));
-    this.entityName = (this.options as any).name || "";
+    this.log("Initialisation du générateur d'entités...");
   }
 
   async prompting() {
-    // Définition des questions avec le type any pour éviter l'erreur de typage
     const prompts: any = [
       {
         type: "input",
         name: "entityName",
-        message: "Quel est le nom de votre entité?",
-        default: this.entityName || "Entity",
-        validate: (input) => {
-          if (/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
+        message: "Quel est le nom de l'entité?",
+        default: this.options["entity-name"],
+        validate: (input: string) => {
+          if (!input || input.trim() === "") {
+            return "Le nom de l'entité est obligatoire.";
+          }
+          if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
+            return "Le nom de l'entité doit commencer par une majuscule et ne contenir que des lettres et des chiffres.";
+          }
+          return true;
+        },
+      },
+      {
+        type: "input",
+        name: "packageName",
+        message: "Dans quel package voulez-vous créer cette entité?",
+        default: this.options["package-name"] || "com.example.domain",
+        validate: (input: string) => {
+          if (/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
             return true;
           }
-          return "Le nom de l'entité doit commencer par une majuscule et ne contenir que des lettres et des chiffres.";
+          return "Le nom du package doit être un nom de package Java valide.";
         },
-        when: () => !this.entityName,
       },
       {
         type: "confirm",
-        name: "createRepository",
-        message: "Voulez-vous créer un repository pour cette entité?",
+        name: "generateRepository",
+        message: "Voulez-vous générer un repository pour cette entité?",
         default: true,
       },
       {
         type: "confirm",
-        name: "createService",
-        message: "Voulez-vous créer un service pour cette entité?",
+        name: "generateService",
+        message: "Voulez-vous générer un service pour cette entité?",
         default: true,
       },
       {
         type: "confirm",
-        name: "createController",
-        message: "Voulez-vous créer un contrôleur REST pour cette entité?",
+        name: "generateController",
+        message: "Voulez-vous générer un controller REST pour cette entité?",
         default: true,
       },
     ];
 
-    if (!this.entityName) {
-      const answers = await this.prompt(prompts.filter((p) => !p.when || p.when()));
-      this.answers = {
-        ...answers,
-        entityName: answers.entityName || this.entityName,
-      };
-    } else {
-      this.answers = {
-        entityName: this.entityName,
-        createRepository: true,
-        createService: true,
-        createController: true,
-      };
+    this.answers = await this.prompt(prompts);
+  }
 
-      // Si le nom est fourni, demander les autres questions
-      const filteredPrompts = prompts.filter((p) => p.name !== "entityName");
-      const otherAnswers = await this.prompt(filteredPrompts);
-      this.answers = { ...this.answers, ...otherAnswers };
-    }
+  configuring() {
+    this.log("Configuration de l'entité...");
+    // Logique de configuration ici
   }
 
   writing() {
-    const { entityName, createRepository, createService, createController } =
-      this.answers;
+    this.log("Génération des fichiers pour l'entité...");
 
-    this.log(chalk.green(`Génération de l'entité ${entityName}...`));
-
-    // À développer ultérieurement avec la génération de fichiers réels
-    this.log(chalk.yellow("Cette fonctionnalité n'est pas encore entièrement implémentée."));
+    // Code de génération des fichiers à implémenter
+    this.log(chalk.yellow("Cette fonctionnalité sera implémentée dans une prochaine tâche."));
   }
 
   end() {
-    this.log(chalk.green(`✅ Entité ${this.answers.entityName} générée avec succès!`));
+    this.log(chalk.green(`🚀 Entité ${this.answers.entityName} générée avec succès!`));
   }
 }

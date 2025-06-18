@@ -1,0 +1,34 @@
+# Définir la stratégie de fin de ligne par défaut
+* text=auto eol=lf
+
+# Documents
+*.md text
+*.txt text
+*.json text
+
+# Scripts
+*.js text
+*.ts text
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Java
+*.java text
+*.properties text
+*.xml text
+*.gradle text
+
+# Fichiers qui doivent rester en mode binaire
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.jar binary
+
+# Templates EJS - traiter comme du texte
+*.ejs text
+
+# Yarn 2 utilisé dans certains projets générés
+/.yarn/releases/** binary
+/.yarn/plugins/** binary

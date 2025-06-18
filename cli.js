@@ -23,6 +23,7 @@ env.register(path.join(__dirname, 'generators/app'), 'sfs:app');
 env.register(path.join(__dirname, 'generators/entity'), 'sfs:entity');
 env.register(path.join(__dirname, 'generators/crud'), 'sfs:crud');
 env.register(path.join(__dirname, 'generators/module'), 'sfs:module');
+env.register(path.join(__dirname, 'generators/dtos'), 'sfs:dtos');
 
 // Affichage de l'aide si demandé
 if (args.includes('--help') || args.includes('-h')) {
@@ -36,6 +37,7 @@ ${chalk.yellow('Générateurs disponibles:')}
   app      : Génère une nouvelle application Spring Boot fullstack (par défaut)
   entity   : Génère une nouvelle entité avec son repository, service et controller
   crud     : Génère les opérations CRUD pour une entité existante
+  dtos     : Génère des DTOs pour une entité existante
   module   : Génère un nouveau module fonctionnel
 
 ${chalk.yellow('Options:')}
