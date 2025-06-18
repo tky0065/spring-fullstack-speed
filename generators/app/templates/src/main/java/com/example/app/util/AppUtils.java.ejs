@@ -1,0 +1,62 @@
+package <%= packageName %>.util;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
+
+/**
+ * Classe utilitaire contenant des méthodes statiques pour diverses opérations courantes.
+ */
+public class AppUtils {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * Génère un identifiant unique.
+     *
+     * @return Un UUID sous forme de chaîne
+     */
+    public static String generateUniqueId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Formate une date en chaîne de caractères.
+     *
+     * @param dateTime La date à formater
+     * @return La date formatée
+     */
+    public static String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+        return dateTime.format(DATE_FORMATTER);
+    }
+
+    /**
+     * Tronque une chaîne si elle dépasse une certaine longueur.
+     *
+     * @param input La chaîne à tronquer
+     * @param maxLength La longueur maximale
+     * @return La chaîne tronquée
+     */
+    public static String truncate(String input, int maxLength) {
+        if (input == null || input.length() <= maxLength) {
+            return input;
+        }
+        return input.substring(0, maxLength - 3) + "...";
+    }
+
+    /**
+     * Convertit la première lettre d'une chaîne en majuscule.
+     *
+     * @param input La chaîne à modifier
+     * @return La chaîne avec la première lettre en majuscule
+     */
+    public static String capitalize(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        return input.substring(0, 1).toUpperCase() + input.substring(1);
+    }
+}

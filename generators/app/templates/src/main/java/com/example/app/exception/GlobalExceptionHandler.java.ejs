@@ -1,0 +1,72 @@
+package <%= packageName %>.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Gestionnaire global d'exceptions pour l'application.
+ * Permet de traiter les exceptions de manière centralisée et de renvoyer des réponses cohérentes.
+ */
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    /**
+     * Structure d'erreur pour les réponses d'API.
+     */
+    public record ApiError(String message, String details, LocalDateTime timestamp, String path) {}
+
+    /**
+     * Gère les exceptions de validation des requêtes.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return errors;
+    }
+
+    /**
+     * Gère les exceptions d'entités non trouvées.
+     */
+    @ExceptionHandler(EntityNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ResponseEntity<ApiError> handleEntityNotFound(EntityNotFoundException ex) {
+        ApiError error = new ApiError(
+            "Resource not found",
+            ex.getMessage(),
+            LocalDateTime.now(),
+            null
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Gère les exceptions non prévues.
+     */
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<ApiError> handleAllUncaughtException(Exception ex) {
+        ApiError error = new ApiError(
+            "Internal server error",
+            ex.getMessage(),
+            LocalDateTime.now(),
+            null
+        );
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}

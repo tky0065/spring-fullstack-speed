@@ -62,21 +62,21 @@ generator-spring-fullstack/
 ## 📋 PHASE 1 : SETUP & ARCHITECTURE (Priorité Haute)
 
 ### Module 1.1 : Configuration Initiale Yeoman
-- [ ] Initialiser le projet avec Yeoman generator
-- [ ] Configurer la structure du projet Yeoman
-- [ ] Installer les dépendances de base (yeoman-generator, chalk, yosay)
-- [ ] Créer le package.json avec les scripts NPM
-- [ ] Configurer ESLint et Prettier
-- [ ] Mettre en place les tests unitaires (Jest)
-- [ ] Créer le README et la documentation de base
-- [ ] Configurer Git et .gitignore
+- [x] Initialiser le projet avec Yeoman generator
+- [x] Configurer la structure du projet Yeoman
+- [x] Installer les dépendances de base (yeoman-generator, chalk, yosay)
+- [x] Créer le package.json avec les scripts NPM
+- [x] Configurer ESLint et Prettier
+- [x] Mettre en place les tests unitaires (Jest)
+- [x] Créer le README et la documentation de base
+- [x] Configurer Git et .gitignore
 
 ### Module 1.2 : Architecture des Templates
-- [ ] Définir la structure des templates Spring Boot
+- [x] Définir la structure des templates Spring Boot
 - [ ] Créer la hiérarchie des dossiers templates
 - [ ] Mettre en place le système de templating EJS
 - [ ] Définir les variables de configuration globales
-- [ ] Créer les templates de base (pom.xml, application.yml)
+- [x] Créer les templates de base (pom.xml, application.yml)
 - [ ] Implémenter le système de conditionnement de code
 - [ ] Créer les utilitaires de génération de fichiers
 - [ ] Tester la génération de templates de base

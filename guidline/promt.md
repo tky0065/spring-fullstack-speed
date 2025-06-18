@@ -3,6 +3,7 @@
 ## 🎯 CONTEXTE DU PROJET
 
 Tu travailles sur le développement du projet **Spring-Fullstack CLI**, un générateur de code basé sur Yeoman qui crée des applications fullstack modernes avec Spring Boot et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE).
+environnement de développement : on est sur windows 11
 
 ## 📋 INSTRUCTIONS PRINCIPALES
 

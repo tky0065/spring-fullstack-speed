@@ -1,0 +1,96 @@
+# Configuration Spring Boot pour <%= appName %>
+# Généré par Spring-Fullstack-Speed (SFS)
+
+spring:
+  application:
+    name: <%= appName %>
+
+  # Configuration de la base de données
+  datasource:
+<% if (database === 'MySQL') { %>
+    url: jdbc:mysql://localhost:3306/<%= appName %>?useSSL=false&serverTimezone=UTC
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+<% } else if (database === 'PostgreSQL') { %>
+    url: jdbc:postgresql://localhost:5432/<%= appName %>
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+<% } else if (database === 'MongoDB') { %>
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: <%= appName %>
+<% } else if (database === 'H2') { %>
+    url: jdbc:h2:mem:<%= appName %>;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+<% } %>
+
+  # Configuration JPA
+<% if (database !== 'MongoDB') { %>
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+<% if (database === 'MySQL') { %>
+        dialect: org.hibernate.dialect.MySQL8Dialect
+<% } else if (database === 'PostgreSQL') { %>
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+<% } else if (database === 'H2') { %>
+        dialect: org.hibernate.dialect.H2Dialect
+<% } %>
+<% } %>
+
+  # Configuration des messages internationaux
+  messages:
+    basename: i18n/messages
+
+# Configuration du serveur
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+
+# Configuration du logging
+logging:
+  level:
+    root: INFO
+    <%= packageName %>: DEBUG
+    org.springframework.web: INFO
+    org.hibernate: INFO
+
+# Configuration de la sécurité (si activée)
+<% if (includeAuth) { %>
+security:
+  jwt:
+    secret: <%= generateRandomSecret() %>
+    expiration: 86400000  # 24 heures en millisecondes
+<% } %>
+
+# Configuration spécifique à l'application
+app:
+  name: <%= appName %>
+  description: Application générée avec Spring-Fullstack-Speed
+<% if (additionalFeatures.includes('openapi')) { %>
+
+# Configuration OpenAPI/Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+<% } %>

@@ -1,0 +1,17 @@
+package <%= packageName %>;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+/**
+ * Classe principale de l'application Spring Boot.
+ * Point d'entrée pour démarrer l'application.
+ */
+@SpringBootApplication
+public class <%= appClassName %>Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(<%= appClassName %>Application.class, args);
+    }
+
+}

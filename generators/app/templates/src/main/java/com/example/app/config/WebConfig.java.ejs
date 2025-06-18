@@ -1,0 +1,27 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Configuration principale de l'application.
+ * Contient les configurations globales pour Spring MVC.
+ */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    /**
+     * Configure les règles CORS (Cross-Origin Resource Sharing) pour permettre
+     * l'accès à l'API depuis différentes origines.
+     */
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:3000", "http://localhost:8080") // Ajoutez les origines nécessaires
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+}

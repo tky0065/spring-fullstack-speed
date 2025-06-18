@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+<% if (database === 'MySQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/<%= appName %>?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+<% } else if (database === 'PostgreSQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/<%= appName %>
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+<% } else if (database === 'MongoDB') { %>
+      - SPRING_DATA_MONGODB_HOST=db
+      - SPRING_DATA_MONGODB_PORT=27017
+      - SPRING_DATA_MONGODB_DATABASE=<%= appName %>
+<% } %>
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - db
+<% if (additionalFeatures.includes('redis')) { %>
+      - redis
+<% } %>
+
+<% if (database === 'MySQL') { %>
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=<%= appName %>
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+<% } else if (database === 'PostgreSQL') { %>
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=<%= appName %>
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+<% } else if (database === 'MongoDB') { %>
+  db:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+<% } %>
+
+<% if (additionalFeatures.includes('redis')) { %>
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+<% } %>
+
+volumes:
+<% if (database === 'MySQL') { %>
+  mysql-data:
+<% } else if (database === 'PostgreSQL') { %>
+  postgres-data:
+<% } else if (database === 'MongoDB') { %>
+  mongodb-data:
+<% } %>
