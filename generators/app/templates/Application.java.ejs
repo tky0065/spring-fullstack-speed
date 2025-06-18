@@ -1,0 +1,25 @@
+package <%= packageName %>;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+<% if (additionalFeatures.includes('openapi')) { %>
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.info.Info;
+<% } %>
+
+@SpringBootApplication
+<% if (additionalFeatures.includes('openapi')) { %>
+@OpenAPIDefinition(
+    info = @Info(
+        title = "<%= appName %> API",
+        version = "1.0",
+        description = "API documentation for <%= appName %>"
+    )
+)
+<% } %>
+public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class, args);
+    }
+}

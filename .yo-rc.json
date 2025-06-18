@@ -1,0 +1,12 @@
+{
+  "@enokdev/spring-fullstack-speed": {
+    "promptValues": {
+      "packageName": "com.example.sfs"
+    },
+    "packagejs": {
+      "name": "@enokdev/spring-fullstack-speed",
+      "version": "1.0.0"
+    }
+  }
+}
+

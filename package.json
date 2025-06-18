@@ -1,0 +1,52 @@
+{
+  "name": "@enokdev/spring-fullstack-speed",
+  "version": "1.0.0",
+  "description": "Générateur rapide d'applications fullstack avec Spring Boot et divers frameworks frontend",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "sfs": "cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,ts,json,md}\"",
+    "prepublish": "npm run build",
+    "start": "node cli.js"
+  },
+  "keywords": [
+    "yeoman-generator",
+    "spring-boot",
+    "fullstack",
+    "react",
+    "vue",
+    "angular",
+    "thymeleaf",
+    "jte",
+    "inertia"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/yosay": "^2.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.34.1",
+    "@typescript-eslint/parser": "^8.34.1",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.5.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "type-fest": "4.41.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.34.1",
+    "yaml": "2.8.0",
+    "yeoman-environment": "^4.4.3",
+    "yeoman-generator": "^7.5.1",
+    "yosay": "^3.0.0"
+  }
+}
