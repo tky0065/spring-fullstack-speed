@@ -1,0 +1,41 @@
+package <%= packageName %>.document;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+/**
+ * Document d'exemple pour Elasticsearch.
+ * L'annotation @Document définit l'index dans lequel le document sera stocké.
+ */
+@Document(indexName = "product")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProductDocument {
+
+    @Id
+    private String id;
+
+    @Field(type = FieldType.Text, name = "name")
+    private String name;
+
+    @Field(type = FieldType.Text, name = "description")
+    private String description;
+
+    @Field(type = FieldType.Double, name = "price")
+    private Double price;
+
+    @Field(type = FieldType.Keyword, name = "category")
+    private String category;
+
+    @Field(type = FieldType.Boolean, name = "available")
+    private Boolean available;
+}

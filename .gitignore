@@ -92,5 +92,8 @@ build/
 # Spring Boot
 spring-boot-*.pid
 
+p
+guidline
+
 
 .tmp-test-generation/

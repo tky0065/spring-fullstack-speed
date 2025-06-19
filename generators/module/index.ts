@@ -28,12 +28,15 @@ export default class ModuleGenerator extends BaseGenerator {
   }
 
   async prompting() {
+    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
+    const opts = this.options as any;
+
     const prompts: any = [
       {
         type: "input",
         name: "moduleName",
         message: "Quel est le nom du module?",
-        default: this.options["module-name"],
+        default: opts["module-name"],
         validate: (input: string) => {
           if (!input || input.trim() === "") {
             return "Le nom du module est obligatoire.";
@@ -48,7 +51,7 @@ export default class ModuleGenerator extends BaseGenerator {
         type: "input",
         name: "packageName",
         message: "Dans quel package racine voulez-vous créer ce module?",
-        default: this.options["package-name"] || "com.example.modules",
+        default: opts["package-name"] || "com.example.modules",
         validate: (input: string) => {
           if (/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
             return true;

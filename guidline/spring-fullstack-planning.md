@@ -180,7 +180,7 @@ generator-spring-fullstack/
 - [x] Créer les fragments Thymeleaf/JTE
 - [x] Générer les pages d'authentification
 - [x] Configurer les assets statiques
-- [ ] Tester chaque intégration frontend
+- [x] Tester chaque intégration frontend
 
 ---
 
@@ -247,7 +247,7 @@ generator-spring-fullstack/
 - [x] Optimiser les performances
 
 ### Module 5.2 : Recherche & Analytics
-- [ ] Intégrer Elasticsearch
+- [x] Intégrer Elasticsearch
 - [ ] Configurer les indexes
 - [ ] Créer les repositories Elasticsearch
 - [ ] Implémenter la recherche full-text
@@ -403,9 +403,9 @@ generator-spring-fullstack/
 ## 📋 PHASE 9 : CLI AVANCÉ (Priorité Haute)
 
 ### Module 9.1 : Interface CLI Interactive
-- [ ] Créer l'interface de questions interactive
-- [ ] Implémenter la validation des réponses
-- [ ] Créer les menus de sélection
+- [ ] **[PRIORITÉ]** Créer l'interface de questions interactive
+- [ ] **[PRIORITÉ]** Implémenter la validation des réponses
+- [ ] **[PRIORITÉ]** Créer les menus de sélection
 - [ ] Implémenter l'auto-complétion
 - [ ] Créer les progress bars
 - [ ] Implémenter les confirmations
@@ -417,7 +417,7 @@ generator-spring-fullstack/
 - [ ] Tester l'interface utilisateur
 
 ### Module 9.2 : Gestion des Templates
-- [ ] Créer le système de versioning templates
+- [ ] **[PRIORITÉ]** Créer le système de versioning templates
 - [ ] Implémenter le téléchargement de templates
 - [ ] Créer le cache des templates
 - [ ] Implémenter la mise à jour automatique
@@ -431,10 +431,10 @@ generator-spring-fullstack/
 - [ ] Documenter le système de templates
 
 ### Module 9.3 : Commandes Utilitaires
-- [ ] Implémenter `sfs add` (composants)
-- [ ] Créer `sfs generate` (CRUD)
+- [ ] **[PRIORITÉ]** Implémenter `sfs add` (composants)
+- [ ] **[PRIORITÉ]** Créer `sfs generate` (CRUD)
+- [ ] **[PRIORITÉ]** Implémenter `sfs generate` (entity)
 - [ ] Implémenter `sfs generate` (dtos)
-- [ ] Implémenter `sfs generate` (entity)
 - [ ] Implémenter `sfs serve` (dev server)
 - [ ] Créer `sfs test` (tests)
 - [ ] Implémenter `sfs build` (production)

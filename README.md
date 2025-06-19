@@ -151,7 +151,7 @@ Pour contribuer au développement de SFS, suivez ces étapes :
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/votre-username/spring-fullstack-speed.git
+git clone https://github.com/tky0065/spring-fullstack-speed.git
 cd spring-fullstack-speed
 
 # Installer les dépendances

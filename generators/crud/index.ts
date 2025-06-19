@@ -24,12 +24,15 @@ export default class CrudGenerator extends BaseGenerator {
   }
 
   async prompting() {
+    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
+    const opts = this.options as any;
+
     const prompts: any = [
       {
         type: "input",
         name: "entityName",
         message: "Pour quelle entité souhaitez-vous générer les opérations CRUD?",
-        default: this.options["entity-name"],
+        default: opts["entity-name"],
         validate: (input: string) => {
           if (!input || input.trim() === "") {
             return "Le nom de l'entité est obligatoire.";

@@ -66,3 +66,15 @@ spring.devtools.restart.enabled=true
 spring.devtools.restart.enabled=false
 server.error.include-stacktrace=never
 <% } %>
+
+<% if (additionalFeatures && additionalFeatures.includes('elasticsearch')) { %>
+# Configuration Elasticsearch
+spring.elasticsearch.uris=http://localhost:9200
+spring.elasticsearch.connection-timeout=1s
+spring.elasticsearch.socket-timeout=1m
+spring.elasticsearch.username=elastic
+# À remplacer par un mot de passe sécurisé en production
+spring.elasticsearch.password=changeme
+# Activer le mode cluster si nécessaire
+#spring.elasticsearch.cluster-name=my-cluster
+<% } %>

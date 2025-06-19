@@ -1,0 +1,160 @@
+package <%= packageName %>.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.Criteria;
+import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.stereotype.Service;
+
+import <%= packageName %>.document.ProductDocument;
+import <%= packageName %>.repository.search.ProductSearchRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les opérations Elasticsearch sur les produits.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ElasticsearchService {
+
+    private final ProductSearchRepository productSearchRepository;
+    private final ElasticsearchOperations elasticsearchOperations;
+
+    /**
+     * Indexe un produit dans Elasticsearch.
+     *
+     * @param product Le produit à indexer
+     * @return Le produit indexé
+     */
+    public ProductDocument indexProduct(ProductDocument product) {
+        log.info("Indexation du produit : {}", product.getName());
+        return productSearchRepository.save(product);
+    }
+
+    /**
+     * Recherche un produit par son ID.
+     *
+     * @param id L'ID du produit
+     * @return Le produit s'il existe
+     */
+    public Optional<ProductDocument> findById(String id) {
+        return productSearchRepository.findById(id);
+    }
+
+    /**
+     * Recherche des produits par nom.
+     *
+     * @param name Le nom à rechercher
+     * @return Liste des produits correspondants
+     */
+    public Iterable<ProductDocument> findByName(String name) {
+        return productSearchRepository.findByNameContaining(name);
+    }
+
+    /**
+     * Recherche des produits par catégorie.
+     *
+     * @param category La catégorie à rechercher
+     * @return Liste des produits correspondants
+     */
+    public Iterable<ProductDocument> findByCategory(String category) {
+        return productSearchRepository.findByCategory(category);
+    }
+
+    /**
+     * Recherche avancée de produits avec plusieurs critères.
+     *
+     * @param name Le nom à rechercher (optionnel)
+     * @param category La catégorie (optionnel)
+     * @param minPrice Prix minimum (optionnel)
+     * @param maxPrice Prix maximum (optionnel)
+     * @param available Disponibilité (optionnel)
+     * @return Liste des produits correspondants
+     */
+    public List<ProductDocument> advancedSearch(String name, String category,
+            Double minPrice, Double maxPrice, Boolean available) {
+
+        Criteria criteria = new Criteria();
+        boolean hasCriteria = false;
+
+        if (name != null && !name.trim().isEmpty()) {
+            criteria = criteria.and("name").contains(name);
+            hasCriteria = true;
+        }
+
+        if (category != null && !category.trim().isEmpty()) {
+            if (hasCriteria) {
+                criteria = criteria.and("category").is(category);
+            } else {
+                criteria = Criteria.where("category").is(category);
+                hasCriteria = true;
+            }
+        }
+
+        if (minPrice != null) {
+            if (hasCriteria) {
+                criteria = criteria.and("price").greaterThanEqual(minPrice);
+            } else {
+                criteria = Criteria.where("price").greaterThanEqual(minPrice);
+                hasCriteria = true;
+            }
+        }
+
+        if (maxPrice != null) {
+            if (hasCriteria) {
+                criteria = criteria.and("price").lessThanEqual(maxPrice);
+            } else {
+                criteria = Criteria.where("price").lessThanEqual(maxPrice);
+                hasCriteria = true;
+            }
+        }
+
+        if (available != null) {
+            if (hasCriteria) {
+                criteria = criteria.and("available").is(available);
+            } else {
+                criteria = Criteria.where("available").is(available);
+                hasCriteria = true;
+            }
+        }
+
+        if (!hasCriteria) {
+            return new ArrayList<>();
+        }
+
+        Query query = new CriteriaQuery(criteria);
+        SearchHits<ProductDocument> searchHits = elasticsearchOperations.search(query, ProductDocument.class);
+
+        List<ProductDocument> products = new ArrayList<>();
+        searchHits.forEach(hit -> products.add(hit.getContent()));
+
+        return products;
+    }
+
+    /**
+     * Supprime un produit de l'index Elasticsearch.
+     *
+     * @param id L'ID du produit à supprimer
+     */
+    public void deleteProduct(String id) {
+        productSearchRepository.deleteById(id);
+    }
+
+    /**
+     * Récupère tous les produits.
+     *
+     * @return Liste de tous les produits
+     */
+    public Iterable<ProductDocument> findAll() {
+        return productSearchRepository.findAll();
+    }
+}

@@ -28,12 +28,15 @@ export default class DtosGenerator extends BaseGenerator {
   }
 
   async prompting() {
+    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
+    const opts = this.options as any;
+
     const prompts: any = [
       {
         type: "input",
         name: "entityName",
         message: "Pour quelle entité souhaitez-vous générer des DTOs?",
-        default: this.options["entity-name"],
+        default: opts["entity-name"],
         validate: (input: string) => {
           if (!input || input.trim() === "") {
             return "Le nom de l'entité est obligatoire.";
@@ -48,7 +51,7 @@ export default class DtosGenerator extends BaseGenerator {
         type: "input",
         name: "packageName",
         message: "Dans quel package voulez-vous créer ces DTOs?",
-        default: this.options["package-name"] || "com.example.dto",
+        default: opts["package-name"] || "com.example.dto",
         validate: (input: string) => {
           if (/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
             return true;

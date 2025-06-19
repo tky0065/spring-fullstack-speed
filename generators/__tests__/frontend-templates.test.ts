@@ -32,6 +32,14 @@ describe('FrontendTemplatesTests', () => {
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/package.json'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/App.tsx'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/vite.config.ts'))).toBe(true);
+
+      // Vérifier les fichiers spécifiques à l'openapi generator
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/API-GUIDE.md'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'scripts/generate-api.js'))).toBe(true);
+
+      // Vérifier les composants et configurations clés
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/components'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/tailwind.config.js'))).toBe(true);
     });
   });
 
@@ -59,6 +67,14 @@ describe('FrontendTemplatesTests', () => {
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/package.json'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/App.vue'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/vite.config.ts'))).toBe(true);
+
+      // Vérifier les fichiers spécifiques à l'openapi generator
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/API-GUIDE.md'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'scripts/generate-api.js'))).toBe(true);
+
+      // Vérifier les composants et configurations Vue
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/components'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/router'))).toBe(true);
     });
   });
 
@@ -86,6 +102,19 @@ describe('FrontendTemplatesTests', () => {
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/package.json'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/app/app.component.ts'))).toBe(true);
       expect(fs.existsSync(path.join(runResult.cwd, 'frontend/angular.json'))).toBe(true);
+
+      // Vérifier les fichiers spécifiques à ng-openapi-gen
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/API-GUIDE-OPENAPI.md'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'scripts/generate-api.js'))).toBe(true);
+
+      // Vérifier les configurations Angular modernes (Angular 19+)
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/tsconfig.json'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/tsconfig.app.json'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/tsconfig.spec.json'))).toBe(true);
+
+      // Vérifier la structure des composants avec signal API
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/app/services'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'frontend/src/app/components'))).toBe(true);
     });
   });
 
@@ -109,9 +138,18 @@ describe('FrontendTemplatesTests', () => {
         })
         .run();
 
-      // Vérifier que les fichiers Thymeleaf ont été générés
-      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/index.html'))).toBe(true);
-      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/layouts/main.html'))).toBe(true);
+      // Vérifier les templates Thymeleaf et configurations Spring MVC
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/static'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/java/com/example/thymeleafapp/config/WebMvcConfig.java'))).toBe(true);
+
+      // Vérifier les pages d'authentification
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/auth/login.html'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/auth/register.html'))).toBe(true);
+
+      // Vérifier les fragments et layouts
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/fragments'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/templates/layouts'))).toBe(true);
     });
   });
 
@@ -135,9 +173,22 @@ describe('FrontendTemplatesTests', () => {
         })
         .run();
 
-      // Vérifier que les fichiers JTE ont été générés
+      // Vérifier les fichiers de configuration JTE
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/java/com/example/jteapp/config/JteConfig.java'))).toBe(true);
+
+      // Vérifier les templates JTE
       expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte'))).toBe(true);
-      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/layouts/main.jte'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/layouts'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/pages'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/tags'))).toBe(true);
+
+      // Vérifier les pages d'authentification
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/pages/auth/login.jte'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/jte/pages/auth/register.jte'))).toBe(true);
+
+      // Vérifier les ressources statiques
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/static/css'))).toBe(true);
+      expect(fs.existsSync(path.join(runResult.cwd, 'src/main/resources/static/js'))).toBe(true);
     });
   });
 });

@@ -1,0 +1,106 @@
+package <%= packageName %>.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import <%= packageName %>.document.ProductDocument;
+import <%= packageName %>.service.ElasticsearchService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST Controller pour les opérations de recherche avec Elasticsearch.
+ */
+@RestController
+@RequestMapping("/api/search")
+@RequiredArgsConstructor
+@Slf4j
+public class SearchController {
+
+    private final ElasticsearchService elasticsearchService;
+
+    /**
+     * Endpoint pour indexer un nouveau produit dans Elasticsearch.
+     */
+    @PostMapping("/products")
+    public ResponseEntity<ProductDocument> indexProduct(@RequestBody ProductDocument product) {
+        log.info("REST request pour indexer un nouveau produit : {}", product);
+        ProductDocument indexedProduct = elasticsearchService.indexProduct(product);
+        return ResponseEntity.ok(indexedProduct);
+    }
+
+    /**
+     * Endpoint pour rechercher un produit par ID.
+     */
+    @GetMapping("/products/{id}")
+    public ResponseEntity<ProductDocument> findById(@PathVariable String id) {
+        log.info("REST request pour rechercher un produit par ID : {}", id);
+        Optional<ProductDocument> product = elasticsearchService.findById(id);
+        return product.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Endpoint pour rechercher des produits par nom.
+     */
+    @GetMapping("/products")
+    public ResponseEntity<Iterable<ProductDocument>> findByName(@RequestParam String name) {
+        log.info("REST request pour rechercher des produits par nom : {}", name);
+        Iterable<ProductDocument> products = elasticsearchService.findByName(name);
+        return ResponseEntity.ok(products);
+    }
+
+    /**
+     * Endpoint pour rechercher des produits par catégorie.
+     */
+    @GetMapping("/products/category/{category}")
+    public ResponseEntity<Iterable<ProductDocument>> findByCategory(@PathVariable String category) {
+        log.info("REST request pour rechercher des produits par catégorie : {}", category);
+        Iterable<ProductDocument> products = elasticsearchService.findByCategory(category);
+        return ResponseEntity.ok(products);
+    }
+
+    /**
+     * Endpoint pour la recherche avancée avec plusieurs critères.
+     */
+    @GetMapping("/products/search")
+    public ResponseEntity<List<ProductDocument>> advancedSearch(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean available) {
+
+        log.info("REST request pour recherche avancée avec critères : name={}, category={}, minPrice={}, maxPrice={}, available={}",
+                name, category, minPrice, maxPrice, available);
+
+        List<ProductDocument> products = elasticsearchService.advancedSearch(
+                name, category, minPrice, maxPrice, available);
+
+        return ResponseEntity.ok(products);
+    }
+
+    /**
+     * Endpoint pour récupérer tous les produits.
+     */
+    @GetMapping("/products/all")
+    public ResponseEntity<Iterable<ProductDocument>> findAll() {
+        log.info("REST request pour récupérer tous les produits");
+        Iterable<ProductDocument> products = elasticsearchService.findAll();
+        return ResponseEntity.ok(products);
+    }
+
+    /**
+     * Endpoint pour supprimer un produit.
+     */
+    @DeleteMapping("/products/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
+        log.info("REST request pour supprimer un produit avec ID : {}", id);
+        elasticsearchService.deleteProduct(id);
+        return ResponseEntity.ok().build();
+    }
+}
