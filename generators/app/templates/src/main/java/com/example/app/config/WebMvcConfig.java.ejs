@@ -1,30 +1,27 @@
 package <%= packageName %>.config;
 
-import <%= packageName %>.inertia.InertiaMiddleware;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Configuration MVC pour Inertia.js
+ * Configuration MVC pour l'application REST API
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final InertiaMiddleware inertiaMiddleware;
-
-    public WebMvcConfig(InertiaMiddleware inertiaMiddleware) {
-        this.inertiaMiddleware = inertiaMiddleware;
-    }
-
     /**
-     * Enregistre le middleware Inertia.
+     * Configure CORS pour permettre les requêtes cross-origin depuis le frontend.
      */
     @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        // Application du middleware Inertia à toutes les requêtes
-        registry.addInterceptor(inertiaMiddleware);
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins("${app.cors.allowed-origins:*}")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 
     /**
@@ -39,5 +36,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // Configuration supplémentaire pour d'autres ressources statiques
         registry.addResourceHandler("/favicon.ico")
                 .addResourceLocations("classpath:/static/favicon.ico");
+
+        // Configuration pour la documentation OpenAPI/Swagger UI
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/springdoc-openapi-ui/")
+                .resourceChain(false);
     }
 }
