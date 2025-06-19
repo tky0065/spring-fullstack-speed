@@ -6,6 +6,32 @@
 
 import chalk from "chalk";
 import { validateJavaPackageName, validateProjectName } from "../../utils/validation.js";
+import Generator from "yeoman-generator";
+
+// Type pour les questions de prompt compatible avec Yeoman Generator
+export type YeomanQuestion = Parameters<Generator["prompt"]>[0];
+
+// Constantes pour améliorer l'affichage CLI
+const STEP_PREFIX = chalk.bold.blue("➤ ");
+const OPTION_PREFIX = chalk.cyan("○ ");
+const SELECTED_PREFIX = chalk.green("● ");
+const SECTION_DIVIDER = chalk.gray("────────────────────────────────────────────");
+const INFO_COLOR = chalk.yellow;
+const SUCCESS_COLOR = chalk.green;
+const ERROR_COLOR = chalk.red;
+const HELP_COLOR = chalk.gray.italic;
+
+/**
+ * Affiche l'en-tête d'une étape
+ * @param step Numéro de l'étape
+ * @param title Titre de l'étape
+ * @param total Nombre total d'étapes
+ */
+export function displayStepHeader(step: number, title: string, total: number) {
+  console.log("\n" + SECTION_DIVIDER);
+  console.log(`${STEP_PREFIX} ${chalk.bold(`ÉTAPE ${step}/${total}: ${title}`)}`);
+  console.log(SECTION_DIVIDER + "\n");
+}
 
 /**
  * Préparation des presets (configurations prédéfinies)
@@ -66,88 +92,46 @@ export function getPresets() {
 
 /**
  * Questions de base pour la configuration du projet
- * @returns Tableau de questions
+ * @returns Questions au format compatible avec Yeoman
  */
-export function getBasicQuestions() {
-  return [
-    {
-      type: "input",
-      name: "appName",
-      message: "Quel est le nom de votre application?",
-      default: "sfs-app",
-      validate: (input: string) => validateProjectName(input)
-    },
-    {
-      type: "input",
-      name: "packageName",
-      message: "Quel est le nom du package Java?",
-      default: "com.example.app",
-      validate: (input: string) => validateJavaPackageName(input)
-    },
-    {
-      type: "list",
-      name: "buildTool",
-      message: "Quel outil de build voulez-vous utiliser?",
-      choices: [
-        { name: "Maven", value: "Maven" },
-        { name: "Gradle", value: "Gradle" }
-      ],
-      default: "Maven",
-    },
-    {
-      type: "list",
-      name: "springBootVersion",
-      message: "Quelle version de Spring Boot voulez-vous utiliser?",
-      choices: [
-        { name: "3.1.x (Dernière stable)", value: "3.1.0" },
-        { name: "3.0.x", value: "3.0.6" },
-        { name: "2.7.x (LTS)", value: "2.7.12" }
-      ],
-      default: "3.1.0",
-    },
-    {
-      type: "list",
-      name: "javaVersion",
-      message: "Quelle version de Java voulez-vous utiliser?",
-      choices: [
-        { name: "Java 17 (LTS)", value: "17" },
-        { name: "Java 21 (LTS, Spring Boot 3+ uniquement)", value: "21" },
-        { name: "Java 11 (LTS)", value: "11" },
-        { name: "Java 8 (Spring Boot 2.7 uniquement)", value: "8" }
-      ],
-      default: "17"
-    }
-  ];
+export function getBasicQuestions(): YeomanQuestion {
+  return {
+    type: "input",
+    name: "appName",
+    message: `${chalk.bold("Nom de l'application:")}`,
+    default: "sfs-app",
+    validate: (input: string) => validateProjectName(input),
+    prefix: OPTION_PREFIX,
+    suffix: HELP_COLOR(" (nom du projet sans espaces ni caractères spéciaux)"),
+  };
 }
 
 /**
  * Questions pour la sélection du frontend
- * @returns Tableau de questions
+ * @returns Questions au format compatible avec Yeoman
  */
-export function getFrontendQuestions() {
-  return [
-    {
-      type: "list",
-      name: "frontendFramework",
-      message: "Quel framework frontend voulez-vous utiliser?",
-      choices: [
-        { name: "React avec openapi", value: "React avec openapi" },
-        { name: "Vue.js avec openapi", value: "Vue.js avec openapi" },
-        { name: "Angular standalone", value: "Angular standalone" },
-        { name: "Thymeleaf (rendu côté serveur)", value: "Thymeleaf" },
-        { name: "JTE (rendu côté serveur)", value: "JTE" },
-        { name: "Aucun (API seulement)", value: "Aucun (API seulement)" }
-      ],
-      default: "React avec openapi",
-    }
-  ];
+export function getFrontendQuestions(): YeomanQuestion {
+  return {
+    type: "list",
+    name: "frontendFramework",
+    message: "Quel framework frontend voulez-vous utiliser?",
+    choices: [
+      { name: "React avec openapi", value: "React avec openapi" },
+      { name: "Vue.js avec openapi", value: "Vue.js avec openapi" },
+      { name: "Angular standalone", value: "Angular standalone" },
+      { name: "Thymeleaf (rendu côté serveur)", value: "Thymeleaf" },
+      { name: "JTE (rendu côté serveur)", value: "JTE" },
+      { name: "Aucun (API seulement)", value: "Aucun (API seulement)" }
+    ],
+    default: "React avec openapi",
+  };
 }
 
 /**
  * Questions pour la configuration de l'API et de la base de données
- * @returns Tableau de questions
+ * @returns Questions au format compatible avec Yeoman
  */
-export function getApiDbQuestions() {
+export function getApiDbQuestions(): YeomanQuestion {
   return [
     {
       type: "list",
@@ -180,7 +164,7 @@ export function getApiDbQuestions() {
       default: "JWT",
       when: (answers: any) => answers.includeAuth
     }
-  ];
+  ] as YeomanQuestion;
 }
 
 /**
@@ -217,18 +201,16 @@ export function buildFeatureChoices(answers: any) {
 /**
  * Questions pour les fonctionnalités supplémentaires
  * @param answers Les réponses déjà collectées
- * @returns Tableau de questions
+ * @returns Questions au format compatible avec Yeoman
  */
-export function getFeatureQuestions(answers: any) {
-  return [
-    {
-      type: "checkbox",
-      name: "additionalFeatures",
-      message: "Quelles fonctionnalités supplémentaires souhaitez-vous?",
-      choices: buildFeatureChoices(answers),
-      pageSize: 15
-    }
-  ];
+export function getFeatureQuestions(answers: any): YeomanQuestion {
+  return {
+    type: "checkbox",
+    name: "additionalFeatures",
+    message: "Quelles fonctionnalités supplémentaires souhaitez-vous?",
+    choices: buildFeatureChoices(answers),
+    pageSize: 15
+  };
 }
 
 /**
@@ -252,15 +234,13 @@ export function displaySummary(answers: any) {
 
 /**
  * Question de confirmation finale
- * @returns Question de confirmation
+ * @returns Question de confirmation au format compatible avec Yeoman
  */
-export function getConfirmationQuestion() {
-  return [
-    {
-      type: "confirm",
-      name: "confirmConfig",
-      message: "Voulez-vous continuer avec cette configuration?",
-      default: true
-    }
-  ];
+export function getConfirmationQuestion(): YeomanQuestion {
+  return {
+    type: "confirm",
+    name: "confirmConfig",
+    message: "Voulez-vous continuer avec cette configuration?",
+    default: true
+  };
 }

@@ -8,8 +8,16 @@ import {
   getApiDbQuestions,
   getFeatureQuestions,
   displaySummary,
-  getConfirmationQuestion
+  getConfirmationQuestion,
+  displayStepHeader, buildFeatureChoices
 } from "./questions.js";
+import {
+  showWelcomeMenu,
+  showPresetMenu,
+  showFeaturesSelectionMenu,
+  showAuthSelectionMenu,
+  showConfirmationMenu
+} from "./menus.js";
 import {
   TemplateData,
   generateProjectStructure,
@@ -65,6 +73,7 @@ export default class AppGenerator extends BaseGenerator {
   async prompting() {
     // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
     const opts = this.options as any;
+    let startOption = "interactive"; // Mode par défaut
 
     if (!opts["skip-welcome-message"]) {
       this.log(
@@ -74,59 +83,136 @@ export default class AppGenerator extends BaseGenerator {
           )}!`
         )
       );
+
+      // Afficher le menu d'accueil sauf si des options de ligne de commande sont fournies
+      if (!opts["quick-start"] && !opts["preset"]) {
+        startOption = await showWelcomeMenu();
+      }
     }
 
     const presets = getPresets();
 
-    // Si l'option quick-start est activée, utiliser une configuration par défaut
-    if (opts["quick-start"]) {
+    // Mode quickstart via menu ou option
+    if (opts["quick-start"] || startOption === "quickstart") {
       this.answers = presets.quickstart;
       this.log(chalk.green("Mode quick-start activé ! Utilisation des valeurs par défaut."));
+
+      // Afficher le résumé de la configuration
+      displaySummary(this.answers);
+
+      // Demander confirmation même en mode quickstart
+      const confirmed = await showConfirmationMenu(this.answers);
+      if (!confirmed) {
+        this.log(chalk.yellow("Génération annulée par l'utilisateur."));
+        process.exit(0);
+      }
+
       return;
     }
 
-    // Si un preset est spécifié, utiliser cette configuration prédéfinie
-    if (opts["preset"]) {
-      const presetName = opts["preset"].toLowerCase();
+    // Mode preset via menu ou option
+    if (opts["preset"] || startOption === "preset") {
+      let presetName = opts["preset"];
+
+      // Si le preset n'a pas été fourni en option, afficher le menu de sélection
+      if (!presetName) {
+        presetName = await showPresetMenu();
+
+        // Si l'utilisateur a choisi de revenir en arrière
+        if (presetName === "back") {
+          // Relancer le prompter
+          return this.prompting();
+        }
+      }
+
       if (presets[presetName]) {
         this.answers = presets[presetName];
         this.log(chalk.green(`Utilisation du preset '${presetName}'`));
+
+        // Afficher le résumé et demander confirmation
+        displaySummary(this.answers);
+        const confirmed = await showConfirmationMenu(this.answers);
+        if (!confirmed) {
+          this.log(chalk.yellow("Génération annulée par l'utilisateur."));
+          process.exit(0);
+        }
+
         return;
       } else {
         this.log(chalk.yellow(`Preset '${presetName}' inconnu. Utilisation du mode interactif.`));
       }
     }
 
-    // Questions de base
-    const basicQuestions: any = getBasicQuestions();
-    const basicAnswers = await this.prompt(basicQuestions);
-    this.answers = { ...basicAnswers };
+    // Mode interactif avec étapes
+    try {
+      // ÉTAPE 1: Configuration de base du projet
+      displayStepHeader(1, "CONFIGURATION DE BASE DU PROJET", 4);
+      const basicQuestions = getBasicQuestions();
+      const basicAnswers = await this.prompt(basicQuestions);
 
-    // Questions sur le frontend
-    const frontendQuestions: any = getFrontendQuestions();
-    const frontendAnswers = await this.prompt(frontendQuestions);
-    this.answers = { ...this.answers, ...frontendAnswers };
+      // ÉTAPE 2: Configuration du frontend
+      displayStepHeader(2, "SÉLECTION DU FRAMEWORK FRONTEND", 4);
+      const frontendQuestions = getFrontendQuestions();
+      const frontendAnswers = await this.prompt(frontendQuestions);
 
-    // Questions sur l'API et la base de données
-    const apiDbQuestions: any = getApiDbQuestions();
-    const apiDbAnswers = await this.prompt(apiDbQuestions);
-    this.answers = { ...this.answers, ...apiDbAnswers };
+      // ÉTAPE 3: Configuration de l'API et de la base de données
+      displayStepHeader(3, "CONFIGURATION DE L'API ET DE LA BASE DE DONNÉES", 4);
+      const apiDbQuestions = getApiDbQuestions();
+      const apiDbAnswers = await this.prompt(apiDbQuestions);
 
-    // Questions sur les fonctionnalités supplémentaires
-    const featureQuestions: any = getFeatureQuestions(this.answers);
-    const featureAnswers = await this.prompt(featureQuestions);
-    this.answers = { ...this.answers, ...featureAnswers };
+      // Utiliser le menu amélioré pour l'authentification si includeAuth est true
+      if (apiDbAnswers.includeAuth) {
+        apiDbAnswers.authType = await showAuthSelectionMenu();
+        if (apiDbAnswers.authType === "None") {
+          apiDbAnswers.includeAuth = false;
+        }
+      }
 
-    // Affichage du résumé des choix
-    displaySummary(this.answers);
+      // ÉTAPE 4: Fonctionnalités supplémentaires avec menu amélioré
+      displayStepHeader(4, "SÉLECTION DES FONCTIONNALITÉS SUPPLÉMENTAIRES", 4);
+      const featureQuestions = getFeatureQuestions({
+        ...basicAnswers,
+        ...frontendAnswers,
+        ...apiDbAnswers
+      });
 
-    // Demande de confirmation
-    const confirmationQuestion: any = getConfirmationQuestion();
-    const { confirmConfig } = await this.prompt(confirmationQuestion);
+      // Utiliser le menu amélioré pour les fonctionnalités ou le prompt direct
+      let featureAnswers;
+      // Si le menu amélioré est disponible, l'utiliser
+      try {
+        const selectedFeatures = await showFeaturesSelectionMenu(buildFeatureChoices({
+          ...basicAnswers,
+          ...frontendAnswers,
+          ...apiDbAnswers
+        }));
+        featureAnswers = { additionalFeatures: selectedFeatures };
+      } catch (error) {
+        // Fallback: utiliser le prompt standard
+        featureAnswers = await this.prompt(featureQuestions);
+      }
 
-    if (!confirmConfig) {
-      this.log(chalk.red("Génération annulée. Veuillez relancer la commande pour recommencer."));
-      process.exit(0);
+      // Fusionner toutes les réponses
+      this.answers = {
+        ...basicAnswers,
+        ...frontendAnswers,
+        ...apiDbAnswers,
+        ...featureAnswers
+      };
+
+      // Afficher un résumé de la configuration choisie
+      displaySummary(this.answers);
+
+      // Confirmation finale
+      const confirmQuestion = getConfirmationQuestion();
+      const confirmationAnswers = await this.prompt(confirmQuestion);
+      if (!confirmationAnswers.confirmConfig) {
+        this.log(chalk.yellow("Génération annulée par l'utilisateur."));
+        process.exit(0);
+      }
+    } catch (error) {
+      this.log(chalk.red("Une erreur s'est produite lors de la configuration:"));
+      this.log(error);
+      process.exit(1);
     }
   }
 
