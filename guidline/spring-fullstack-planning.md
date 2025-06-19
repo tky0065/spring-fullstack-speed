@@ -95,7 +95,7 @@ generator-spring-fullstack/
 - [x] Créer les packages de base (controller, service, repository, entity)
 - [x] Générer les classes utilitaires communes
 - [x] Configurer les logs (Logback)
-- [ ] Tester la génération d'un projet Spring Boot minimal
+- [x] Tester la génération d'un projet Spring Boot minimal
 
 ### Module 2.2 : Configuration Base de Données
 - [x] Implémenter le support MySQL
@@ -109,7 +109,7 @@ generator-spring-fullstack/
 - [x] Générer les repositories Spring Data
 - [x] Implémenter les migrations Flyway/Liquibase
 - [x] Configurer les pools de connexions (HikariCP)
-- [x] Tester chaque configuration de DB
+- [x] Tester la génération d'un projet Spring Boot minimal
 
 ### Module 2.3 : Système d'Authentification
 - [x] Implémenter JWT Authentication
@@ -195,10 +195,10 @@ generator-spring-fullstack/
 - [x] Créer les endpoints CRUD automatiques
 - [x] Implémenter la pagination Spring Data
 - [x] Configurer CORS
-- [ ] Créer les tests d'intégration API
-- [ ] Générer Postman Collections
-- [ ] Implémenter API versioning
-- [x] Configurer rate limiting
+- [ ] Créer les tests d'intégration API (pas maintenant)
+- [ ] Générer Postman Collections (pas important pour le moment)
+- [ ] Implémenter API versioning (pas important pour le moment)
+- [x] Configurer rate limiting (pas important pour le moment)
 
 ### Module 4.2 : Sécurité Avancée
 - [x] Implémenter HTTPS/SSL configuration

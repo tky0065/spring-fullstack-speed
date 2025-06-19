@@ -1,0 +1,86 @@
+# <%= appName %>
+
+Ce projet a été généré avec [Spring-Fullstack-Speed](https://github.com/yourusername/spring-fullstack-speed).
+
+## Prérequis
+
+- Java 17 ou plus récent
+- <%= buildTool.toLowerCase() === 'maven' ? 'Maven' : 'Gradle' %>
+<% if (frontendFramework !== 'Aucun (API seulement)') { %>- Node.js 20 ou plus récent<% } %>
+
+## Démarrage rapide
+
+### Backend
+
+```bash
+<% if (buildTool.toLowerCase() === 'maven') { %>
+./mvnw spring-boot:run
+<% } else { %>
+./gradlew bootRun
+<% } %>
+```
+
+<% if (frontendFramework !== 'Aucun (API seulement)') { %>
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+<% } %>
+
+## Structure du projet
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── <%= packageName.replace(/\./g, '/') %>/
+│   │       ├── controller/
+│   │       ├── service/
+│   │       ├── repository/
+│   │       ├── entity/
+│   │       ├── dto/
+│   │       ├── config/
+│   │       ├── exception/
+│   │       └── util/
+│   └── resources/
+│       ├── application.properties
+│       ├── application-dev.properties
+│       ├── application-prod.properties
+│       ├── static/
+│       └── templates/
+└── test/
+    └── java/
+        └── <%= packageName.replace(/\./g, '/') %>/
+            ├── controller/
+            ├── service/
+            └── repository/
+```
+
+## Base de données
+
+Ce projet utilise <%= database %> comme base de données.
+
+<% if (additionalFeatures.includes('openapi')) { %>
+## Documentation API
+
+La documentation de l'API est disponible à l'adresse suivante : [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+<% } %>
+
+<% if (additionalFeatures.includes('docker')) { %>
+## Docker
+
+```bash
+# Construire l'image
+docker build -t <%= appName.toLowerCase() %>:latest .
+
+# Démarrer l'application avec Docker Compose
+docker-compose up
+```
+<% } %>
+
+## Licence
+
+Ce projet est sous licence MIT.

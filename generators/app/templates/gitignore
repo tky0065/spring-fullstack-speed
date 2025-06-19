@@ -1,39 +1,53 @@
-# Fichiers compilés
-*.class
-*.jar
-*.war
-*.ear
-
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-
-# Gradle
-.gradle
-build/
-
-# Fichiers IDE
+# IDE files
 .idea/
 *.iml
-*.ipr
-*.iws
+.vscode/
+*.sublime-*
 .project
 .classpath
 .settings/
+.factorypath
 
-# Fichiers OS
+# Compiled class files
+*.class
+
+# Build directories
+/target/
+/bin/
+/build/
+/out/
+.gradle/
+.mvn/
+
+# Logs
+*.log
+logs/
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Other
 .DS_Store
 Thumbs.db
+*.bak
+*.swp
+*.tmp
+*~
 
-# Fichiers de log
-*.log
-
-# npm
-node_modules/
-npm-debug.log
-
+<% if (frontendFramework !== 'Aucun (API seulement)') { %>
+# Frontend dependencies and build files
+/node_modules/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+/frontend/.env
+/src/main/resources/static/app/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+<% } %>
