@@ -1,0 +1,101 @@
+package com.example.app.config;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurerSupport;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.LoggingCacheErrorHandler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+
+import java.util.Collection;
+import java.util.Collections;
+
+/**
+ * Configuration des métriques pour le cache
+ * Intègre Spring Cache avec Micrometer pour le monitoring
+ */
+@Configuration
+@ConditionalOnClass(MeterRegistry.class)
+public class CacheMetricsConfig extends CachingConfigurerSupport {
+
+    private final MeterRegistry meterRegistry;
+    private final CacheManager cacheManager;
+
+    public CacheMetricsConfig(MeterRegistry meterRegistry, CacheManager cacheManager) {
+        this.meterRegistry = meterRegistry;
+        this.cacheManager = cacheManager;
+    }
+
+    /**
+     * Initialise les métriques pour tous les caches configurés
+     * @return bean de configuration des métriques de cache
+     */
+    @Bean
+    @ConditionalOnProperty(name = "management.metrics.cache.enabled", havingValue = "true", matchIfMissing = true)
+    public CacheMetricsInitializer cacheMetricsInitializer() {
+        return new CacheMetricsInitializer(cacheManager, meterRegistry);
+    }
+
+    /**
+     * Gestionnaire d'erreurs qui journalise les problèmes liés au cache
+     */
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new LoggingCacheErrorHandler();
+    }
+
+    /**
+     * Classe qui initialise les métriques pour chaque cache
+     */
+    public static class CacheMetricsInitializer {
+        private final CacheManager cacheManager;
+        private final MeterRegistry meterRegistry;
+
+        public CacheMetricsInitializer(CacheManager cacheManager, MeterRegistry meterRegistry) {
+            this.cacheManager = cacheManager;
+            this.meterRegistry = meterRegistry;
+            initialize();
+        }
+
+        /**
+         * Initialise les métriques pour tous les caches
+         */
+        private void initialize() {
+            Collection<String> cacheNames = cacheManager.getCacheNames();
+
+            for (String cacheName : cacheNames) {
+                // Créer un tag pour identifier ce cache dans les métriques
+                Tag cacheTag = Tag.of("cache", cacheName);
+                Tags tags = Tags.of(cacheTag);
+
+                // Enregistrer des compteurs personnalisés pour ce cache
+                meterRegistry.counter("cache.access", tags);
+                meterRegistry.counter("cache.hit", tags);
+                meterRegistry.counter("cache.miss", tags);
+
+                // Pour Caffeine, on peut utiliser des métriques plus détaillées
+                if (cacheManager instanceof CaffeineCacheManager caffeineCacheManager) {
+                    com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache =
+                            (com.github.benmanes.caffeine.cache.Cache<Object, Object>)
+                            caffeineCacheManager.getCache(cacheName).getNativeCache();
+
+                    CaffeineCacheMetrics.monitor(meterRegistry, nativeCache, cacheName, tags);
+                }
+
+                // Pour Redis, journaliser l'initialisation des métriques (les métriques Redis sont gérées différemment)
+                if (cacheManager instanceof RedisCacheManager) {
+                    meterRegistry.gauge("cache.size", tags, Collections.singleton(cacheName),
+                            caches -> caches.isEmpty() ? 0 : -1);
+                }
+            }
+        }
+    }
+}

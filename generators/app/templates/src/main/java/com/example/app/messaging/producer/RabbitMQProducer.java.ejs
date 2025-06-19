@@ -1,0 +1,91 @@
+package com.example.app.messaging.producer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
+import com.example.app.config.RabbitMQConfig;
+
+/**
+ * Service pour envoyer des messages à RabbitMQ
+ * Fournit des méthodes pour publier différents types de messages
+ */
+@Service
+@ConditionalOnProperty(name = "spring.rabbitmq.enabled", havingValue = "true", matchIfMissing = false)
+public class RabbitMQProducer {
+
+    private static final Logger logger = LoggerFactory.getLogger(RabbitMQProducer.class);
+    private final RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    public RabbitMQProducer(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    /**
+     * Envoie une notification
+     * @param message le message de notification
+     */
+    public void sendNotification(Object message) {
+        logger.info("Envoi d'une notification: {}", message);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_DIRECT,
+                RabbitMQConfig.ROUTING_KEY_NOTIFICATION,
+                message
+        );
+    }
+
+    /**
+     * Envoie des données à traiter
+     * @param data les données à traiter
+     */
+    public void sendDataForProcessing(Object data) {
+        logger.info("Envoi de données pour traitement: {}", data);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_DIRECT,
+                RabbitMQConfig.ROUTING_KEY_DATA_PROCESSING,
+                data
+        );
+    }
+
+    /**
+     * Publie un événement global
+     * @param eventType le type d'événement
+     * @param event les détails de l'événement
+     */
+    public void publishEvent(String eventType, Object event) {
+        logger.info("Publication d'un événement de type {}: {}", eventType, event);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_TOPIC,
+                "event." + eventType,
+                event
+        );
+    }
+
+    /**
+     * Diffuse un message à tous les consommateurs de l'exchange fanout
+     * @param message le message à diffuser
+     */
+    public void broadcast(Object message) {
+        logger.info("Diffusion d'un message: {}", message);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_FANOUT,
+                "",
+                message
+        );
+    }
+
+    /**
+     * Envoie un message avec une clé de routage personnalisée
+     * @param exchange l'exchange à utiliser
+     * @param routingKey la clé de routage
+     * @param message le message à envoyer
+     */
+    public void sendMessage(String exchange, String routingKey, Object message) {
+        logger.info("Envoi d'un message à {}/{}: {}", exchange, routingKey, message);
+        rabbitTemplate.convertAndSend(exchange, routingKey, message);
+    }
+}

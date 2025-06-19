@@ -1,0 +1,157 @@
+package com.example.app.messaging.consumer;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
+
+import com.example.app.config.KafkaConfig;
+
+import java.util.List;
+
+/**
+ * Composant qui écoute et traite les messages provenant de Kafka
+ * Définit des listeners pour différents topics
+ */
+@Component
+@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
+public class KafkaConsumer {
+
+    private static final Logger logger = LoggerFactory.getLogger(KafkaConsumer.class);
+
+    /**
+     * Écoute et traite les événements
+     */
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_EVENTS,
+            groupId = "events-consumer-group"
+    )
+    public void processEvents(
+            @Payload List<ConsumerRecord<String, Object>> records,
+            Acknowledgment acknowledgment) {
+
+        logger.info("Batch d'événements reçu, taille={}", records.size());
+
+        try {
+            for (ConsumerRecord<String, Object> record : records) {
+                logger.debug("Traitement de l'événement: key={}, partition={}, offset={}",
+                        record.key(), record.partition(), record.offset());
+
+                // Traitement des événements
+                processEvent(record.key(), record.value());
+            }
+
+            // Acquitter manuellement après traitement réussi
+            acknowledgment.acknowledge();
+            logger.info("Batch d'événements traité avec succès");
+        } catch (Exception e) {
+            logger.error("Erreur lors du traitement du batch d'événements", e);
+            // Ne pas acquitter en cas d'erreur pour permettre une nouvelle tentative
+            // Les paramètres de retry sont définis dans la configuration Kafka
+            throw e;
+        }
+    }
+
+    /**
+     * Écoute et traite les données analytiques
+     */
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_ANALYTICS,
+            groupId = "analytics-consumer-group"
+    )
+    public void processAnalytics(
+            @Payload ConsumerRecord<String, Object> record,
+            Acknowledgment acknowledgment) {
+
+        logger.info("Données analytiques reçues: key={}", record.key());
+
+        try {
+            // Traitement des données analytiques
+            Object analyticsData = record.value();
+            // ... logique de traitement ...
+
+            acknowledgment.acknowledge();
+        } catch (Exception e) {
+            logger.error("Erreur lors du traitement des données analytiques", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Écoute et traite les activités utilisateur
+     */
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_USER_ACTIVITY,
+            groupId = "user-activity-consumer-group"
+    )
+    public void processUserActivity(
+            @Payload Object activity,
+            @Header("kafka_receivedMessageKey") String userId,
+            Acknowledgment acknowledgment) {
+
+        logger.info("Activité utilisateur reçue pour userId={}", userId);
+
+        try {
+            // Traitement de l'activité utilisateur
+            // ... logique de traitement ...
+
+            acknowledgment.acknowledge();
+        } catch (Exception e) {
+            logger.error("Erreur lors du traitement de l'activité utilisateur", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Écoute et traite les notifications
+     */
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_NOTIFICATIONS,
+            groupId = "notifications-consumer-group"
+    )
+    public void processNotifications(
+            @Payload Object notification,
+            @Header("kafka_receivedMessageKey") String userId,
+            Acknowledgment acknowledgment) {
+
+        logger.info("Notification reçue pour userId={}", userId);
+
+        try {
+            // Traitement de la notification
+            // Par exemple, envoi d'un e-mail, notification push, etc.
+
+            acknowledgment.acknowledge();
+        } catch (Exception e) {
+            logger.error("Erreur lors du traitement de la notification", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Méthode utilitaire pour traiter un événement
+     */
+    private void processEvent(String eventType, Object eventData) {
+        // Logique de traitement spécifique selon le type d'événement
+        logger.debug("Traitement de l'événement de type {}", eventType);
+
+        // Implémentation selon l'événement
+        switch (eventType) {
+            case "USER_CREATED":
+                // Traitement pour un utilisateur créé
+                break;
+            case "ORDER_PLACED":
+                // Traitement pour une commande passée
+                break;
+            case "PAYMENT_RECEIVED":
+                // Traitement pour un paiement reçu
+                break;
+            default:
+                logger.info("Type d'événement non géré spécifiquement: {}", eventType);
+        }
+    }
+}

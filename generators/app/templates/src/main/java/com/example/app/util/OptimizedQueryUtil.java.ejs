@@ -1,0 +1,124 @@
+package com.example.app.util;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utilitaire pour exécuter des requêtes SQL optimisées
+ * Utilisé pour les cas où les méthodes standard JPA ne sont pas assez performantes
+ */
+@Component
+public class OptimizedQueryUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(OptimizedQueryUtil.class);
+    private final EntityManager entityManager;
+
+    public OptimizedQueryUtil(EntityManager entityManager) {
+        this.entityManager = entityManager;
+    }
+
+    /**
+     * Exécute une requête SQL native optimisée avec pagination
+     *
+     * @param sql la requête SQL native
+     * @param resultClass la classe du résultat
+     * @param params les paramètres nommés de la requête
+     * @param page le numéro de page (base 0)
+     * @param size la taille de la page
+     * @param <T> le type du résultat
+     * @return la liste des résultats paginés
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executePaginatedNativeQuery(String sql, Class<T> resultClass,
+                                                 Map<String, Object> params,
+                                                 int page, int size) {
+        Query query = entityManager.createNativeQuery(sql, resultClass);
+
+        // Appliquer les paramètres
+        if (params != null) {
+            params.forEach(query::setParameter);
+        }
+
+        // Appliquer la pagination
+        query.setFirstResult(page * size);
+        query.setMaxResults(size);
+
+        // Optimisation: définir fetch size pour les grosses requêtes
+        query.unwrap(org.hibernate.query.Query.class).setFetchSize(size);
+
+        // Mesurer le temps d'exécution
+        long startTime = System.nanoTime();
+        List<T> results = query.getResultList();
+        long endTime = System.nanoTime();
+
+        logger.debug("Requête exécutée en {} ms: {}",
+                (endTime - startTime) / 1_000_000,
+                truncateSqlForLogging(sql));
+
+        return results;
+    }
+
+    /**
+     * Exécute une requête avec jointure optimisée en utilisant des projections
+     * (plus performant que de récupérer des entités complètes)
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executeOptimizedJoinQuery(String jpql, Class<T> resultClass,
+                                               Map<String, Object> params) {
+        Query query = entityManager.createQuery(jpql, resultClass);
+
+        // Appliquer les paramètres
+        if (params != null) {
+            params.forEach(query::setParameter);
+        }
+
+        // Optimisations spécifiques pour les requêtes de jointure
+        Session session = entityManager.unwrap(Session.class);
+        session.setJdbcBatchSize(50);
+
+        // Exécuter la requête
+        long startTime = System.nanoTime();
+        List<T> results = query.getResultList();
+        long endTime = System.nanoTime();
+
+        logger.debug("Jointure exécutée en {} ms: {}",
+                (endTime - startTime) / 1_000_000,
+                truncateSqlForLogging(jpql));
+
+        return results;
+    }
+
+    /**
+     * Précharge des entités liées en une seule requête (évite le problème N+1)
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> findAllWithEagerRelationships(Class<T> entityClass, String... relations) {
+        StringBuilder jpql = new StringBuilder("SELECT DISTINCT e FROM " + entityClass.getSimpleName() + " e");
+
+        // Ajouter des jointures fetch pour chaque relation
+        for (String relation : relations) {
+            jpql.append(" LEFT JOIN FETCH e.").append(relation);
+        }
+
+        Query query = entityManager.createQuery(jpql.toString(), entityClass);
+        return query.getResultList();
+    }
+
+    /**
+     * Tronque une requête SQL pour la journalisation
+     */
+    private String truncateSqlForLogging(String sql) {
+        if (sql.length() > 100) {
+            return sql.substring(0, 97) + "...";
+        }
+        return sql;
+    }
+}

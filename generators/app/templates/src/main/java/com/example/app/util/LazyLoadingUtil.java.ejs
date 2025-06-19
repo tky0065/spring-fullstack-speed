@@ -1,0 +1,136 @@
+package com.example.app.util;
+
+import org.hibernate.Hibernate;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.Collection;
+import java.util.function.Consumer;
+
+/**
+ * Utilitaire pour gérer le chargement paresseux (lazy loading) des entités JPA
+ * Permet de charger des relations à la demande en dehors du contexte transactionnel
+ */
+@Component
+public class LazyLoadingUtil {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    /**
+     * Vérifie si une entité est initialisée (pas en état proxy)
+     *
+     * @param entity l'entité à vérifier
+     * @return true si l'entité est initialisée, false sinon
+     */
+    public boolean isInitialized(Object entity) {
+        return Hibernate.isInitialized(entity);
+    }
+
+    /**
+     * Vérifie si une collection est initialisée
+     *
+     * @param collection la collection à vérifier
+     * @return true si la collection est initialisée, false sinon
+     */
+    public boolean isCollectionInitialized(Collection<?> collection) {
+        return Hibernate.isInitialized(collection);
+    }
+
+    /**
+     * Force l'initialisation d'une entité ou d'une collection
+     *
+     * @param proxy l'entité ou la collection à initialiser
+     */
+    @Transactional(readOnly = true)
+    public void initialize(Object proxy) {
+        if (!Hibernate.isInitialized(proxy)) {
+            Hibernate.initialize(proxy);
+        }
+    }
+
+    /**
+     * Force l'initialisation d'une collection
+     *
+     * @param collection la collection à initialiser
+     */
+    @Transactional(readOnly = true)
+    public void initializeCollection(Collection<?> collection) {
+        if (collection != null && !Hibernate.isInitialized(collection)) {
+            Hibernate.initialize(collection);
+        }
+    }
+
+    /**
+     * Réattache une entité détachée au contexte de persistance
+     *
+     * @param entity l'entité à réattacher
+     * @param <T> le type de l'entité
+     * @return l'entité réattachée
+     */
+    @Transactional
+    public <T> T reattach(T entity) {
+        if (entity != null) {
+            return entityManager.merge(entity);
+        }
+        return null;
+    }
+
+    /**
+     * Exécute une action sur une entité dans un contexte transactionnel
+     * Utile pour accéder aux propriétés lazy en dehors d'une transaction
+     *
+     * @param entity l'entité sur laquelle effectuer l'action
+     * @param action l'action à effectuer
+     * @param <T> le type de l'entité
+     */
+    @Transactional(readOnly = true)
+    public <T> void doWithEntity(T entity, Consumer<T> action) {
+        if (entity != null) {
+            action.accept(entity);
+        }
+    }
+
+    /**
+     * Charge une entité avec ses relations spécifiées
+     *
+     * @param entityClass la classe de l'entité
+     * @param id l'identifiant de l'entité
+     * @param relations les noms des relations à charger
+     * @param <T> le type de l'entité
+     * @return l'entité chargée avec ses relations
+     */
+    @Transactional(readOnly = true)
+    public <T> T loadEntityWithRelations(Class<T> entityClass, Object id, String... relations) {
+        if (id == null) {
+            return null;
+        }
+
+        // Charger l'entité
+        T entity = entityManager.find(entityClass, id);
+        if (entity == null) {
+            return null;
+        }
+
+        // Charger chaque relation spécifiée
+        for (String relation : relations) {
+            try {
+                // Utiliser une requête JPQL pour charger explicitement la relation
+                String jpql = String.format(
+                        "SELECT e FROM %s e LEFT JOIN FETCH e.%s WHERE e.id = :id",
+                        entityClass.getSimpleName(), relation);
+
+                entityManager.createQuery(jpql, entityClass)
+                        .setParameter("id", id)
+                        .getSingleResult();
+            } catch (Exception e) {
+                // Journaliser l'erreur mais continuer avec les autres relations
+                System.err.println("Erreur lors du chargement de la relation " + relation + ": " + e.getMessage());
+            }
+        }
+
+        return entity;
+    }
+}

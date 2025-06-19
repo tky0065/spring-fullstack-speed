@@ -1,0 +1,107 @@
+package com.example.app.messaging.error;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.ImmediateAcknowledgeAmqpException;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
+import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.Map;
+
+/**
+ * Configuration pour gérer les erreurs de traitement des messages RabbitMQ
+ * Implémente des stratégies de récupération et de retry
+ */
+@Configuration
+@ConditionalOnProperty(name = "spring.rabbitmq.enabled", havingValue = "true", matchIfMissing = false)
+public class RabbitMQErrorHandlerConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(RabbitMQErrorHandlerConfig.class);
+    private static final int MAX_RETRY_COUNT = 3;
+
+    /**
+     * Gestionnaire d'erreurs qui republie les messages dans une dead letter queue
+     */
+    @Bean
+    public RepublishMessageRecoverer deadLetterRecoverer(RabbitTemplate rabbitTemplate) {
+        return new RepublishMessageRecoverer(rabbitTemplate, "dlx", "deadletter") {
+            @Override
+            public void recover(Message message, Throwable cause) {
+                int retryCount = getRetryCount(message);
+
+                // Ajouter des informations d'erreur au header du message
+                Map<String, Object> headers = message.getMessageProperties().getHeaders();
+                headers.put("x-exception-message", cause.getMessage());
+                headers.put("x-original-exchange", message.getMessageProperties().getReceivedExchange());
+                headers.put("x-original-routing-key", message.getMessageProperties().getReceivedRoutingKey());
+                headers.put("x-last-retry-timestamp", System.currentTimeMillis());
+                headers.put("x-retry-count", retryCount + 1);
+
+                logger.warn("Échec de traitement du message (tentative {}): {}", retryCount, cause.getMessage());
+
+                // Si le nombre de tentatives est atteint, envoyer vers la dead letter queue
+                super.recover(message, cause);
+            }
+        };
+    }
+
+    /**
+     * Gestionnaire d'erreurs qui rejette simplement les messages
+     */
+    @Bean
+    public RejectAndDontRequeueRecoverer rejectMessageRecoverer() {
+        return new RejectAndDontRequeueRecoverer() {
+            @Override
+            public void recover(Message message, Throwable cause) {
+                logger.error("Rejet définitif du message: {}", cause.getMessage());
+                // Rejeter le message et ne pas le remettre dans la queue
+                throw new AmqpRejectAndDontRequeueException("Message rejeté définitivement", cause);
+            }
+        };
+    }
+
+    /**
+     * Bean pour ignorer les erreurs non critiques et traiter le message comme réussi
+     */
+    @Bean
+    public IgnoreErrorRecoverer ignoreErrorRecoverer() {
+        return new IgnoreErrorRecoverer();
+    }
+
+    /**
+     * Classe pour traiter les erreurs non critiques en ignorant l'erreur
+     * et en traitant le message comme s'il avait été traité avec succès
+     */
+    public static class IgnoreErrorRecoverer {
+        public void recover(Message message, Throwable cause) {
+            if (isNonCriticalError(cause)) {
+                logger.warn("Erreur non critique ignorée: {}", cause.getMessage());
+                throw new ImmediateAcknowledgeAmqpException("Erreur non critique ignorée", cause);
+            } else {
+                logger.error("Erreur critique: {}", cause.getMessage());
+                throw new AmqpRejectAndDontRequeueException("Erreur critique", cause);
+            }
+        }
+
+        private boolean isNonCriticalError(Throwable cause) {
+            // Définir ici la logique pour déterminer si une erreur est critique ou non
+            // Par exemple: certaines exceptions spécifiques, certains types de problèmes, etc.
+            return cause instanceof IllegalArgumentException ||
+                   (cause.getMessage() != null && cause.getMessage().contains("warning"));
+        }
+    }
+
+    /**
+     * Extrait le nombre de tentatives de traitement du message
+     */
+    private static int getRetryCount(Message message) {
+        Map<String, Object> headers = message.getMessageProperties().getHeaders();
+        return headers.containsKey("x-retry-count") ? (int) headers.get("x-retry-count") : 0;
+    }
+}

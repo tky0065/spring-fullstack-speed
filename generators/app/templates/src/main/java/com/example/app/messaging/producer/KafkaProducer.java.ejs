@@ -1,0 +1,97 @@
+package com.example.app.messaging.producer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Service;
+
+import com.example.app.config.KafkaConfig;
+import org.springframework.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Service pour envoyer des messages à Kafka
+ * Fournit des méthodes pour publier différents types de messages
+ */
+@Service
+@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
+public class KafkaProducer {
+
+    private static final Logger logger = LoggerFactory.getLogger(KafkaProducer.class);
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    public KafkaProducer(KafkaTemplate<String, Object> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    /**
+     * Publie un événement dans le topic d'événements
+     * @param key la clé de l'événement (utilisée pour le partitionnement)
+     * @param event l'objet événement à publier
+     * @return un CompletableFuture avec le résultat de l'envoi
+     */
+    public CompletableFuture<SendResult<String, Object>> publishEvent(String key, Object event) {
+        logger.info("Publication d'un événement '{}' dans le topic {}", key, KafkaConfig.TOPIC_EVENTS);
+        return sendMessage(KafkaConfig.TOPIC_EVENTS, key, event);
+    }
+
+    /**
+     * Envoie des données analytiques
+     * @param key la clé des données (ex: type d'analyse)
+     * @param data les données analytiques
+     * @return un CompletableFuture avec le résultat de l'envoi
+     */
+    public CompletableFuture<SendResult<String, Object>> sendAnalyticsData(String key, Object data) {
+        logger.info("Envoi de données analytiques '{}' dans le topic {}", key, KafkaConfig.TOPIC_ANALYTICS);
+        return sendMessage(KafkaConfig.TOPIC_ANALYTICS, key, data);
+    }
+
+    /**
+     * Enregistre une activité utilisateur
+     * @param userId l'identifiant de l'utilisateur (utilisé comme clé)
+     * @param activity les détails de l'activité
+     * @return un CompletableFuture avec le résultat de l'envoi
+     */
+    public CompletableFuture<SendResult<String, Object>> logUserActivity(String userId, Object activity) {
+        logger.info("Enregistrement d'activité pour l'utilisateur {} dans le topic {}", userId, KafkaConfig.TOPIC_USER_ACTIVITY);
+        return sendMessage(KafkaConfig.TOPIC_USER_ACTIVITY, userId, activity);
+    }
+
+    /**
+     * Envoie une notification
+     * @param userId l'identifiant de l'utilisateur destinataire (utilisé comme clé)
+     * @param notification le contenu de la notification
+     * @return un CompletableFuture avec le résultat de l'envoi
+     */
+    public CompletableFuture<SendResult<String, Object>> sendNotification(String userId, Object notification) {
+        logger.info("Envoi d'une notification à l'utilisateur {} dans le topic {}", userId, KafkaConfig.TOPIC_NOTIFICATIONS);
+        return sendMessage(KafkaConfig.TOPIC_NOTIFICATIONS, userId, notification);
+    }
+
+    /**
+     * Méthode générique pour envoyer un message à n'importe quel topic
+     * @param topic le nom du topic
+     * @param key la clé du message
+     * @param payload le contenu du message
+     * @return un CompletableFuture avec le résultat de l'envoi
+     */
+    public CompletableFuture<SendResult<String, Object>> sendMessage(String topic, String key, Object payload) {
+        CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(topic, key, payload);
+
+        future.whenComplete((result, ex) -> {
+            if (ex == null) {
+                logger.debug("Message envoyé avec succès au topic={}, partition={}, offset={}",
+                        result.getRecordMetadata().topic(),
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+            } else {
+                logger.error("Impossible d'envoyer le message au topic={}, erreur={}", topic, ex.getMessage(), ex);
+            }
+        });
+
+        return future;
+    }
+}

@@ -1,0 +1,103 @@
+package com.example.app.messaging;
+
+import com.example.app.messaging.producer.KafkaProducer;
+import com.example.app.messaging.producer.RabbitMQProducer;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Tests pour les services de messagerie
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+public class MessagingServiceTest {
+
+    @MockBean
+    private KafkaTemplate<String, Object> kafkaTemplate;
+
+    @MockBean
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private KafkaProducer kafkaProducer;
+
+    @Autowired
+    private RabbitMQProducer rabbitMQProducer;
+
+    @Test
+    public void testKafkaProducerSendsMessage() {
+        // Préparation des données de test
+        String key = "test-key";
+        Map<String, Object> message = new HashMap<>();
+        message.put("name", "Test Event");
+        message.put("type", "TEST");
+
+        // Mock du comportement de KafkaTemplate
+        CompletableFuture<SendResult<String, Object>> future = new CompletableFuture<>();
+        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(future);
+
+        // Exécution du test
+        kafkaProducer.publishEvent(key, message);
+
+        // Vérification que la méthode send a été appelée avec les bons paramètres
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(key), eq(message));
+    }
+
+    @Test
+    public void testRabbitMQProducerSendsNotification() {
+        // Préparation des données de test
+        String message = "Test notification";
+
+        // Exécution du test
+        rabbitMQProducer.sendNotification(message);
+
+        // Vérification que la méthode convertAndSend a été appelée avec les bons paramètres
+        verify(rabbitTemplate, times(1)).convertAndSend(anyString(), anyString(), eq(message));
+    }
+
+    @Test
+    public void testKafkaProducerHandlesAnalyticsData() {
+        // Préparation des données de test
+        Map<String, Object> analyticsData = new HashMap<>();
+        analyticsData.put("userId", "12345");
+        analyticsData.put("action", "PAGE_VIEW");
+        analyticsData.put("page", "/home");
+
+        // Mock du comportement de KafkaTemplate
+        CompletableFuture<SendResult<String, Object>> future = new CompletableFuture<>();
+        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(future);
+
+        // Exécution du test
+        kafkaProducer.sendAnalyticsData("USER_ANALYTICS", analyticsData);
+
+        // Vérification que la méthode send a été appelée avec les bons paramètres
+        verify(kafkaTemplate, times(1)).send(anyString(), eq("USER_ANALYTICS"), eq(analyticsData));
+    }
+
+    @Test
+    public void testRabbitMQProducerHandlesDataProcessing() {
+        // Préparation des données de test
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", 12345);
+        data.put("status", "PENDING");
+
+        // Exécution du test
+        rabbitMQProducer.sendDataForProcessing(data);
+
+        // Vérification que la méthode convertAndSend a été appelée avec les bons paramètres
+        verify(rabbitTemplate, times(1)).convertAndSend(anyString(), anyString(), eq(data));
+    }
+}

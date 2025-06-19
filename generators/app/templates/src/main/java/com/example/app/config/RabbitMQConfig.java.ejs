@@ -1,0 +1,211 @@
+package com.example.app.config;
+
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Configuration pour l'intégration de RabbitMQ
+ * Cette classe configure la connexion et les éléments de base pour utiliser RabbitMQ
+ */
+@Configuration
+@EnableRabbit
+@ConditionalOnProperty(name = "spring.rabbitmq.enabled", havingValue = "true", matchIfMissing = false)
+public class RabbitMQConfig {
+
+    @Value("${spring.rabbitmq.host:localhost}")
+    private String host;
+
+    @Value("${spring.rabbitmq.port:5672}")
+    private int port;
+
+    @Value("${spring.rabbitmq.username:guest}")
+    private String username;
+
+    @Value("${spring.rabbitmq.password:guest}")
+    private String password;
+
+    @Value("${spring.rabbitmq.virtual-host:/}")
+    private String virtualHost;
+
+    // Noms des queues
+    public static final String QUEUE_NOTIFICATIONS = "notifications.queue";
+    public static final String QUEUE_DATA_PROCESSING = "data-processing.queue";
+    public static final String QUEUE_EVENTS = "events.queue";
+
+    // Noms des exchanges
+    public static final String EXCHANGE_DIRECT = "direct.exchange";
+    public static final String EXCHANGE_FANOUT = "fanout.exchange";
+    public static final String EXCHANGE_TOPIC = "topic.exchange";
+
+    // Noms des routing keys
+    public static final String ROUTING_KEY_NOTIFICATION = "notification";
+    public static final String ROUTING_KEY_DATA_PROCESSING = "data.processing";
+    public static final String ROUTING_KEY_EVENT_ALL = "event.#";
+
+    /**
+     * Crée la factory de connexion à RabbitMQ
+     */
+    @Bean
+    public ConnectionFactory connectionFactory() {
+        CachingConnectionFactory connectionFactory = new CachingConnectionFactory();
+        connectionFactory.setHost(host);
+        connectionFactory.setPort(port);
+        connectionFactory.setUsername(username);
+        connectionFactory.setPassword(password);
+        connectionFactory.setVirtualHost(virtualHost);
+        return connectionFactory;
+    }
+
+    /**
+     * Crée le template RabbitMQ pour envoyer des messages
+     */
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter messageConverter) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(messageConverter);
+        return rabbitTemplate;
+    }
+
+    /**
+     * Configure le convertisseur de messages pour utiliser JSON
+     */
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    /**
+     * Configure l'administrateur RabbitMQ
+     */
+    @Bean
+    public AmqpAdmin amqpAdmin(ConnectionFactory connectionFactory) {
+        return new RabbitAdmin(connectionFactory);
+    }
+
+    /**
+     * Configure la factory des listeners RabbitMQ
+     */
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            MessageConverter messageConverter) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(messageConverter);
+        factory.setConcurrentConsumers(3);
+        factory.setMaxConcurrentConsumers(10);
+        return factory;
+    }
+
+    /**
+     * Définit la queue pour les notifications
+     */
+    @Bean
+    public Queue notificationsQueue() {
+        return QueueBuilder.durable(QUEUE_NOTIFICATIONS)
+                .withArgument("x-message-ttl", 60000) // TTL de 1 minute
+                .build();
+    }
+
+    /**
+     * Définit la queue pour le traitement des données
+     */
+    @Bean
+    public Queue dataProcessingQueue() {
+        return QueueBuilder.durable(QUEUE_DATA_PROCESSING)
+                .withArgument("x-dead-letter-exchange", "dlx")
+                .withArgument("x-dead-letter-routing-key", "deadletter")
+                .build();
+    }
+
+    /**
+     * Définit la queue pour les événements
+     */
+    @Bean
+    public Queue eventsQueue() {
+        return new Queue(QUEUE_EVENTS, true);
+    }
+
+    /**
+     * Définit l'exchange direct
+     */
+    @Bean
+    public DirectExchange directExchange() {
+        return new DirectExchange(EXCHANGE_DIRECT);
+    }
+
+    /**
+     * Définit l'exchange fanout
+     */
+    @Bean
+    public FanoutExchange fanoutExchange() {
+        return new FanoutExchange(EXCHANGE_FANOUT);
+    }
+
+    /**
+     * Définit l'exchange topic
+     */
+    @Bean
+    public TopicExchange topicExchange() {
+        return new TopicExchange(EXCHANGE_TOPIC);
+    }
+
+    /**
+     * Lie la queue des notifications à l'exchange direct
+     */
+    @Bean
+    public Binding notificationBinding(Queue notificationsQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(notificationsQueue)
+                .to(directExchange)
+                .with(ROUTING_KEY_NOTIFICATION);
+    }
+
+    /**
+     * Lie la queue de traitement des données à l'exchange direct
+     */
+    @Bean
+    public Binding dataProcessingBinding(Queue dataProcessingQueue, DirectExchange directExchange) {
+        return BindingBuilder.bind(dataProcessingQueue)
+                .to(directExchange)
+                .with(ROUTING_KEY_DATA_PROCESSING);
+    }
+
+    /**
+     * Lie la queue d'événements à l'exchange topic
+     */
+    @Bean
+    public Binding eventsBinding(Queue eventsQueue, TopicExchange topicExchange) {
+        return BindingBuilder.bind(eventsQueue)
+                .to(topicExchange)
+                .with(ROUTING_KEY_EVENT_ALL);
+    }
+
+    // Configuration pour les dead letter queues
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable("deadletter.queue").build();
+    }
+
+    @Bean
+    public DirectExchange deadLetterExchange() {
+        return new DirectExchange("dlx");
+    }
+
+    @Bean
+    public Binding deadLetterBinding() {
+        return BindingBuilder.bind(deadLetterQueue())
+                .to(deadLetterExchange())
+                .with("deadletter");
+    }
+}

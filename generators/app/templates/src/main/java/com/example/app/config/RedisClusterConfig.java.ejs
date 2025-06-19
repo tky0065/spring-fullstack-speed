@@ -1,0 +1,84 @@
+package com.example.app.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisClusterConfiguration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Configuration pour utiliser Redis en mode cluster
+ * Permet une haute disponibilité et une mise à l'échelle horizontale
+ */
+@Configuration
+@ConditionalOnProperty(name = "spring.redis.cluster.enabled", havingValue = "true", matchIfMissing = false)
+public class RedisClusterConfig {
+
+    @Value("${spring.redis.cluster.nodes:localhost:7000,localhost:7001,localhost:7002}")
+    private List<String> nodes;
+
+    @Value("${spring.redis.cluster.max-redirects:3}")
+    private Integer maxRedirects;
+
+    @Value("${spring.redis.timeout:2000}")
+    private long timeout;
+
+    @Value("${spring.redis.cluster.username:}")
+    private String username;
+
+    @Value("${spring.redis.cluster.password:}")
+    private String password;
+
+    /**
+     * Configure la connexion au cluster Redis
+     */
+    @Bean
+    public RedisConnectionFactory redisClusterConnectionFactory() {
+        List<String> nodesList = nodes != null ? nodes : new ArrayList<>();
+
+        RedisClusterConfiguration clusterConfig = new RedisClusterConfiguration(nodesList);
+        clusterConfig.setMaxRedirects(maxRedirects);
+
+        if (username != null && !username.isEmpty()) {
+            clusterConfig.setUsername(username);
+        }
+
+        if (password != null && !password.isEmpty()) {
+            clusterConfig.setPassword(password);
+        }
+
+        // Configuration du client Lettuce avec timeout
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .commandTimeout(Duration.ofMillis(timeout))
+                .build();
+
+        return new LettuceConnectionFactory(clusterConfig, clientConfig);
+    }
+
+    /**
+     * Template Redis pour les opérations sur le cluster
+     */
+    @Bean
+    public RedisTemplate<String, Object> redisClusterTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+
+        // Sérialiseurs pour les clés et valeurs
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        return template;
+    }
+}

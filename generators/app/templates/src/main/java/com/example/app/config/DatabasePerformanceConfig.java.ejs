@@ -1,0 +1,55 @@
+package com.example.app.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import jakarta.persistence.EntityManager;
+import org.hibernate.stat.Statistics;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import jakarta.persistence.EntityManagerFactory;
+
+/**
+ * Configuration pour optimiser les performances des requêtes de base de données
+ */
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.example.app.repository")
+public class DatabasePerformanceConfig {
+
+    private final EntityManagerFactory entityManagerFactory;
+
+    public DatabasePerformanceConfig(EntityManagerFactory entityManagerFactory) {
+        this.entityManagerFactory = entityManagerFactory;
+    }
+
+    /**
+     * Configure le gestionnaire de transactions JPA
+     */
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        JpaTransactionManager transactionManager = new JpaTransactionManager();
+        transactionManager.setEntityManagerFactory(entityManagerFactory);
+        return transactionManager;
+    }
+
+    /**
+     * Active les statistiques Hibernate pour surveiller les performances
+     */
+    @Bean
+    @ConditionalOnProperty(name = "spring.jpa.properties.hibernate.generate_statistics", havingValue = "true")
+    public Statistics hibernateStatistics() {
+        return entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
+    }
+
+    /**
+     * EntityManager pour exécuter des requêtes natives optimisées
+     */
+    @Bean
+    public EntityManager entityManager() {
+        return entityManagerFactory.createEntityManager();
+    }
+}

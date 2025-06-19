@@ -1,0 +1,193 @@
+package com.example.app.cache;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Callable;
+
+/**
+ * Gestionnaire avancé pour le cache application
+ * Fournit des méthodes utilitaires pour interagir avec le cache
+ */
+@Component
+public class CacheService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CacheService.class);
+    private final CacheManager cacheManager;
+
+    public CacheService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    /**
+     * Récupère une valeur du cache, ou l'obtient du supplier si absente
+     *
+     * @param cacheName nom du cache
+     * @param key clé de l'élément
+     * @param valueType type de la valeur
+     * @param valueSupplier fournisseur de la valeur si absente du cache
+     * @param <T> type générique de la valeur
+     * @return la valeur depuis le cache ou le fournisseur
+     */
+    public <T> T getOrCompute(String cacheName, Object key, Class<T> valueType, Callable<T> valueSupplier) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache == null) {
+                logger.warn("Cache '{}' non trouvé, exécution directe du calcul", cacheName);
+                return executeSupplier(valueSupplier);
+            }
+
+            T value = cache.get(key, valueType);
+            if (value == null) {
+                logger.debug("Cache miss pour '{}:{}', calcul de la valeur", cacheName, key);
+                value = executeSupplier(valueSupplier);
+                cache.put(key, value);
+            } else {
+                logger.debug("Cache hit pour '{}:{}'", cacheName, key);
+            }
+
+            return value;
+        } catch (Exception e) {
+            logger.error("Erreur lors de l'accès au cache: {}", e.getMessage(), e);
+            return executeSupplier(valueSupplier);
+        }
+    }
+
+    /**
+     * Met à jour ou ajoute une valeur dans le cache
+     *
+     * @param cacheName nom du cache
+     * @param key clé de l'élément
+     * @param value valeur à stocker
+     * @param <T> type générique de la valeur
+     */
+    public <T> void put(String cacheName, Object key, T value) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.put(key, value);
+                logger.debug("Mise à jour du cache '{}:{}' réussie", cacheName, key);
+            } else {
+                logger.warn("Cache '{}' non trouvé, impossible de mettre à jour la clé '{}'", cacheName, key);
+            }
+        } catch (Exception e) {
+            logger.error("Erreur lors de la mise à jour du cache: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Supprime une entrée du cache
+     *
+     * @param cacheName nom du cache
+     * @param key clé à supprimer
+     */
+    public void evict(String cacheName, Object key) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.evict(key);
+                logger.debug("Suppression du cache '{}:{}' réussie", cacheName, key);
+            } else {
+                logger.warn("Cache '{}' non trouvé, impossible de supprimer la clé '{}'", cacheName, key);
+            }
+        } catch (Exception e) {
+            logger.error("Erreur lors de la suppression du cache: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Vide un cache entier
+     *
+     * @param cacheName nom du cache à vider
+     */
+    public void clear(String cacheName) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+                logger.info("Cache '{}' vidé avec succès", cacheName);
+            } else {
+                logger.warn("Cache '{}' non trouvé, impossible de le vider", cacheName);
+            }
+        } catch (Exception e) {
+            logger.error("Erreur lors du vidage du cache: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Vide tous les caches gérés
+     */
+    public void clearAll() {
+        Collection<String> cacheNames = cacheManager.getCacheNames();
+        logger.info("Nettoyage de tous les caches: {}", cacheNames);
+
+        cacheNames.forEach(cacheName -> {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+            }
+        });
+    }
+
+    /**
+     * Récupère les statistiques de tous les caches
+     *
+     * @return map de statistiques par nom de cache
+     */
+    public Map<String, CacheStatistics> getStatistics() {
+        Map<String, CacheStatistics> stats = new HashMap<>();
+        Collection<String> cacheNames = cacheManager.getCacheNames();
+
+        for (String cacheName : cacheNames) {
+            // Les statistiques réelles dépendent de l'implémentation du CacheManager
+            // Ceci est un exemple simple, mais vous pourriez récupérer des métriques réelles
+            // via JMX ou d'autres mécanismes spécifiques à l'implémentation
+            stats.put(cacheName, new CacheStatistics(cacheName));
+        }
+
+        return stats;
+    }
+
+    private <T> T executeSupplier(Callable<T> valueSupplier) {
+        try {
+            return valueSupplier.call();
+        } catch (Exception e) {
+            logger.error("Erreur lors de l'exécution du fournisseur de valeur: {}", e.getMessage(), e);
+            throw new RuntimeException("Erreur lors du calcul de la valeur pour le cache", e);
+        }
+    }
+
+    /**
+     * Classe pour les statistiques de cache
+     */
+    public static class CacheStatistics {
+        private final String cacheName;
+        private final long estimatedSize;
+        private final String implementation;
+
+        public CacheStatistics(String cacheName) {
+            this.cacheName = cacheName;
+            this.estimatedSize = -1; // À remplacer par la vraie taille si disponible
+            this.implementation = "Redis/Memory";
+        }
+
+        public String getCacheName() {
+            return cacheName;
+        }
+
+        public long getEstimatedSize() {
+            return estimatedSize;
+        }
+
+        public String getImplementation() {
+            return implementation;
+        }
+    }
+}

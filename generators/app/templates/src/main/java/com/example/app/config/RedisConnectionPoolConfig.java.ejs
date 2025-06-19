@@ -1,0 +1,66 @@
+package com.example.app.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+
+/**
+ * Configuration avancée du pool de connexions pour Redis
+ * Optimise la gestion des connexions pour les environnements à forte charge
+ */
+@Configuration
+@ConditionalOnProperty(name = "spring.redis.enabled", havingValue = "true", matchIfMissing = false)
+public class RedisConnectionPoolConfig {
+
+    @Value("${spring.redis.pool.max-active:8}")
+    private int maxActive;
+
+    @Value("${spring.redis.pool.max-idle:8}")
+    private int maxIdle;
+
+    @Value("${spring.redis.pool.min-idle:0}")
+    private int minIdle;
+
+    @Value("${spring.redis.pool.max-wait:-1}")
+    private long maxWait;
+
+    @Value("${spring.redis.pool.time-between-eviction-runs:30000}")
+    private long timeBetweenEvictionRuns;
+
+    @Bean
+    public RedisConnectionFactory connectionFactory(RedisProperties redisProperties) {
+        // Configuration de la connexion Redis
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+        redisConfig.setHostName(redisProperties.getHost());
+        redisConfig.setPort(redisProperties.getPort());
+
+        if (redisProperties.getUsername() != null && !redisProperties.getUsername().isEmpty()) {
+            redisConfig.setUsername(redisProperties.getUsername());
+        }
+
+        if (redisProperties.getPassword() != null && !redisProperties.getPassword().isEmpty()) {
+            redisConfig.setPassword(redisProperties.getPassword());
+        }
+
+        // Configuration du pool de connexions
+        GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+        poolConfig.setMaxTotal(maxActive);
+        poolConfig.setMaxIdle(maxIdle);
+        poolConfig.setMinIdle(minIdle);
+        poolConfig.setMaxWait(java.time.Duration.ofMillis(maxWait));
+        poolConfig.setTimeBetweenEvictionRuns(java.time.Duration.ofMillis(timeBetweenEvictionRuns));
+
+        // Configuration du client Lettuce avec le pool de connexions
+        LettucePoolingClientConfiguration lettuceConfig = LettucePoolingClientConfiguration.builder()
+                .poolConfig(poolConfig)
+                .build();
+
+        return new LettuceConnectionFactory(redisConfig, lettuceConfig);
+    }
+}

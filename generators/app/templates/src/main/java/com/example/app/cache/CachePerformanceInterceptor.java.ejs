@@ -1,0 +1,101 @@
+package com.example.app.cache;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Aspect pour mesurer les performances des opérations de cache et
+ * suivre les statistiques d'utilisation
+ */
+@Aspect
+@Component
+public class CachePerformanceInterceptor {
+
+    private static final Logger logger = LoggerFactory.getLogger(CachePerformanceInterceptor.class);
+    private final MeterRegistry meterRegistry;
+
+    public CachePerformanceInterceptor(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+
+    /**
+     * Intercepte toutes les méthodes annotées avec @Cacheable pour mesurer
+     * le temps d'exécution et collecter des métriques
+     */
+    @Around("@annotation(org.springframework.cache.annotation.Cacheable)")
+    public Object measureCachePerformance(ProceedingJoinPoint joinPoint) throws Throwable {
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+
+        // Récupérer les informations de cache depuis l'annotation
+        Cacheable cacheable = method.getAnnotation(Cacheable.class);
+        String[] cacheNames = cacheable.value();
+        String cacheName = cacheNames.length > 0 ? cacheNames[0] : "default";
+
+        // Créer un timer pour cette opération
+        Timer.Sample sample = Timer.start(meterRegistry);
+
+        // Exécuter la méthode originale
+        boolean cacheHit = false; // C'est une approximation, nous ne pouvons pas savoir exactement
+        Object result = null;
+        try {
+            result = joinPoint.proceed();
+
+            // Si le résultat n'est pas null, nous supposons que c'est un cache hit
+            // (approximation simple pour la démonstration)
+            cacheHit = result != null;
+
+            // Incrémenter le compteur approprié
+            if (cacheHit) {
+                meterRegistry.counter("cache.hit", "cache", cacheName).increment();
+            } else {
+                meterRegistry.counter("cache.miss", "cache", cacheName).increment();
+            }
+
+            return result;
+        } finally {
+            // Enregistrer le temps d'exécution
+            long executionTime = sample.stop(Timer.builder("cache.access.time")
+                    .tag("cache", cacheName)
+                    .tag("method", method.getName())
+                    .tag("hit", String.valueOf(cacheHit))
+                    .register(meterRegistry));
+
+            // Journaliser les informations si l'exécution est lente
+            if (TimeUnit.NANOSECONDS.toMillis(executionTime) > 100) { // seuil de 100ms
+                logger.warn("Opération de cache lente: cache='{}', méthode='{}', paramètres='{}', temps={}ms",
+                        cacheName, method.getName(), formatParameters(joinPoint.getArgs()),
+                        TimeUnit.NANOSECONDS.toMillis(executionTime));
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Opération de cache: cache='{}', méthode='{}', hit={}, temps={}ms",
+                        cacheName, method.getName(), cacheHit,
+                        TimeUnit.NANOSECONDS.toMillis(executionTime));
+            }
+        }
+    }
+
+    /**
+     * Formate les paramètres pour la journalisation
+     */
+    private String formatParameters(Object[] args) {
+        return StringUtils.arrayToCommaDelimitedString(
+                Arrays.stream(args)
+                        .map(arg -> arg == null ? "null" : arg.toString())
+                        .toArray(String[]::new)
+        );
+    }
+}

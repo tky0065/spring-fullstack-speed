@@ -1,0 +1,97 @@
+package com.example.app.messaging.consumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
+
+import com.example.app.config.RabbitMQConfig;
+
+/**
+ * Composant qui écoute et traite les messages provenant de RabbitMQ
+ * Définit des listeners pour différentes queues
+ */
+@Component
+@ConditionalOnProperty(name = "spring.rabbitmq.enabled", havingValue = "true", matchIfMissing = false)
+public class RabbitMQConsumer {
+
+    private static final Logger logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
+
+    /**
+     * Écoute et traite les notifications entrantes
+     * @param message le message de notification
+     */
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_NOTIFICATIONS)
+    public void handleNotification(@Payload String message) {
+        logger.info("Notification reçue: {}", message);
+
+        // Traiter la notification
+        // Exemples:
+        // - Envoyer un email
+        // - Envoyer une notification push
+        // - Mettre à jour la base de données
+
+        try {
+            // Simuler un traitement
+            Thread.sleep(100);
+            logger.info("Notification traitée avec succès");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Erreur lors du traitement de la notification", e);
+        }
+    }
+
+    /**
+     * Écoute et traite les données à traiter
+     * @param data les données à traiter
+     */
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_DATA_PROCESSING)
+    public void processData(@Payload Object data) {
+        logger.info("Données reçues pour traitement: {}", data);
+
+        try {
+            // Simuler un traitement plus long
+            Thread.sleep(500);
+            logger.info("Traitement des données terminé");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Erreur lors du traitement des données", e);
+            throw new RuntimeException("Échec du traitement des données", e);
+        }
+    }
+
+    /**
+     * Écoute et traite les événements
+     * @param event les détails de l'événement
+     */
+    @RabbitListener(queues = RabbitMQConfig.QUEUE_EVENTS)
+    public void handleEvent(@Payload String event) {
+        logger.info("Événement reçu: {}", event);
+
+        // Traiter l'événement selon son type
+        // Le type peut être extrait du contenu JSON du message
+
+        try {
+            // Simuler un traitement
+            Thread.sleep(200);
+            logger.info("Événement traité");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Erreur lors du traitement de l'événement", e);
+        }
+    }
+
+    /**
+     * Écoute et traite les messages morts (non traités)
+     * @param message le message qui n'a pas pu être traité
+     */
+    @RabbitListener(queues = "deadletter.queue")
+    public void processFailedMessages(@Payload Object message) {
+        logger.warn("Message mort reçu: {}", message);
+
+        // Traitement spécifique pour les messages qui n'ont pas pu être traités
+        // Par exemple: enregistrer dans une base de données, envoyer une alerte, etc.
+    }
+}

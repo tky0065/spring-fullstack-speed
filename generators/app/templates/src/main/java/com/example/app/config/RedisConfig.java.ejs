@@ -1,0 +1,110 @@
+package com.example.app.config;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Configuration Redis pour le cache et les données persistantes
+ */
+@Configuration
+@EnableCaching
+public class RedisConfig {
+
+    /**
+     * Configuration de la connexion Redis
+     */
+    @Bean
+    @ConditionalOnProperty(name = "spring.redis.enabled", havingValue = "true", matchIfMissing = false)
+    public RedisConnectionFactory redisConnectionFactory(RedisProperties redisProperties) {
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+        redisConfig.setHostName(redisProperties.getHost());
+        redisConfig.setPort(redisProperties.getPort());
+
+        if (redisProperties.getUsername() != null && !redisProperties.getUsername().isEmpty()) {
+            redisConfig.setUsername(redisProperties.getUsername());
+        }
+
+        if (redisProperties.getPassword() != null && !redisProperties.getPassword().isEmpty()) {
+            redisConfig.setPassword(redisProperties.getPassword());
+        }
+
+        return new LettuceConnectionFactory(redisConfig);
+    }
+
+    /**
+     * Template Redis pour les opérations génériques
+     */
+    @Bean
+    @ConditionalOnProperty(name = "spring.redis.enabled", havingValue = "true", matchIfMissing = false)
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        return template;
+    }
+
+    /**
+     * Gestionnaire de cache Redis
+     */
+    @Bean
+    @Primary
+    @ConditionalOnProperty(name = "spring.redis.enabled", havingValue = "true", matchIfMissing = false)
+    public CacheManager redisCacheManager(
+            RedisConnectionFactory connectionFactory,
+            RedisProperties redisProperties) {
+
+        // Configuration par défaut
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofSeconds(redisProperties.getDefaultTtlSeconds()))
+                .serializeKeysWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
+
+        // Configurations spécifiques par cache
+        Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
+
+        // Configuration pour le cache d'utilisateurs (TTL plus court)
+        cacheConfigurations.put("users", defaultConfig.entryTtl(
+                Duration.ofSeconds(redisProperties.getUsersCacheTtlSeconds())));
+
+        // Configuration pour le cache de produits (TTL plus long)
+        cacheConfigurations.put("products", defaultConfig.entryTtl(
+                Duration.ofSeconds(redisProperties.getProductsCacheTtlSeconds())));
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(defaultConfig)
+                .withInitialCacheConfigurations(cacheConfigurations)
+                .build();
+    }
+
+    /**
+     * Gestionnaire de cache en mémoire (fallback si Redis est désactivé)
+     */
+    @Bean
+    @ConditionalOnMissingBean(CacheManager.class)
+    public CacheManager inMemoryCacheManager() {
+        return new org.springframework.cache.concurrent.ConcurrentMapCacheManager();
+    }
+}

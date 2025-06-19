@@ -1,0 +1,104 @@
+package com.example.app.service;
+
+import com.example.app.entity.Product;
+import com.example.app.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service de gestion des produits avec utilisation du cache
+ * Exemple d'implémentation des annotations de cache Spring
+ */
+@Service
+public class ProductService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
+    private final ProductRepository productRepository;
+
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
+
+    /**
+     * Récupère un produit par son ID
+     * La méthode utilise le cache "products" pour éviter des requêtes répétées à la base de données
+     *
+     * @param id ID du produit
+     * @return le produit s'il existe
+     */
+    @Cacheable(value = "products", key = "#id")
+    public Optional<Product> findById(Long id) {
+        logger.info("Recherche du produit avec l'ID: {}", id);
+        // Cette requête ne sera exécutée que si le produit n'est pas dans le cache
+        return productRepository.findById(id);
+    }
+
+    /**
+     * Récupère tous les produits par catégorie
+     * La méthode utilise le cache "productsByCategory" avec une clé basée sur la catégorie
+     *
+     * @param category la catégorie des produits
+     * @return liste de produits de cette catégorie
+     */
+    @Cacheable(value = "productsByCategory", key = "#category")
+    public List<Product> findByCategory(String category) {
+        logger.info("Recherche des produits dans la catégorie: {}", category);
+        return productRepository.findByCategory(category);
+    }
+
+    /**
+     * Crée ou met à jour un produit
+     * La méthode utilise @CachePut pour mettre à jour le cache automatiquement
+     *
+     * @param product le produit à sauvegarder
+     * @return le produit sauvegardé
+     */
+    @CachePut(value = "products", key = "#result.id")
+    @Transactional
+    public Product save(Product product) {
+        logger.info("Sauvegarde du produit: {}", product.getName());
+        return productRepository.save(product);
+    }
+
+    /**
+     * Supprime un produit et le retire du cache
+     *
+     * @param id l'ID du produit à supprimer
+     */
+    @CacheEvict(value = "products", key = "#id")
+    @Transactional
+    public void deleteById(Long id) {
+        logger.info("Suppression du produit avec l'ID: {}", id);
+        productRepository.deleteById(id);
+    }
+
+    /**
+     * Supprime tous les produits d'une catégorie et nettoie le cache correspondant
+     *
+     * @param category la catégorie à supprimer
+     */
+    @CacheEvict(value = "productsByCategory", key = "#category")
+    @Transactional
+    public void deleteByCategory(String category) {
+        logger.info("Suppression des produits de la catégorie: {}", category);
+        productRepository.deleteByCategory(category);
+    }
+
+    /**
+     * Vide tous les caches de produits
+     * Utile après des opérations de masse ou lors des mises à jour de données
+     */
+    @CacheEvict(value = {"products", "productsByCategory"}, allEntries = true)
+    public void clearProductCaches() {
+        logger.info("Nettoyage de tous les caches de produits");
+        // Le nettoyage est géré par Spring Cache via l'annotation
+    }
+}
