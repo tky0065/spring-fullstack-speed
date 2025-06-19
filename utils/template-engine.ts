@@ -5,6 +5,8 @@ import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
+import crypto from 'crypto';
+import { addConditionalHelpersToContext } from './conditional-rendering.js';
 
 /**
  * Rend un template EJS avec les données fournies
@@ -93,7 +95,7 @@ export function getOutputFilename(filename: string): string {
  */
 export function buildTemplateContext(baseContext: Record<string, any>): Record<string, any> {
   // Ajoute des fonctions helper pour utiliser dans les templates
-  return {
+  const contextWithBasicHelpers = {
     ...baseContext,
 
     // Helper pour mettre en majuscule la première lettre d'une chaîne
@@ -118,11 +120,10 @@ export function buildTemplateContext(baseContext: Record<string, any>): Record<s
     generateRandomSecret: (length = 32): string => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let result = '';
-      const randomValues = new Uint8Array(length);
-      crypto.getRandomValues(randomValues);
-      randomValues.forEach(val => {
-        result += chars.charAt(val % chars.length);
-      });
+      const randomValues = crypto.randomBytes(length);
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(randomValues[i] % chars.length);
+      }
       return result;
     },
 
@@ -141,4 +142,7 @@ export function buildTemplateContext(baseContext: Record<string, any>): Record<s
         .replace(/'/g, '&#039;');
     }
   };
+
+  // Ajoute les helpers conditionnels et retourne le contexte enrichi
+  return addConditionalHelpersToContext(contextWithBasicHelpers);
 }

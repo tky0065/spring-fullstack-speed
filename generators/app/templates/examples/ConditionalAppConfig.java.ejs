@@ -1,0 +1,82 @@
+<%
+/**
+ * Exemple de fichier template avec conditionnement de code
+ * Ce fichier montre comment utiliser les conditions dans les templates
+ */
+%>
+package <%= packageName %>.config;
+
+<% if (if_has_auth) { %>
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+<% } %>
+import org.springframework.context.annotation.Configuration;
+<% if (database === DATABASE_OPTIONS.MONGODB) { %>
+import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
+<% } else if (database === DATABASE_OPTIONS.POSTGRESQL || database === DATABASE_OPTIONS.MYSQL) { %>
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+<% } %>
+
+/**
+ * Configuration de l'application
+ * Générée par Spring-Fullstack-Speed CLI
+ */
+@Configuration
+<% if (if_database(DATABASE_OPTIONS.MONGODB)) { %>
+public class AppConfig extends AbstractMongoClientConfiguration {
+<% } else { %>
+public class AppConfig {
+<% } %>
+
+    <% if (if_has_feature(ADDITIONAL_FEATURES.OPENAPI)) { %>
+    /**
+     * Configuration OpenAPI/Swagger
+     */
+    @Bean
+    public OpenAPI springOpenAPI() {
+        return new OpenAPI()
+            .info(new Info().title("<%= appName %> API")
+                          .description("API Documentation")
+                          .version("1.0.0"));
+    }
+    <% } %>
+
+    <% if (if_has_auth) { %>
+    /**
+     * Configuration de sécurité
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            <% if (!if_frontend("Aucun (API seulement)")) { %>
+            .csrf(csrf -> csrf.disable())
+            <% } %>
+            .authorizeHttpRequests((authorize) -> authorize
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/**").authenticated()
+            );
+
+        return http.build();
+    }
+    <% } %>
+
+    <% if (if_database(DATABASE_OPTIONS.POSTGRESQL)) { %>
+    /**
+     * Configuration spécifique à PostgreSQL
+     */
+    @Bean
+    public PostgreSQLDialect postgreSQLDialect() {
+        return new PostgreSQLDialect();
+    }
+    <% } else if (if_database(DATABASE_OPTIONS.MYSQL)) { %>
+    /**
+     * Configuration spécifique à MySQL
+     */
+    @Bean
+    public MySQLDialect mySQLDialect() {
+        return new MySQLDialect();
+    }
+    <% } %>
+}

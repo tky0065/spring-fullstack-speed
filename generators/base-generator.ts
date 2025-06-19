@@ -29,8 +29,8 @@ export class BaseGenerator extends Generator {
   answers: any = {};
   // Contexte global pour les templates
   templateContext: Record<string, any> = {};
-  // Configuration globale
-  config: GlobalConfig = DEFAULT_CONFIG;
+  // Configuration globale (renommée pour éviter le conflit avec config de Generator)
+  appConfig: GlobalConfig = DEFAULT_CONFIG;
 
   // Constants exportées pour tous les générateurs
   readonly DATABASE_OPTIONS = DATABASE_OPTIONS;
@@ -49,7 +49,7 @@ export class BaseGenerator extends Generator {
    */
   initConfig(): void {
     // Valider et intégrer les réponses de l'utilisateur dans la configuration
-    this.config = validateConfig(this.answers);
+    this.appConfig = validateConfig(this.answers);
   }
 
   /**
@@ -57,7 +57,7 @@ export class BaseGenerator extends Generator {
    * @param advancedConfig Configuration avancée à fusionner
    */
   extendConfig(advancedConfig: Record<string, any> = {}): void {
-    this.config = extendConfig(this.config, advancedConfig);
+    this.appConfig = extendConfig(this.appConfig, advancedConfig);
   }
 
   /**
@@ -66,28 +66,28 @@ export class BaseGenerator extends Generator {
    */
   initTemplateContext(): void {
     // S'assurer que la configuration est initialisée
-    if (this.config === DEFAULT_CONFIG && Object.keys(this.answers).length > 0) {
+    if (this.appConfig === DEFAULT_CONFIG && Object.keys(this.answers).length > 0) {
       this.initConfig();
     }
 
     // Fusionner les données des réponses, la configuration et les helpers
     const baseContext = {
       ...this.answers,
-      config: this.config,
+      config: this.appConfig,
       // Ajouter des raccourcis pour les vérifications fréquentes
-      isMaven: this.config.buildTool === BUILD_TOOL_OPTIONS.MAVEN,
-      isGradle: this.config.buildTool === BUILD_TOOL_OPTIONS.GRADLE,
-      isReactInertia: this.config.frontendFramework === FRONTEND_OPTIONS.REACT_INERTIA,
-      isVueInertia: this.config.frontendFramework === FRONTEND_OPTIONS.VUE_INERTIA,
-      isAngular: this.config.frontendFramework === FRONTEND_OPTIONS.ANGULAR,
-      isThymeleaf: this.config.frontendFramework === FRONTEND_OPTIONS.THYMELEAF,
-      isJTE: this.config.frontendFramework === FRONTEND_OPTIONS.JTE,
-      isApiOnly: this.config.frontendFramework === FRONTEND_OPTIONS.NONE,
-      isMySQL: this.config.database === DATABASE_OPTIONS.MYSQL,
-      isPostgreSQL: this.config.database === DATABASE_OPTIONS.POSTGRESQL,
-      isMongoDB: this.config.database === DATABASE_OPTIONS.MONGODB,
-      isH2: this.config.database === DATABASE_OPTIONS.H2,
-      hasFeature: (feature: string) => this.config.additionalFeatures.includes(feature),
+      isMaven: this.appConfig.buildTool === BUILD_TOOL_OPTIONS.MAVEN,
+      isGradle: this.appConfig.buildTool === BUILD_TOOL_OPTIONS.GRADLE,
+      isReactInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.REACT_INERTIA,
+      isVueInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.VUE_INERTIA,
+      isAngular: this.appConfig.frontendFramework === FRONTEND_OPTIONS.ANGULAR,
+      isThymeleaf: this.appConfig.frontendFramework === FRONTEND_OPTIONS.THYMELEAF,
+      isJTE: this.appConfig.frontendFramework === FRONTEND_OPTIONS.JTE,
+      isApiOnly: this.appConfig.frontendFramework === FRONTEND_OPTIONS.NONE,
+      isMySQL: this.appConfig.database === DATABASE_OPTIONS.MYSQL,
+      isPostgreSQL: this.appConfig.database === DATABASE_OPTIONS.POSTGRESQL,
+      isMongoDB: this.appConfig.database === DATABASE_OPTIONS.MONGODB,
+      isH2: this.appConfig.database === DATABASE_OPTIONS.H2,
+      hasFeature: (feature: string) => this.appConfig.additionalFeatures.includes(feature),
     };
 
     // Construire le contexte avec les données de base et les helpers

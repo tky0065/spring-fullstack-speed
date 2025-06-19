@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,ts,json,md}\"",
@@ -20,8 +20,9 @@
     "rebuild": "npm run clean && npm run build",
     "link": "npm link",
     "unlink": "npm unlink",
-    "test:generators": "jest generators/",
-    "test:unit": "jest utils/",
+    "test:generators": "node --experimental-vm-modules node_modules/jest/bin/jest.js generators/",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js utils/",
+    "test:templates": "npm run build && node dist/scripts/test-generation.js",
     "docs": "typedoc --out docs src"
   },
   "keywords": [
@@ -50,7 +51,8 @@
     "rimraf": "^5.0.5",
     "ts-jest": "^29.1.2",
     "typedoc": "^0.25.12",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "yeoman-test": "^10.1.1"
   },
   "dependencies": {
     "chalk": "^5.4.1",

@@ -53,5 +53,6 @@ export function copyTplWithEjs(source: string, dest: string, context: any, fs: a
  * @returns Extension du fichier (sans le point)
  */
 export function getFileExtension(filename: string): string {
-  return path.extname(filename).slice(1);
+  const lastDotIndex = filename.lastIndexOf('.');
+  return lastDotIndex === -1 ? '' : filename.slice(lastDotIndex + 1);
 }

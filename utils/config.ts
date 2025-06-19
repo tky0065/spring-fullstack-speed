@@ -173,6 +173,26 @@ export function validateConfig(config: Partial<GlobalConfig>): GlobalConfig {
 }
 
 /**
+ * Fusionne récursivement deux objets
+ * @param target Objet cible
+ * @param source Objet source
+ * @returns Objet fusionné
+ */
+function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (source[key] instanceof Object && key in target && target[key] instanceof Object) {
+      result[key] = deepMerge(target[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+
+  return result;
+}
+
+/**
  * Étend la configuration avec des options avancées personnalisées
  * @param config Configuration de base
  * @param advancedConfig Configuration avancée (optionnelle)
@@ -184,9 +204,6 @@ export function extendConfig(
 ): GlobalConfig {
   return {
     ...config,
-    advancedConfig: {
-      ...ADVANCED_CONFIG,
-      ...advancedConfig,
-    },
+    advancedConfig: deepMerge(ADVANCED_CONFIG, advancedConfig),
   };
 }
