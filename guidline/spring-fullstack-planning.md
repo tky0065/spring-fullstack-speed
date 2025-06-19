@@ -122,8 +122,8 @@ generator-spring-fullstack/
 - [x] Créer les DTOs d'authentification
 - [x] Générer les endpoints de login/logout/register
 - [x] Implémenter la validation des tokens
-- [ ] Créer les tests d'authentification
-- [ ] Documenter les APIs d'auth
+- [x] Créer les tests d'authentification
+- [x] Documenter les APIs d'auth
 
 ---
 

@@ -1,0 +1,98 @@
+package <%= packageName %>.security.jwt;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * Tests unitaires pour JwtTokenProvider
+ */
+public class JwtTokenProviderTest {
+
+    private JwtTokenProvider tokenProvider;
+
+    @BeforeEach
+    public void setup() {
+        tokenProvider = new JwtTokenProvider();
+        ReflectionTestUtils.setField(tokenProvider, "jwtSecret", "testSecretKeyWithAtLeast32CharactersToBeSecure");
+        ReflectionTestUtils.setField(tokenProvider, "tokenValidityInSeconds", 3600L);
+        ReflectionTestUtils.setField(tokenProvider, "tokenValidityInSecondsForRememberMe", 86400L);
+        tokenProvider.init();
+    }
+
+    @Test
+    public void testCreateTokenAndValidateToken() {
+        // Préparation d'une authentification
+        Collection<SimpleGrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                "testuser", null, authorities);
+
+        // Création du token
+        String token = tokenProvider.createToken(authentication, false);
+
+        // Vérification du token
+        assertNotNull(token);
+        assertTrue(tokenProvider.validateToken(token));
+    }
+
+    @Test
+    public void testGetAuthenticationFromToken() {
+        // Préparation d'une authentification
+        Collection<SimpleGrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        UsernamePasswordAuthenticationToken originalAuth = new UsernamePasswordAuthenticationToken(
+                "testuser", null, authorities);
+
+        // Création du token
+        String token = tokenProvider.createToken(originalAuth, false);
+
+        // Récupération de l'authentification à partir du token
+        Authentication auth = tokenProvider.getAuthentication(token);
+
+        // Vérifications
+        assertNotNull(auth);
+        assertEquals("testuser", auth.getName());
+
+        boolean hasUserRole = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(a -> a.equals("ROLE_USER"));
+        assertTrue(hasUserRole);
+    }
+
+    @Test
+    public void testInvalidToken() {
+        assertFalse(tokenProvider.validateToken("invalidToken"));
+    }
+
+    @Test
+    public void testCreateTokenWithRememberMe() {
+        // Préparation d'une authentification
+        Collection<SimpleGrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                "testuser", null, authorities);
+
+        // Création du token avec "remember me"
+        String token = tokenProvider.createToken(authentication, true);
+
+        // Vérification du token
+        assertNotNull(token);
+        assertTrue(tokenProvider.validateToken(token));
+    }
+}

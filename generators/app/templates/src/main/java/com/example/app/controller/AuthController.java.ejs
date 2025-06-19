@@ -8,6 +8,12 @@ import <%= packageName %>.security.jwt.JwtTokenProvider;
 import <%= packageName %>.dto.AuthenticationRequest;
 import <%= packageName %>.dto.AuthenticationResponse;
 import <%= packageName %>.dto.RegisterRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,6 +37,7 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "API d'authentification")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -56,6 +63,13 @@ public class AuthController {
      * Endpoint pour l'authentification des utilisateurs
      */
     @PostMapping("/login")
+    @Operation(summary = "Authentifier un utilisateur",
+            description = "Permet à un utilisateur de se connecter avec son nom d'utilisateur et mot de passe")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Authentification réussie",
+                    content = @Content(schema = @Schema(implementation = AuthenticationResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Nom d'utilisateur ou mot de passe incorrect")
+    })
     public ResponseEntity<AuthenticationResponse> authenticateUser(
             @Valid @RequestBody AuthenticationRequest loginRequest) {
 
@@ -76,6 +90,12 @@ public class AuthController {
      * Endpoint pour l'enregistrement de nouveaux utilisateurs
      */
     @PostMapping("/register")
+    @Operation(summary = "Enregistrer un nouvel utilisateur",
+            description = "Permet de créer un nouveau compte utilisateur")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Enregistrement réussi"),
+            @ApiResponse(responseCode = "400", description = "Nom d'utilisateur ou email déjà utilisé")
+    })
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
             throw new ResponseStatusException(
@@ -112,6 +132,12 @@ public class AuthController {
      * Endpoint pour obtenir des informations sur l'utilisateur actuellement connecté via OAuth2
      */
     @GetMapping("/user/me")
+    @Operation(summary = "Obtenir les informations de l'utilisateur connecté",
+            description = "Récupère les informations de l'utilisateur actuellement authentifié")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Informations récupérées avec succès"),
+            @ApiResponse(responseCode = "401", description = "Utilisateur non authentifié")
+    })
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal OAuth2User principal) {
         return ResponseEntity.ok(principal.getAttributes());
     }
@@ -120,6 +146,11 @@ public class AuthController {
      * Endpoint pour la déconnexion
      */
     @PostMapping("/logout")
+    @Operation(summary = "Déconnecter l'utilisateur",
+            description = "Déconnecte l'utilisateur actuellement authentifié")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Déconnexion réussie")
+    })
     public ResponseEntity<?> logoutUser(HttpServletRequest request) {
         // La déconnexion côté serveur est gérée par Spring Security
         // Ce endpoint permet au client de supprimer le token JWT côté client

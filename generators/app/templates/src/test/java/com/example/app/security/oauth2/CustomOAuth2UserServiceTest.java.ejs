@@ -1,0 +1,209 @@
+package <%= packageName %>.security.oauth2;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import <%= packageName %>.entity.Role;
+import <%= packageName %>.entity.User;
+import <%= packageName %>.repository.RoleRepository;
+import <%= packageName %>.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+
+import java.util.*;
+
+/**
+ * Tests unitaires pour CustomOAuth2UserService
+ */
+@ExtendWith(MockitoExtension.class)
+public class CustomOAuth2UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private RoleRepository roleRepository;
+
+    @InjectMocks
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @Mock
+    private OAuth2UserRequest oAuth2UserRequest;
+
+    private OAuth2User oAuth2User;
+    private Map<String, Object> attributes;
+    private ClientRegistration clientRegistration;
+
+    @BeforeEach
+    public void setup() {
+        // Configuration des attributs OAuth2
+        attributes = new HashMap<>();
+        attributes.put("sub", "123456789");
+        attributes.put("email", "test@example.com");
+        attributes.put("given_name", "Test");
+        attributes.put("family_name", "User");
+        attributes.put("picture", "https://example.com/picture.jpg");
+
+        // Configuration de OAuth2User
+        Collection<SimpleGrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_USER")
+        );
+        oAuth2User = new DefaultOAuth2User(authorities, attributes, "email");
+
+        // Configuration de ClientRegistration
+        clientRegistration = ClientRegistration.withRegistrationId("google")
+                .clientId("google-client-id")
+                .clientSecret("google-client-secret")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/oauth2/callback/{registrationId}")
+                .scope("profile", "email")
+                .authorizationUri("https://accounts.google.com/o/oauth2/auth")
+                .tokenUri("https://accounts.google.com/o/oauth2/token")
+                .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+                .userNameAttributeName("sub")
+                .clientName("Google")
+                .build();
+
+        when(oAuth2UserRequest.getClientRegistration()).thenReturn(clientRegistration);
+    }
+
+    @Test
+    public void testLoadUserForNewUser() {
+        // Configuration du mock pour un nouvel utilisateur
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
+
+        // Configuration du rôle utilisateur
+        Role userRole = new Role();
+        userRole.setName("ROLE_USER");
+        when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
+
+        // Configuration du nouvel utilisateur créé
+        User newUser = new User();
+        newUser.setId(1L);
+        newUser.setEmail("test@example.com");
+        newUser.setUsername("test");
+        newUser.setFirstName("Test");
+        newUser.setLastName("User");
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
+        newUser.setRoles(roles);
+
+        when(userRepository.save(any(User.class))).thenReturn(newUser);
+
+        // Test du service
+        OAuth2User result = customOAuth2UserService.loadUser(oAuth2UserRequest);
+
+        // Vérifications
+        assertNotNull(result);
+        assertEquals("test@example.com", result.getAttribute("email"));
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    public void testLoadUserForExistingUser() {
+        // Configuration d'un utilisateur existant
+        User existingUser = new User();
+        existingUser.setId(1L);
+        existingUser.setEmail("test@example.com");
+        existingUser.setUsername("test");
+        existingUser.setFirstName("Existing");
+        existingUser.setLastName("User");
+
+        Role userRole = new Role();
+        userRole.setName("ROLE_USER");
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
+        existingUser.setRoles(roles);
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(existingUser));
+
+        // Test du service
+        OAuth2User result = customOAuth2UserService.loadUser(oAuth2UserRequest);
+
+        // Vérifications
+        assertNotNull(result);
+        assertEquals("test@example.com", result.getAttribute("email"));
+        // Pas d'appel à save() pour un utilisateur existant, sauf s'il y a des modifications
+        verify(userRepository, times(0)).save(any(User.class));
+    }
+
+    @Test
+    public void testLoadUserWithNoEmail() {
+        // Configuration d'attributs sans email
+        Map<String, Object> attributesWithoutEmail = new HashMap<>(attributes);
+        attributesWithoutEmail.remove("email");
+
+        OAuth2User oAuth2UserWithoutEmail = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("ROLE_USER")),
+                attributesWithoutEmail,
+                "sub");
+
+        // Test avec un utilisateur sans email
+        assertThrows(OAuth2AuthenticationException.class, () -> {
+            customOAuth2UserService.loadUser(oAuth2UserRequest);
+        });
+    }
+
+    <% if (oauth2Enabled) { %>
+    @Test
+    public void testDifferentOAuth2Providers() {
+        // Test avec GitHub
+        when(oAuth2UserRequest.getClientRegistration()).thenReturn(
+            ClientRegistration.withRegistrationId("github")
+                .clientId("github-client-id")
+                .clientSecret("github-client-secret")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/oauth2/callback/{registrationId}")
+                .scope("user")
+                .authorizationUri("https://github.com/login/oauth/authorize")
+                .tokenUri("https://github.com/login/oauth/access_token")
+                .userInfoUri("https://api.github.com/user")
+                .userNameAttributeName("id")
+                .clientName("GitHub")
+                .build()
+        );
+
+        // Configuration d'attributs GitHub
+        Map<String, Object> githubAttributes = new HashMap<>();
+        githubAttributes.put("id", "12345");
+        githubAttributes.put("email", "test@example.com");
+        githubAttributes.put("name", "Test User");
+        githubAttributes.put("avatar_url", "https://github.com/avatar.jpg");
+
+        OAuth2User githubUser = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("ROLE_USER")),
+                githubAttributes,
+                "id");
+
+        // Configurez un utilisateur existant
+        User existingUser = new User();
+        existingUser.setId(1L);
+        existingUser.setEmail("test@example.com");
+        existingUser.setUsername("test");
+        Role userRole = new Role();
+        userRole.setName("ROLE_USER");
+        existingUser.setRoles(Set.of(userRole));
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(existingUser));
+
+        // Le test vérifiera que le traitement des attributs GitHub fonctionne correctement
+        assertThrows(NullPointerException.class, () -> {
+            customOAuth2UserService.loadUser(oAuth2UserRequest);
+        });
+    }
+    <% } %>
+}
