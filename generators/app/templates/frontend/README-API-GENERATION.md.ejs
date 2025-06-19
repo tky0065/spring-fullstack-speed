@@ -1,0 +1,77 @@
+# Génération des clients API avec OpenAPI Generator
+
+Ce projet utilise [OpenAPI Generator](https://openapi-generator.tech/) pour générer automatiquement des clients API TypeScript à partir de la documentation OpenAPI/Swagger de votre backend Spring Boot.
+
+## Prérequis
+
+- Node.js et npm installés
+- Backend Spring Boot en cours d'exécution avec la documentation OpenAPI/Swagger activée
+
+## Comment générer les clients API
+
+1. **Démarrez votre backend Spring Boot**
+
+   Assurez-vous que votre backend Spring Boot est en cours d'exécution et que l'endpoint OpenAPI est accessible (par défaut à `http://localhost:8080/v3/api-docs`).
+
+2. **Générez les clients API**
+
+   Exécutez la commande suivante pour générer les clients API TypeScript :
+
+   ```bash
+   npm run generate-api
+   ```
+
+   Cette commande va :
+   - Télécharger la spécification OpenAPI depuis votre backend
+   - Générer des clients TypeScript typés dans le dossier `src/api`
+
+3. **Utilisez les clients générés dans votre code**
+
+   Voici un exemple d'utilisation d'un client API généré :
+
+   ```typescript
+   import { apiConfig } from '../services/ApiService';
+   import { UserApi } from '../api';
+
+   // Dans un composant ou un service
+   const userApi = new UserApi(apiConfig);
+
+   // Appel API avec gestion des promesses
+   userApi.getAllUsers()
+     .then(response => console.log(response.data))
+     .catch(error => console.error(error));
+
+   // Ou avec async/await
+   async function fetchUsers() {
+     try {
+       const response = await userApi.getAllUsers();
+       return response.data;
+     } catch (error) {
+       console.error(error);
+       throw error;
+     }
+   }
+   ```
+
+## Options de génération
+
+Vous pouvez personnaliser la génération des API en modifiant le script dans `package.json` :
+
+- Pour changer l'URL de la documentation API : modifiez l'option `-i`
+- Pour changer le dossier de sortie : modifiez l'option `-o`
+- Pour utiliser un autre générateur : modifiez l'option `-g` (ex: `typescript-fetch`, `typescript-angular`, etc.)
+
+## Régénération automatique
+
+Il est recommandé de régénérer les clients API à chaque fois que votre backend est modifié. Vous pouvez :
+
+1. Ajouter cette étape à votre workflow CI/CD
+2. Exécuter régulièrement la commande `generate-api` pendant le développement
+3. Mettre en place un hook Git pre-commit pour maintenir les clients à jour
+
+## Avantages par rapport à Inertia.js
+
+- Typage fort pour toutes les requêtes et réponses API
+- Découverte automatique des points de terminaison API
+- Possibilité d'utiliser différents frameworks frontend (React, Angular, Vue) avec la même API
+- Documentation interactive des API via Swagger UI

@@ -1,112 +1,50 @@
 /**
- * Service d'API qui utilise les clients générés par OpenAPI Generator
+ * Service pour l'utilisation des API générées avec OpenAPI Generator
+ * Ce service fournit un client Axios configuré pour les appels vers l'API
  */
 
-import { Configuration, DefaultApi } from '../api';
+import axios, { AxiosRequestConfig } from 'axios';
+import { Configuration } from '../api';
 
-// Configuration par défaut pour l'API
-const defaultConfig = new Configuration({
-  basePath: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
-  middleware: [
-    {
-      // Middleware pour ajouter le token JWT à chaque requête
-      pre: async (context: { init: RequestInit }) => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          context.init.headers = {
-            ...context.init.headers,
-            Authorization: `Bearer ${token}`,
-          };
-        }
-        return context;
-      },
-    },
-  ],
+// Configuration de base d'Axios
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+// Instance Axios configurée
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Instance d'API par défaut
-const api = new DefaultApi(defaultConfig);
+// Configuration pour les client API générés par OpenAPI
+export const apiConfig = new Configuration({
+  basePath: API_BASE_URL,
+});
 
-/**
- * Service d'API centralisé
- *
- * Utilisez cette classe pour accéder aux endpoints d'API
- * générés automatiquement par OpenAPI Generator.
- */
-export class ApiService {
-  /**
-   * Récupère l'instance d'API avec la configuration spécifiée
-   *
-   * @param config Configuration personnalisée (optionnelle)
-   * @returns Instance de l'API
-   */
-  static getApi(config?: Configuration): DefaultApi {
-    if (config) {
-      return new DefaultApi(config);
-    }
-    return api;
+// Intercepteur pour ajouter le token JWT aux requêtes
+apiClient.interceptors.request.use((config: AxiosRequestConfig) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
   }
+  return config;
+});
 
-  /**
-   * Crée une nouvelle configuration
-   *
-   * @param baseUrl URL de base de l'API
-   * @param addAuthHeader Ajouter automatiquement le header d'authentification
-   * @returns Nouvelle configuration
-   */
-  static createConfig(baseUrl?: string, addAuthHeader = true): Configuration {
-    const config = new Configuration({
-      basePath: baseUrl || defaultConfig.basePath,
-    });
-
-    if (addAuthHeader) {
-      // Ajouter le middleware pour l'authentification
-      config.middleware = [...(defaultConfig.middleware || [])];
+// Intercepteur pour gérer les erreurs d'authentification (401, 403)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // Gestion des erreurs d'authentification
+      localStorage.removeItem('auth_token');
+      window.location.href = '/login';
     }
-
-    return config;
+    return Promise.reject(error);
   }
+);
 
-  /**
-   * Handler d'erreur générique pour les erreurs d'API
-   *
-   * @param error Erreur à traiter
-   * @returns Message d'erreur formaté
-   */
-  static handleError(error: any): string {
-    console.error('API Error:', error);
-
-    if (error.response) {
-      // La requête a été faite et le serveur a répondu avec un code d'erreur
-      const status = error.response.status;
-
-      switch (status) {
-        case 401:
-          // Non autorisé - déconnecter l'utilisateur
-          localStorage.removeItem('auth_token');
-          window.location.href = '/login';
-          return 'Session expirée. Veuillez vous reconnecter.';
-
-        case 403:
-          return 'Vous n\'avez pas les droits nécessaires pour effectuer cette action.';
-
-        case 404:
-          return 'La ressource demandée n\'existe pas.';
-
-        case 422:
-          return 'Les données fournies ne sont pas valides.';
-
-        default:
-          return `Erreur de serveur (${status}). Veuillez réessayer plus tard.`;
-      }
-    } else if (error.request) {
-      // La requête a été faite mais aucune réponse n'a été reçue
-      return 'Impossible de contacter le serveur. Vérifiez votre connexion internet.';
-    } else {
-      // Une erreur s'est produite lors de la configuration de la requête
-      return 'Une erreur est survenue. Veuillez réessayer.';
-    }
-  }
-}
-
-export default ApiService;
+export default apiClient;

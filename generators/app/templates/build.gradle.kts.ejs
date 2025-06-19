@@ -63,8 +63,9 @@ dependencies {
 <% } %>
 
 <% if (additionalFeatures.includes('openapi')) { %>
-    // OpenAPI/Swagger
+    // OpenAPI Documentation & Client Generation
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
+    implementation("io.swagger.core.v3:swagger-annotations:2.2.20")
 <% } %>
 
 <% if (additionalFeatures.includes('redis')) { %>
@@ -100,11 +101,6 @@ dependencies {
     // RabbitMQ
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
-<% } %>
-
-<% if (frontendFramework.includes('Inertia')) { %>
-    // Inertia.js
-    implementation("io.github.inertia4j:inertia4j-spring:1.0.4")
 <% } %>
 
     // Dev Tools & Utils

@@ -102,13 +102,12 @@ gg:
 # Configuration de l'application
 app:
   frontend: <%= frontendFramework.toLowerCase() %>
-<% if (frontendFramework === 'Inertia') { %>
-  # Configuration Inertia.js
-  inertia:
+<% if (additionalFeatures.includes('openapi')) { %>
+  # Configuration OpenAPI
+  api:
+    title: "<%= appName %> API"
     version: "1.0.0"
-    assets-url: "/assets"
-    root-view: "app"
-    expose-exception-errors: false
+    description: "API Documentation for <%= appName %>"
 <% } %>
 
 # Configurations spécifiques aux profils
@@ -155,11 +154,17 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.xml
 <% } %>
 
-<% if (frontendFramework === 'Inertia') { %>
-app:
-  inertia:
-    version: "dev-${random.uuid}"
-    expose-exception-errors: true
+<% if (additionalFeatures.includes('openapi')) { %>
+# Configuration OpenAPI pour le profil dev
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  packages-to-scan: <%= packageName %>.controller
+  show-actuator: true
 <% } %>
 
 ---

@@ -1,0 +1,85 @@
+import React, { useEffect, useState } from 'react';
+import { apiConfig } from '../services/ApiService';
+// Import des API générées automatiquement par OpenAPI Generator
+// Note : Ces imports seront disponibles après avoir exécuté le script generate-api
+// import { DefaultApi } from '../api';
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+}
+
+const UserList: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        // Exemple d'utilisation d'une API générée par OpenAPI Generator
+        // const api = new DefaultApi(apiConfig);
+        // const response = await api.getAllUsers();
+        // setUsers(response.data);
+
+        // Fallback en cas d'API non générée pour les exemples
+        setUsers([
+          { id: 1, username: 'john_doe', email: 'john@example.com' },
+          { id: 2, username: 'jane_smith', email: 'jane@example.com' }
+        ]);
+
+        setLoading(false);
+      } catch (err) {
+        setError('Erreur lors de la récupération des utilisateurs');
+        setLoading(false);
+        console.error(err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center p-4">Chargement...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">{error}</div>;
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Liste des Utilisateurs</h1>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Nom d'utilisateur
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{user.id}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{user.username}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default UserList;

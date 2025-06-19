@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+/**
+ * Script shell pour générer facilement les API clients
+ * Permet d'exécuter la commande de génération sans avoir à se souvenir des paramètres
+ */
+
+const { execSync } = require('child_process');
+const chalk = require('chalk');
+
+console.log(chalk.blue('🚀 Génération des clients API depuis la documentation OpenAPI...'));
+console.log('');
+
+try {
+  // Vérifier si le serveur est accessible
+  console.log(chalk.yellow('Vérification de la disponibilité du serveur...'));
+  try {
+    execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/v3/api-docs');
+    console.log(chalk.green('✅ Serveur accessible, documentation OpenAPI disponible'));
+  } catch (error) {
+    console.log(chalk.red('❌ Serveur non accessible ou documentation OpenAPI non disponible'));
+    console.log(chalk.yellow('⚠️ Assurez-vous que votre serveur Spring Boot est démarré et que SpringDoc est configuré'));
+    process.exit(1);
+  }
+
+  // Exécuter la commande de génération API
+  console.log(chalk.yellow('Génération des clients TypeScript...'));
+  execSync('npm run generate-api', { stdio: 'inherit' });
+
+  console.log('');
+  console.log(chalk.green('✅ Génération des clients API terminée avec succès!'));
+  console.log(chalk.yellow('Les clients API ont été générés dans le dossier src/api'));
+
+} catch (error) {
+  console.error(chalk.red('❌ Erreur lors de la génération des clients API:'));
+  console.error(error.message);
+  process.exit(1);
+}
