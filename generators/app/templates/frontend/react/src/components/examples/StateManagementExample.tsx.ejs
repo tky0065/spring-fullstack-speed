@@ -1,0 +1,98 @@
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { selectAuthUser, selectIsAuthenticated } from '../../store/slices/authSlice';
+import { fetchCurrentUser, selectCurrentUser } from '../../store/slices/userSlice';
+import { useAppContext } from '../../store/AppContext';
+
+/**
+ * Exemple de composant utilisant les différentes méthodes de gestion d'état
+ * - Redux pour l'authentification et les données utilisateur (état complexe et asynchrone)
+ * - Context API pour les préférences globales simples (thème, langue)
+ * - React Query pour les requêtes API (déjà configuré dans App.tsx)
+ */
+const StateManagementExample: React.FC = () => {
+  // Utilisation de Redux via les hooks personnalisés
+  const dispatch = useAppDispatch();
+  const authUser = useAppSelector(selectAuthUser);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const currentUser = useAppSelector(selectCurrentUser);
+
+  // Utilisation du Context API
+  const { state, setTheme, setLanguage, addNotification } = useAppContext();
+
+  // Effet pour charger les données utilisateur si authentifié
+  useEffect(() => {
+    if (isAuthenticated && !currentUser) {
+      dispatch(fetchCurrentUser());
+    }
+  }, [isAuthenticated, currentUser, dispatch]);
+
+  // Gestionnaires d'événements
+  const handleThemeToggle = () => {
+    setTheme(state.theme === 'light' ? 'dark' : 'light');
+  };
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLanguage(e.target.value);
+  };
+
+  const handleAddNotification = () => {
+    addNotification();
+  };
+
+  return (
+    <div className="state-management-example">
+      <h2>Exemple de Gestion d'État</h2>
+
+      <section>
+        <h3>Context API (État Global Simple)</h3>
+        <div className="context-example">
+          <div className="theme-toggle">
+            <p>Thème actuel: {state.theme}</p>
+            <button onClick={handleThemeToggle}>
+              Basculer vers {state.theme === 'light' ? 'dark' : 'light'}
+            </button>
+          </div>
+
+          <div className="language-selector">
+            <p>Langue actuelle: {state.language}</p>
+            <select value={state.language} onChange={handleLanguageChange}>
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+
+          <div className="notifications">
+            <p>Notifications: {state.notifications}</p>
+            <button onClick={handleAddNotification}>
+              Ajouter une notification
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3>Redux (État Complexe et Asynchrone)</h3>
+        <div className="redux-example">
+          <div className="auth-status">
+            <p>Status d'authentification: {isAuthenticated ? 'Connecté' : 'Déconnecté'}</p>
+            {isAuthenticated && (
+              <div className="user-info">
+                <p>Utilisateur authentifié: {authUser.email}</p>
+                {currentUser && (
+                  <div>
+                    <p>Nom: {currentUser.name}</p>
+                    <p>Rôle: {currentUser.role}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default StateManagementExample;

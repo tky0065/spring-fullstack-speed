@@ -1,0 +1,14 @@
+import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from './index';
+
+/**
+ * Hook personnalisé pour utiliser le dispatch avec les types appropriés
+ * Remplace useDispatch() standard de react-redux
+ */
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+
+/**
+ * Hook personnalisé pour accéder au state avec les types appropriés
+ * Remplace useSelector() standard de react-redux
+ */
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;

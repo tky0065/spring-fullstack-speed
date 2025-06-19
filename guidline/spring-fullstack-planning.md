@@ -150,9 +150,9 @@ generator-spring-fullstack/
 - [x] Implémenter les forms avec validation
 - [x] Configurer TailwindCSS/Bootstrap
 - [x] Créer les composants UI réutilisables
-- [ ] Implémenter la gestion d'état (Context/Redux)
-- [ ] `Je veux tu supprime tous ce qui concerne inertia je veux qu'on openapi generator pour generer les api dans le frontend pas besoin de inertia (important) et la generation doit etre automatique ou une commande pour generer facilement`
-- [ ] Tester l'intégration React-Inertia
+- [x] Implémenter la gestion d'état (Context/Redux)
+- [x] Supprimer tout ce qui concerne Inertia et implémenter openapi generator pour générer les API dans le frontend avec une commande facile à utiliser
+- [ ] Tester l'intégration React avec openapi generator (pas important pour l'instant)
 
 
 ### Module 3.3 : Templates Vue.js + openapi generator

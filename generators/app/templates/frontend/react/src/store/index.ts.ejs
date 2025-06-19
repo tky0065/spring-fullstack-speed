@@ -1,0 +1,37 @@
+import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
+
+// Import des reducers (slices)
+import authReducer from './slices/authSlice';
+import userReducer from './slices/userSlice';
+
+/**
+ * Configuration du store Redux
+ * Combine tous les reducers et configure les middlewares
+ */
+export const store = configureStore({
+  reducer: {
+    auth: authReducer,
+    user: userReducer,
+    // Ajoutez d'autres reducers ici au besoin
+  },
+  // Configuration optionnelle des middlewares, devTools, etc.
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Ignore certains chemins pour les données non-sérialisables si nécessaire
+        ignoredActions: ['auth/loginSuccess'],
+        ignoredPaths: ['auth.user.token'],
+      },
+    }),
+  devTools: process.env.NODE_ENV !== 'production',
+});
+
+// Types d'inférence pour TypeScript
+export type AppDispatch = typeof store.dispatch;
+export type RootState = ReturnType<typeof store.getState>;
+export type AppThunk<ReturnType = void> = ThunkAction<
+  ReturnType,
+  RootState,
+  unknown,
+  Action<string>
+>;

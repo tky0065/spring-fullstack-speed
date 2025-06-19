@@ -1,0 +1,96 @@
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+/**
+ * Interface pour définir le type de l'état global
+ */
+interface AppState {
+  theme: 'light' | 'dark';
+  language: string;
+  notifications: number;
+}
+
+/**
+ * Interface pour définir les actions disponibles dans le contexte
+ */
+interface AppContextType {
+  state: AppState;
+  setTheme: (theme: 'light' | 'dark') => void;
+  setLanguage: (language: string) => void;
+  addNotification: () => void;
+  clearNotifications: () => void;
+}
+
+/**
+ * État par défaut de l'application
+ */
+const defaultState: AppState = {
+  theme: 'light',
+  language: 'fr',
+  notifications: 0
+};
+
+/**
+ * Création du contexte avec une valeur par défaut
+ */
+export const AppContext = createContext<AppContextType>({
+  state: defaultState,
+  setTheme: () => {},
+  setLanguage: () => {},
+  addNotification: () => {},
+  clearNotifications: () => {}
+});
+
+/**
+ * Hook personnalisé pour utiliser le contexte globalement dans l'application
+ */
+export const useAppContext = () => useContext(AppContext);
+
+/**
+ * Propriétés du provider
+ */
+interface AppProviderProps {
+  children: ReactNode;
+}
+
+/**
+ * Provider qui fournit l'état global et les méthodes pour le modifier
+ */
+export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  // État local qui sera partagé globalement
+  const [state, setState] = useState<AppState>(defaultState);
+
+  // Méthodes pour modifier l'état
+  const setTheme = (theme: 'light' | 'dark') => {
+    setState(prevState => ({ ...prevState, theme }));
+  };
+
+  const setLanguage = (language: string) => {
+    setState(prevState => ({ ...prevState, language }));
+  };
+
+  const addNotification = () => {
+    setState(prevState => ({
+      ...prevState,
+      notifications: prevState.notifications + 1
+    }));
+  };
+
+  const clearNotifications = () => {
+    setState(prevState => ({ ...prevState, notifications: 0 }));
+  };
+
+  // Valeur du contexte
+  const contextValue: AppContextType = {
+    state,
+    setTheme,
+    setLanguage,
+    addNotification,
+    clearNotifications
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};

@@ -1,0 +1,176 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../index';
+import ApiService from '../../services/ApiService';
+
+// Types pour l'état d'authentification
+interface AuthState {
+  user: {
+    id: string | null;
+    email: string | null;
+    name: string | null;
+    token: string | null;
+  };
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
+}
+
+// État initial
+const initialState: AuthState = {
+  user: {
+    id: null,
+    email: null,
+    name: null,
+    token: null
+  },
+  status: 'idle',
+  error: null
+};
+
+// Credentials pour se connecter
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+// Informations pour l'inscription
+interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * Thunk asynchrone pour gérer la connexion
+ */
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
+    try {
+      // Appel à l'API pour l'authentification
+      const response = await ApiService.post<any>('/api/auth/login', credentials);
+
+      // Stocke le token dans le localStorage pour la persistance
+      if (response?.token) {
+        localStorage.setItem('auth_token', response.token);
+      }
+
+      return response;
+    } catch (error: any) {
+      // Gestion spécifique des erreurs
+      return rejectWithValue(error.response?.data?.message || 'Échec de la connexion');
+    }
+  }
+);
+
+/**
+ * Thunk asynchrone pour gérer l'inscription
+ */
+export const register = createAsyncThunk(
+  'auth/register',
+  async (userData: RegisterData, { rejectWithValue }) => {
+    try {
+      // Appel à l'API pour l'inscription
+      const response = await ApiService.post<any>('/api/auth/register', userData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Échec de l\'inscription');
+    }
+  }
+);
+
+/**
+ * Thunk asynchrone pour gérer la déconnexion
+ */
+export const logout = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Suppression du token du localStorage
+      localStorage.removeItem('auth_token');
+
+      // Appel à l'API pour la déconnexion (optionnel selon l'implémentation backend)
+      await ApiService.post('/api/auth/logout');
+
+      return null;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+/**
+ * Slice pour la gestion de l'authentification
+ */
+export const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    // Action pour initialiser l'état d'authentification depuis le stockage local
+    initAuth: (state) => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        state.user.token = token;
+        state.status = 'succeeded';
+      }
+    },
+    // Action pour effacer les erreurs
+    clearError: (state) => {
+      state.error = null;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      // Gestion des états pour la connexion
+      .addCase(login.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(login.fulfilled, (state, action: PayloadAction<any>) => {
+        state.status = 'succeeded';
+        state.user = {
+          id: action.payload.id,
+          email: action.payload.email,
+          name: action.payload.name,
+          token: action.payload.token
+        };
+        state.error = null;
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+
+      // Gestion des états pour l'inscription
+      .addCase(register.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state) => {
+        state.status = 'succeeded';
+        // Généralement, après l'inscription, l'utilisateur doit se connecter
+        // Donc on ne modifie pas l'état user ici
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+
+      // Gestion des états pour la déconnexion
+      .addCase(logout.fulfilled, (state) => {
+        // Réinitialiser l'état à sa valeur initiale
+        return initialState;
+      });
+  }
+});
+
+// Export des actions synchrones générées par le slice
+export const { initAuth, clearError } = authSlice.actions;
+
+// Sélecteurs pour accéder aux parties spécifiques de l'état
+export const selectAuthUser = (state: RootState) => state.auth.user;
+export const selectAuthStatus = (state: RootState) => state.auth.status;
+export const selectAuthError = (state: RootState) => state.auth.error;
+export const selectIsAuthenticated = (state: RootState) => Boolean(state.auth.user.token);
+
+// Export du reducer pour l'inclusion dans le store
+export default authSlice.reducer;

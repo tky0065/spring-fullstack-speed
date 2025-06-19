@@ -1,0 +1,150 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import type { RootState } from '../index';
+import ApiService from '../../services/ApiService';
+
+// Type pour l'utilisateur
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  avatar?: string;
+  bio?: string;
+}
+
+// Type pour l'état du slice
+interface UserState {
+  users: User[];
+  currentUser: User | null;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
+}
+
+// État initial
+const initialState: UserState = {
+  users: [],
+  currentUser: null,
+  status: 'idle',
+  error: null
+};
+
+/**
+ * Thunk asynchrone pour récupérer le profil de l'utilisateur actuel
+ */
+export const fetchCurrentUser = createAsyncThunk(
+  'user/fetchCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await ApiService.get<User>('/api/users/me');
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Impossible de récupérer les données utilisateur');
+    }
+  }
+);
+
+/**
+ * Thunk asynchrone pour récupérer tous les utilisateurs
+ */
+export const fetchAllUsers = createAsyncThunk(
+  'user/fetchAllUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await ApiService.get<User[]>('/api/users');
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Impossible de récupérer les utilisateurs');
+    }
+  }
+);
+
+/**
+ * Thunk asynchrone pour mettre à jour le profil utilisateur
+ */
+export const updateUserProfile = createAsyncThunk(
+  'user/updateProfile',
+  async (userData: Partial<User>, { rejectWithValue }) => {
+    try {
+      const response = await ApiService.put<User>('/api/users/profile', userData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Impossible de mettre à jour le profil');
+    }
+  }
+);
+
+/**
+ * Slice pour la gestion des utilisateurs
+ */
+export const userSlice = createSlice({
+  name: 'user',
+  initialState,
+  reducers: {
+    // Actions synchrones si nécessaire
+    clearUsers: (state) => {
+      state.users = [];
+    },
+    setCurrentUser: (state, action: PayloadAction<User>) => {
+      state.currentUser = action.payload;
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      // Gestion pour fetchCurrentUser
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action: PayloadAction<User>) => {
+        state.status = 'succeeded';
+        state.currentUser = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+
+      // Gestion pour fetchAllUsers
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action: PayloadAction<User[]>) => {
+        state.status = 'succeeded';
+        state.users = action.payload;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+
+      // Gestion pour updateUserProfile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action: PayloadAction<User>) => {
+        state.status = 'succeeded';
+        state.currentUser = action.payload;
+        // Met aussi à jour l'utilisateur dans la liste si présent
+        const index = state.users.findIndex(user => user.id === action.payload.id);
+        if (index !== -1) {
+          state.users[index] = action.payload;
+        }
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      });
+  }
+});
+
+// Export des actions synchrones
+export const { clearUsers, setCurrentUser } = userSlice.actions;
+
+// Sélecteurs
+export const selectUsers = (state: RootState) => state.user.users;
+export const selectCurrentUser = (state: RootState) => state.user.currentUser;
+export const selectUserStatus = (state: RootState) => state.user.status;
+export const selectUserError = (state: RootState) => state.user.error;
+
+// Export du reducer
+export default userSlice.reducer;
