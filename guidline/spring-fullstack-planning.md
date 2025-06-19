@@ -77,9 +77,9 @@ generator-spring-fullstack/
 - [x] Mettre en place le système de templating EJS
 - [x] Définir les variables de configuration globales
 - [x] Créer les templates de base (pom.xml, application.yml)
-- [ ] Implémenter le système de conditionnement de code
-- [ ] Créer les utilitaires de génération de fichiers
-- [ ] Tester la génération de templates de base
+- [x] Implémenter le système de conditionnement de code
+- [x] Créer les utilitaires de génération de fichiers
+- [x] Tester la génération de templates de base
 
 ---
 
@@ -109,7 +109,7 @@ generator-spring-fullstack/
 - [x] Générer les repositories Spring Data
 - [x] Implémenter les migrations Flyway/Liquibase
 - [x] Configurer les pools de connexions (HikariCP)
-- [ ] Tester chaque configuration de DB
+- [x] Tester chaque configuration de DB
 
 ### Module 2.3 : Système d'Authentification
 - [x] Implémenter JWT Authentication
@@ -130,42 +130,46 @@ generator-spring-fullstack/
 ## 📋 PHASE 3 : FRONTEND INTEGRATION (Priorité Haute)
 
 ### Module 3.1 : Configuration Inertia.js
-- [ ] Intégrer Inertia4j dans Spring Boot
-- [ ] Configurer le middleware Inertia
-- [ ] Créer les controllers Inertia
-- [ ] Générer la configuration de routing côté serveur
-- [ ] Implémenter la gestion des assets
-- [ ] Créer les helpers Inertia
-- [ ] Configurer le partage de données globales
-- [ ] Tester l'intégration Inertia basique
+- [x] Pour les vues React, Vue.js, Angular je veux ca soit TypeScript 
+- [x] Intégrer Inertia4j dans Spring Boot
+- [x] Configurer le middleware Inertia
+- [x] Créer les controllers Inertia
+- [x] Générer la configuration de routing côté serveur
+- [x] Implémenter la gestion des assets
+- [x] Créer les helpers Inertia
+- [x] Configurer le partage de données globales
+- [x] Tester l'intégration Inertia basique
 
-### Module 3.2 : Templates React + Inertia
-- [ ] Créer le template React de base
-- [ ] Configurer Webpack/Vite pour React
-- [ ] Générer les composants React de base
-- [ ] Implémenter le routing côté client
-- [ ] Créer les layouts React
-- [ ] Générer les pages d'authentification React
-- [ ] Implémenter les forms avec validation
-- [ ] Configurer TailwindCSS/Bootstrap
-- [ ] Créer les composants UI réutilisables
+### Module 3.2 : Templates React + openapi generator
+- [x] Créer le template React de base
+- [x] Configurer Vite pour React
+- [x] Générer les composants React de base
+- [x] Implémenter le routing côté client
+- [x] Créer les layouts React
+- [x] Générer les pages d'authentification React
+- [x] Implémenter les forms avec validation
+- [x] Configurer TailwindCSS/Bootstrap
+- [x] Créer les composants UI réutilisables
 - [ ] Implémenter la gestion d'état (Context/Redux)
+- [ ] `Je veux tu supprime tous ce qui concerne inertia je veux qu'on openapi generator pour generer les api dans le frontend pas besoin de inertia (important) et la generation doit etre automatique ou une commande pour generer facilement` 
 - [ ] Tester l'intégration React-Inertia
+   
 
 ### Module 3.3 : Templates Vue.js + Inertia
-- [ ] Créer le template Vue.js de base
-- [ ] Configurer Webpack/Vite pour Vue
-- [ ] Générer les composants Vue de base
-- [ ] Implémenter Vue Router avec Inertia
-- [ ] Créer les layouts Vue
-- [ ] Générer les pages d'authentification Vue
-- [ ] Implémenter les forms avec validation
-- [ ] Configurer les styles (Vuetify/Quasar)
-- [ ] Créer les composants UI réutilisables
+- [x] Créer le template Vue.js de base
+- [x] Configurer Vite pour Vue
+- [x] Générer les composants Vue de base
+- [x] Implémenter Vue Router avec Inertia
+- [x] Créer les layouts Vue
+- [x] Générer les pages d'authentification Vue
+- [x] Implémenter les forms avec validation
+- [x] Configurer les styles (Vuetify/Quasar)
+- [x] Créer les composants UI réutilisables
 - [ ] Implémenter Vuex/Pinia pour l'état
 - [ ] Tester l'intégration Vue-Inertia
+- [ ] posibilté de générer api dans le frontend avec openapi generator à partir de la docs-api
 
-### Module 3.4 : Templates Traditionnels (Angular, Thymeleaf, JTE)
+### Module 3.4 : Templates Traditionnels (Angular + openapi generator, Thymeleaf, JTE)
 - [ ] Créer le template Angular standalone
 - [ ] Configurer Angular CLI integration
 - [ ] Générer les services Angular

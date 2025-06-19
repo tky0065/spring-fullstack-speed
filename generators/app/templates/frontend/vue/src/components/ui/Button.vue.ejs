@@ -1,0 +1,56 @@
+<template>
+  <button
+    v-if="!href"
+    :type="type"
+    :class="buttonClasses"
+    :disabled="disabled"
+    @click="$emit('click', $event)">
+    <slot />
+  </button>
+
+  <router-link
+    v-else
+    :to="href"
+    :class="buttonClasses">
+    <slot />
+  </router-link>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+
+/**
+ * Interface des props pour le composant Button
+ */
+interface ButtonProps {
+  primary?: boolean;
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  className?: string;
+}
+
+// Définir les props avec des valeurs par défaut
+const props = withDefaults(defineProps<ButtonProps>(), {
+  primary: false,
+  type: 'button',
+  disabled: false,
+  className: ''
+});
+
+// Définir les émetteurs d'événements
+const emit = defineEmits<{
+  (e: 'click', event: MouseEvent): void
+}>();
+
+// Calculer les classes CSS du bouton
+const buttonClasses = computed(() => {
+  const baseClasses = "inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors";
+  const colorClasses = props.primary
+    ? "bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500"
+    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500";
+  const disabledClasses = props.disabled ? "opacity-50 cursor-not-allowed" : "";
+
+  return `${baseClasses} ${colorClasses} ${disabledClasses} ${props.className}`;
+});
+</script>

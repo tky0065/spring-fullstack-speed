@@ -1,0 +1,37 @@
+package <%= packageName %>.config;
+
+import org.springframework.web.servlet.ModelAndView;
+
+import java.util.Map;
+
+/**
+ * Modèle de vue pour Inertia.js.
+ * Cette classe encapsule les données nécessaires pour rendre une vue Inertia.
+ */
+public class InertiaViewModel extends ModelAndView {
+
+    private final boolean inertiaRequest;
+
+    public InertiaViewModel(Map<String, Object> page, boolean inertiaRequest) {
+        super();
+        this.inertiaRequest = inertiaRequest;
+
+        // Pour les requêtes Inertia AJAX, nous configurons une vue JSON
+        if (inertiaRequest) {
+            setViewName("inertia/json");
+            addObject("page", page);
+        }
+        // Pour les requêtes normales, nous utilisons le template HTML racine
+        else {
+            setViewName("inertia/root");
+            addObject("page", page);
+        }
+    }
+
+    /**
+     * @return true si cette vue est générée pour une requête Inertia.js
+     */
+    public boolean isInertiaRequest() {
+        return inertiaRequest;
+    }
+}

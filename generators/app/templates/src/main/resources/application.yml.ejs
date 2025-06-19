@@ -99,6 +99,18 @@ gg:
     encoding: UTF-8
     cache-duration: 3600
 
+# Configuration de l'application
+app:
+  frontend: <%= frontendFramework.toLowerCase() %>
+<% if (frontendFramework === 'Inertia') { %>
+  # Configuration Inertia.js
+  inertia:
+    version: "1.0.0"
+    assets-url: "/assets"
+    root-view: "app"
+    expose-exception-errors: false
+<% } %>
+
 # Configurations spécifiques aux profils
 ---
 spring:
@@ -141,6 +153,13 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
+<% } %>
+
+<% if (frontendFramework === 'Inertia') { %>
+app:
+  inertia:
+    version: "dev-${random.uuid}"
+    expose-exception-errors: true
 <% } %>
 
 ---

@@ -1,0 +1,71 @@
+<template>
+  <nav class="bg-gray-800">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <router-link to="/" class="text-white font-bold text-xl">
+              {{ appName }}
+            </router-link>
+          </div>
+          <div class="hidden md:block">
+            <div class="ml-10 flex items-baseline space-x-4">
+              <router-link
+                v-for="item in navigation"
+                :key="item.name"
+                :to="item.href"
+                :class="[
+                  item.current ?
+                    'bg-gray-900 text-white' :
+                    'text-gray-300 hover:bg-gray-700 hover:text-white',
+                  'rounded-md px-3 py-2 text-sm font-medium'
+                ]"
+                :aria-current="item.current ? 'page' : undefined"
+              >
+                {{ item.name }}
+              </router-link>
+            </div>
+          </div>
+        </div>
+        <div class="hidden md:block">
+          <div class="ml-4 flex items-center md:ml-6">
+            <router-link
+              to="/login"
+              class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+            >
+              Connexion
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+
+/**
+ * Interface pour les éléments de navigation
+ */
+interface NavItem {
+  name: string;
+  href: string;
+  current: boolean;
+}
+
+// Définition des props
+const props = defineProps<{
+  appName?: string;
+}>();
+
+// Valeur par défaut pour le nom de l'application
+const appName = ref(props.appName || '<%= appName %>');
+
+// Exemple d'items de navigation
+const navigation = ref<NavItem[]>([
+  { name: 'Accueil', href: '/', current: true },
+  { name: 'À propos', href: '/about', current: false },
+  { name: 'Contact', href: '/contact', current: false },
+]);
+</script>

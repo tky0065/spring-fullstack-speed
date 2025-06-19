@@ -1,0 +1,80 @@
+/**
+ * Types pour la configuration des routes
+ */
+export type RouteParams = Record<string, string>;
+
+export interface RouteDefinition {
+  name: string;
+  path: string;
+  component: string;
+}
+
+/**
+ * Configuration des routes principales de l'application
+ */
+export const routes: RouteDefinition[] = [
+  {
+    name: 'home',
+    path: '/',
+    component: 'Home'
+  },
+  {
+    name: 'about',
+    path: '/about',
+    component: 'About'
+  },
+  {
+    name: 'contact',
+    path: '/contact',
+    component: 'Contact'
+  },
+  // Routes d'authentification
+  {
+    name: 'login',
+    path: '/login',
+    component: 'Auth/Login'
+  },
+  {
+    name: 'register',
+    path: '/register',
+    component: 'Auth/Register'
+  },
+  {
+    name: 'forgot-password',
+    path: '/forgot-password',
+    component: 'Auth/ForgotPassword'
+  },
+  {
+    name: 'reset-password',
+    path: '/reset-password/:token',
+    component: 'Auth/ResetPassword'
+  },
+  // Routes protégées (nécessitant une authentification)
+  {
+    name: 'dashboard',
+    path: '/dashboard',
+    component: 'Dashboard'
+  },
+  {
+    name: 'profile',
+    path: '/profile',
+    component: 'Profile'
+  },
+  {
+    name: 'user.detail',
+    path: '/users/:id',
+    component: 'Users/Detail'
+  },
+];
+
+/**
+ * Convertit les définitions de routes en dictionnaire de routes
+ */
+export function routesToMap(): Record<string, string> {
+  return routes.reduce((acc, route) => {
+    acc[route.name] = route.path;
+    return acc;
+  }, {} as Record<string, string>);
+}
+
+export default routes;

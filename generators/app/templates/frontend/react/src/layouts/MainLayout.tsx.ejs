@@ -1,0 +1,35 @@
+import React, { PropsWithChildren } from 'react';
+import { Head } from '@inertiajs/react';
+import Navbar from '../components/navigation/Navbar';
+import Footer from '../components/navigation/Footer';
+
+interface MainLayoutProps {
+  title: string;
+  renderHeader?: boolean;
+  renderFooter?: boolean;
+}
+
+/**
+ * Layout principal de l'application
+ */
+export default function MainLayout({
+  children,
+  title,
+  renderHeader = true,
+  renderFooter = true
+}: PropsWithChildren<MainLayoutProps>) {
+  return (
+    <>
+      <Head title={title} />
+      <div className="min-h-screen flex flex-col">
+        {renderHeader && <Navbar />}
+
+        <main className="flex-grow">
+          {children}
+        </main>
+
+        {renderFooter && <Footer />}
+      </div>
+    </>
+  );
+}

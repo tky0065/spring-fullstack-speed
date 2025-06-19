@@ -96,31 +96,82 @@ export function evaluateCondition(condition: RenderCondition, config: GlobalConf
 /**
  * Ajoute des fonctions d'aide pour le rendu conditionnel dans un contexte de template
  * @param context Le contexte de template existant
+ * @param config Configuration globale à utiliser pour les évaluations
  * @returns Le contexte enrichi avec les fonctions d'aide conditionnelles
  */
-export function addConditionalHelpersToContext(context: Record<string, any>): Record<string, any> {
+export function addConditionalHelpersToContext(
+  context: Record<string, any>,
+  config: GlobalConfig
+): Record<string, any> {
   return {
     ...context,
-    if_frontend: (frontendType: string, options: any): string => {
-      const matches = context.frontendFramework === frontendType;
-      return matches ? options.fn(context) : options.inverse(context);
+    // Fonctions d'aide conditionnelles qui utilisent directement la config fournie
+    if_frontend: (type: string, content: string, fallback: string = ''): string =>
+      evaluateCondition(isFrontend(type), config) ? content : fallback,
+
+    if_database: (type: string, content: string, fallback: string = ''): string =>
+      evaluateCondition(isDatabase(type), config) ? content : fallback,
+
+    if_build_tool: (type: string, content: string, fallback: string = ''): string =>
+      evaluateCondition(isBuildTool(type), config) ? content : fallback,
+
+    if_has_feature: (feature: string, content: string, fallback: string = ''): string =>
+      evaluateCondition(hasFeature(feature), config) ? content : fallback,
+
+    if_has_auth: (content: string, fallback: string = ''): string =>
+      evaluateCondition(hasAuth(), config) ? content : fallback,
+
+    // Fonction conditionnelle générique qui évalue une expression
+    if_condition: (condition: boolean, content: string, fallback: string = ''): string =>
+      condition ? content : fallback,
+
+    // Fonction pour obtenir la valeur d'une propriété de configuration
+    config_value: (path: string, defaultValue: any = undefined): any => {
+      const pathParts = path.split('.');
+      let value = config as any;
+
+      for (const part of pathParts) {
+        if (value === undefined || value === null) {
+          return defaultValue;
+        }
+        value = value[part];
+      }
+
+      return value !== undefined ? value : defaultValue;
     },
-    if_database: (dbType: string, options: any): string => {
-      const matches = context.database === dbType;
-      return matches ? options.fn(context) : options.inverse(context);
-    },
-    if_build_tool: (buildTool: string, options: any): string => {
-      const matches = context.buildTool === buildTool;
-      return matches ? options.fn(context) : options.inverse(context);
-    },
-    if_has_feature: (feature: string, options: any): string => {
-      const matches = Array.isArray(context.additionalFeatures) &&
-                       context.additionalFeatures.includes(feature);
-      return matches ? options.fn(context) : options.inverse(context);
-    },
-    if_has_auth: (options: any): string => {
-      const hasAuth = context.includeAuth === true;
-      return hasAuth ? options.fn(context) : options.inverse(context);
-    }
+
+    // Ajouter la config complète pour un accès direct si nécessaire
+    config: config
   };
+}
+
+/**
+ * Classe pour gérer le rendu conditionnel des blocs de code dans les templates
+ */
+export class ConditionalBlockRenderer {
+  private config: GlobalConfig;
+
+  constructor(config: GlobalConfig) {
+    this.config = config;
+  }
+
+  /**
+   * Détermine si un bloc de code doit être rendu en fonction d'une condition
+   * @param condition La condition à évaluer
+   * @returns true si le bloc doit être rendu, false sinon
+   */
+  shouldRenderBlock(condition: RenderCondition): boolean {
+    return evaluateCondition(condition, this.config);
+  }
+
+  /**
+   * Rend un bloc de code conditionnellement
+   * @param condition La condition à évaluer
+   * @param content Le contenu à rendre si la condition est vraie
+   * @param fallback Le contenu à rendre si la condition est fausse (optionnel)
+   * @returns Le contenu ou le fallback selon le résultat de la condition
+   */
+  renderBlock(condition: RenderCondition, content: string, fallback: string = ''): string {
+    return this.shouldRenderBlock(condition) ? content : fallback;
+  }
 }

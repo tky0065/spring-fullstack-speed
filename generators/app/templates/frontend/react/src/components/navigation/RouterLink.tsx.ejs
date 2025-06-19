@@ -1,0 +1,37 @@
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { useRouting } from '../utils/routing';
+
+/**
+ * Type pour les éléments de navigation
+ */
+export interface RouterLinkProps {
+  route: string;
+  params?: Record<string, string | number>;
+  children: React.ReactNode;
+  className?: string;
+  activeClassName?: string;
+}
+
+/**
+ * Composant RouterLink qui utilise le système de routing pour créer des liens
+ */
+export default function RouterLink({
+  route,
+  params,
+  children,
+  className = '',
+  activeClassName = 'active'
+}: RouterLinkProps): JSX.Element {
+  const { generateUrl, isCurrentRoute } = useRouting();
+
+  const url = generateUrl(route, params);
+  const isActive = isCurrentRoute(route);
+  const finalClassName = `${className} ${isActive ? activeClassName : ''}`.trim();
+
+  return (
+    <Link href={url} className={finalClassName}>
+      {children}
+    </Link>
+  );
+}

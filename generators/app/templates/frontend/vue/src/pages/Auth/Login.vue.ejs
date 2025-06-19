@@ -1,0 +1,148 @@
+<template>
+  <MainLayout title="Connexion">
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Card class="w-full max-w-md">
+        <div class="text-center">
+          <h2 class="text-2xl font-extrabold text-gray-900 mb-6">Connexion</h2>
+        </div>
+
+        <Alert v-if="errorMessage" type="error" :message="errorMessage" class="mb-4" />
+
+        <form class="space-y-6" @submit.prevent="handleSubmit">
+          <InputField
+            id="email"
+            name="email"
+            type="email"
+            label="Adresse email"
+            v-model="form.email"
+            :error="errors.email"
+            required
+            autocomplete="email"
+          />
+
+          <div class="relative">
+            <InputField
+              id="password"
+              name="password"
+              :type="showPassword ? 'text' : 'password'"
+              label="Mot de passe"
+              v-model="form.password"
+              :error="errors.password"
+              required
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              class="absolute top-8 right-2 text-gray-500"
+              @click="showPassword = !showPassword"
+            >
+              {{ showPassword ? 'Masquer' : 'Afficher' }}
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                v-model="form.rememberMe"
+                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              />
+              <label for="rememberMe" class="ml-2 block text-sm text-gray-900">
+                Se souvenir de moi
+              </label>
+            </div>
+
+            <div class="text-sm">
+              <router-link to="/forgot-password" class="font-medium text-primary-600 hover:text-primary-500">
+                Mot de passe oublié?
+              </router-link>
+            </div>
+          </div>
+
+          <div>
+            <Button
+              primary
+              type="submit"
+              class="w-full"
+              :disabled="processing"
+            >
+              {{ processing ? 'Connexion...' : 'Se connecter' }}
+            </Button>
+          </div>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">
+            Pas encore de compte?{' '}
+            <router-link to="/register" class="font-medium text-primary-600 hover:text-primary-500">
+              S'inscrire
+            </router-link>
+          </p>
+        </div>
+      </Card>
+    </div>
+  </MainLayout>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
+import MainLayout from '../../layouts/MainLayout.vue';
+import Button from '../../components/ui/Button.vue';
+import InputField from '../../components/ui/InputField.vue';
+import Card from '../../components/ui/Card.vue';
+import Alert from '../../components/ui/Alert.vue';
+
+/**
+ * Interface pour le formulaire de connexion
+ */
+interface LoginForm {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+}
+
+// État du formulaire
+const form = reactive<LoginForm>({
+  email: '',
+  password: '',
+  rememberMe: false
+});
+
+// États pour la gestion de l'UI
+const showPassword = ref(false);
+const processing = ref(false);
+const errors = reactive<Record<string, string>>({});
+const errorMessage = ref<string | null>(null);
+
+/**
+ * Gestionnaire de soumission du formulaire
+ */
+const handleSubmit = () => {
+  processing.value = true;
+
+  // Réinitialiser les erreurs
+  Object.keys(errors).forEach(key => delete errors[key]);
+  errorMessage.value = null;
+
+  // Envoyer la requête avec Inertia.js
+  router.post('/login', form, {
+    onSuccess: () => {
+      // La redirection sera gérée par le backend
+    },
+    onError: (err) => {
+      // Copier les erreurs
+      Object.assign(errors, err);
+
+      // Afficher un message d'erreur général s'il y en a un
+      if (err.message) {
+        errorMessage.value = err.message;
+      }
+
+      processing.value = false;
+    }
+  });
+};
+</script>

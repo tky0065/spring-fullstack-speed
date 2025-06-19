@@ -1,0 +1,41 @@
+<template>
+  <footer class="bg-gray-800 mt-auto">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="py-6 md:flex md:items-center md:justify-between">
+        <div class="text-center md:text-left">
+          <p class="text-sm text-gray-300">
+            &copy; {{ currentYear }} {{ appName }}. Tous droits réservés.
+          </p>
+        </div>
+        <div class="mt-4 flex justify-center md:mt-0">
+          <div class="flex space-x-6">
+            <router-link to="/privacy" class="text-sm text-gray-300 hover:text-white">
+              Confidentialité
+            </router-link>
+            <router-link to="/terms" class="text-sm text-gray-300 hover:text-white">
+              Conditions d'utilisation
+            </router-link>
+            <router-link to="/contact" class="text-sm text-gray-300 hover:text-white">
+              Contact
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+
+// Définition des props
+const props = defineProps<{
+  appName?: string;
+}>();
+
+// Valeur par défaut pour le nom de l'application
+const appName = ref(props.appName || '<%= appName %>');
+
+// Année actuelle pour le copyright
+const currentYear = computed(() => new Date().getFullYear());
+</script>

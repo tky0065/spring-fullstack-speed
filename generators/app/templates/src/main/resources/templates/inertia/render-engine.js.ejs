@@ -1,0 +1,27 @@
+/**
+ * Script de rendu pour Inertia.js côté serveur
+ * Ce script est utilisé par le ScriptTemplateConfigurer de Spring
+ * pour rendre les vues Inertia.js
+ */
+
+var render = function(template, model) {
+    // Récupérer les données du modèle
+    var page = model.page;
+
+    if (template.endsWith('json')) {
+        // Pour les requêtes AJAX, renvoyer seulement le JSON
+        return JSON.stringify(page);
+    } else {
+        // Pour les requêtes normales, rendre le HTML
+        var encodedPage = java.util.Base64.getEncoder().encodeToString(
+            JSON.stringify(page).getBytes("UTF-8")
+        );
+
+        // Charger le template HTML et le remplir
+        var templateContent = template;
+        templateContent = templateContent.replace('${page}', page);
+        templateContent = templateContent.replace('${encodedPage}', encodedPage);
+
+        return templateContent;
+    }
+};

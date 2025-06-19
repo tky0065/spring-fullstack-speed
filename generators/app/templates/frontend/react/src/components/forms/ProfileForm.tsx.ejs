@@ -1,0 +1,389 @@
+import React, { useState } from 'react';
+import { useFormValidation } from '../../utils/form-validation';
+import { validators } from '../../utils/validators';
+import InputField from '../ui/InputField';
+import Button from '../ui/Button';
+import Alert from '../ui/Alert';
+import Card from '../ui/Card';
+
+/**
+ * Interface pour les valeurs du formulaire de profil
+ */
+interface ProfileFormValues {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  birthDate: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  bio: string;
+  receiveNotifications: boolean;
+}
+
+/**
+ * Props pour le composant ProfileForm
+ */
+interface ProfileFormProps {
+  initialData?: Partial<ProfileFormValues>;
+  onSubmit?: (values: ProfileFormValues) => Promise<void>;
+}
+
+/**
+ * Composant de formulaire de profil utilisateur avec validation
+ */
+export default function ProfileForm({ initialData = {}, onSubmit }: ProfileFormProps) {
+  const [submitStatus, setSubmitStatus] = useState<{
+    success?: boolean;
+    message?: string;
+  }>({});
+
+  // Valeurs initiales avec fusion des données passées en props
+  const defaultValues: ProfileFormValues = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    birthDate: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    bio: '',
+    receiveNotifications: true,
+    ...initialData
+  };
+
+  // État local pour suivre si l'utilisateur veut changer son mot de passe
+  const [changePassword, setChangePassword] = useState<boolean>(false);
+
+  // Initialisation du formulaire avec validation
+  const {
+    values,
+    errors,
+    touched,
+    isSubmitting,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    setValues
+  } = useFormValidation<ProfileFormValues>({
+    initialValues: defaultValues,
+    validationRules: {
+      firstName: [validators.required('Le prénom est obligatoire'), validators.maxLength(50)],
+      lastName: [validators.required('Le nom est obligatoire'), validators.maxLength(50)],
+      email: [validators.required('L\'email est obligatoire'), validators.email()],
+      phoneNumber: [
+        validators.pattern(
+          /^(\+\d{1,3}\s?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/,
+          'Numéro de téléphone invalide'
+        )
+      ],
+      birthDate: [
+        (value) => {
+          if (!value) return undefined;
+
+          const date = new Date(value);
+          const now = new Date();
+          const minAge = 13; // Âge minimum
+
+          // Calculer l'âge approximatif
+          const yearDiff = now.getFullYear() - date.getFullYear();
+          const monthDiff = now.getMonth() - date.getMonth();
+          const dayDiff = now.getDate() - date.getDate();
+          const isOldEnough = yearDiff > minAge ||
+                             (yearDiff === minAge && (monthDiff > 0 || (monthDiff === 0 && dayDiff >= 0)));
+
+          if (!isOldEnough) {
+            return `Vous devez avoir au moins ${minAge} ans`;
+          }
+
+          if (date > now) {
+            return 'La date de naissance ne peut pas être dans le futur';
+          }
+
+          return undefined;
+        }
+      ],
+      currentPassword: [
+        (value) => {
+          if (changePassword && !value) {
+            return 'Mot de passe actuel obligatoire pour changer votre mot de passe';
+          }
+          return undefined;
+        }
+      ],
+      newPassword: [
+        (value) => {
+          if (changePassword && !value) {
+            return 'Nouveau mot de passe requis';
+          }
+          if (changePassword && value) {
+            return validators.strongPassword()(value);
+          }
+          return undefined;
+        }
+      ],
+      confirmPassword: [
+        (value) => {
+          if (changePassword && !value) {
+            return 'Veuillez confirmer votre nouveau mot de passe';
+          }
+          if (changePassword && value !== values.newPassword) {
+            return 'Les mots de passe ne correspondent pas';
+          }
+          return undefined;
+        }
+      ],
+      bio: [validators.maxLength(500, 'La biographie ne peut pas dépasser 500 caractères')]
+    },
+    onSubmit: async (formValues, isValid) => {
+      if (!isValid) return;
+
+      try {
+        // Si l'utilisateur ne change pas de mot de passe, on supprime les champs liés
+        const valuesToSubmit = { ...formValues };
+        if (!changePassword) {
+          delete valuesToSubmit.currentPassword;
+          delete valuesToSubmit.newPassword;
+          delete valuesToSubmit.confirmPassword;
+        }
+
+        // On appelle la fonction de soumission si elle est fournie
+        if (onSubmit) {
+          await onSubmit(valuesToSubmit);
+        } else {
+          // Simulation d'une API
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        setSubmitStatus({
+          success: true,
+          message: 'Votre profil a été mis à jour avec succès.'
+        });
+      } catch (error) {
+        setSubmitStatus({
+          success: false,
+          message: 'Une erreur est survenue lors de la mise à jour du profil.'
+        });
+      }
+    }
+  });
+
+  // Fonction pour gérer l'option de changement de mot de passe
+  const handleTogglePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    setChangePassword(isChecked);
+
+    // Réinitialiser les champs de mot de passe si l'option est désactivée
+    if (!isChecked) {
+      setValues({
+        ...values,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    }
+  };
+
+  return (
+    <div>
+      {submitStatus.message && (
+        <Alert
+          type={submitStatus.success ? 'success' : 'error'}
+          message={submitStatus.message}
+          className="mb-6"
+          onDismiss={() => setSubmitStatus({})}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <Card className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Informations personnelles
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputField
+              label="Prénom"
+              id="firstName"
+              name="firstName"
+              type="text"
+              value={values.firstName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.firstName ? errors.firstName : undefined}
+              required
+            />
+
+            <InputField
+              label="Nom"
+              id="lastName"
+              name="lastName"
+              type="text"
+              value={values.lastName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.lastName ? errors.lastName : undefined}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <InputField
+              label="Adresse email"
+              id="email"
+              name="email"
+              type="email"
+              value={values.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.email ? errors.email : undefined}
+              required
+            />
+
+            <InputField
+              label="Numéro de téléphone"
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={values.phoneNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.phoneNumber ? errors.phoneNumber : undefined}
+              placeholder="Ex: +33 6 12 34 56 78"
+            />
+          </div>
+
+          <div className="mt-4">
+            <InputField
+              label="Date de naissance"
+              id="birthDate"
+              name="birthDate"
+              type="date"
+              value={values.birthDate}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              error={touched.birthDate ? errors.birthDate : undefined}
+            />
+          </div>
+
+          <div className="mt-4">
+            <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+              Biographie
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows={4}
+              className={`appearance-none block w-full px-3 py-2 border ${
+                errors.bio && touched.bio ? 'border-red-300' : 'border-gray-300'
+              } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
+              value={values.bio}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Parlez de vous..."
+            />
+            {errors.bio && touched.bio && (
+              <p className="mt-1 text-sm text-red-600">{errors.bio}</p>
+            )}
+            <p className="mt-1 text-sm text-gray-500">
+              {values.bio.length}/500 caractères
+            </p>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Mot de passe
+          </h3>
+
+          <div className="mb-4">
+            <div className="flex items-center">
+              <input
+                id="changePassword"
+                name="changePassword"
+                type="checkbox"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                checked={changePassword}
+                onChange={handleTogglePasswordChange}
+              />
+              <label htmlFor="changePassword" className="ml-2 block text-sm text-gray-900">
+                Je souhaite changer mon mot de passe
+              </label>
+            </div>
+          </div>
+
+          {changePassword && (
+            <div className="space-y-4">
+              <InputField
+                label="Mot de passe actuel"
+                id="currentPassword"
+                name="currentPassword"
+                type="password"
+                value={values.currentPassword}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={touched.currentPassword ? errors.currentPassword : undefined}
+                required={changePassword}
+              />
+
+              <InputField
+                label="Nouveau mot de passe"
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                value={values.newPassword}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={touched.newPassword ? errors.newPassword : undefined}
+                required={changePassword}
+              />
+
+              <InputField
+                label="Confirmer le nouveau mot de passe"
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={values.confirmPassword}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={touched.confirmPassword ? errors.confirmPassword : undefined}
+                required={changePassword}
+              />
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Préférences
+          </h3>
+
+          <div className="flex items-center">
+            <input
+              id="receiveNotifications"
+              name="receiveNotifications"
+              type="checkbox"
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              checked={values.receiveNotifications}
+              onChange={handleChange}
+            />
+            <label htmlFor="receiveNotifications" className="ml-2 block text-sm text-gray-900">
+              Recevoir des notifications par email
+            </label>
+          </div>
+        </Card>
+
+        <div className="flex justify-end space-x-4">
+          <Button type="button" onClick={() => setValues(defaultValues)}>
+            Annuler
+          </Button>
+          <Button primary type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

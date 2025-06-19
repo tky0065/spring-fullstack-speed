@@ -1,0 +1,67 @@
+<template>
+  <div :class="className">
+    <label :for="id" class="block text-sm font-medium text-gray-700 mb-1">
+      {{ label }}
+      <span v-if="required" class="text-red-500">*</span>
+    </label>
+    <input
+      :id="id"
+      :name="name"
+      :type="type"
+      :value="modelValue"
+      :placeholder="placeholder"
+      :required="required"
+      :disabled="disabled"
+      :class="[
+        'appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm',
+        error ? 'border-red-300' : 'border-gray-300',
+        disabled ? 'bg-gray-100 text-gray-500' : ''
+      ]"
+      @input="updateValue"
+      @blur="$emit('blur', $event)"
+    />
+    <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
+    <p v-if="helpText && !error" class="mt-1 text-sm text-gray-500">{{ helpText }}</p>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * Interface des props pour le composant InputField
+ */
+interface InputFieldProps {
+  modelValue: string | number;
+  label: string;
+  id: string;
+  name?: string;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  helpText?: string;
+  className?: string;
+}
+
+// Définir les props avec des valeurs par défaut
+const props = withDefaults(defineProps<InputFieldProps>(), {
+  name: '',
+  type: 'text',
+  placeholder: '',
+  required: false,
+  disabled: false,
+  className: ''
+});
+
+// Définir les émetteurs d'événements
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string | number): void;
+  (e: 'blur', event: FocusEvent): void;
+}>();
+
+// Fonction pour mettre à jour la valeur
+const updateValue = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  emit('update:modelValue', props.type === 'number' ? Number(target.value) : target.value);
+};
+</script>

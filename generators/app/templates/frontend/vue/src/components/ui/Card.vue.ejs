@@ -1,0 +1,27 @@
+<template>
+  <div :class="['bg-white overflow-hidden shadow rounded-lg', className]">
+    <div v-if="title" class="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
+      <h3 class="text-lg font-medium leading-6 text-gray-900">
+        {{ title }}
+      </h3>
+    </div>
+    <div class="px-4 py-5 sm:p-6">
+      <slot />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * Interface des props pour le composant Card
+ */
+interface CardProps {
+  title?: string;
+  className?: string;
+}
+
+// Définir les props avec des valeurs par défaut
+withDefaults(defineProps<CardProps>(), {
+  className: ''
+});
+</script>

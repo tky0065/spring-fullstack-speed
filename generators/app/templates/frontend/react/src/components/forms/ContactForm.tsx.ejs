@@ -1,0 +1,172 @@
+import React, { useState } from 'react';
+import { useFormValidation } from '../../utils/form-validation';
+import { validators } from '../../utils/validators';
+import InputField from '../ui/InputField';
+import Button from '../ui/Button';
+import Alert from '../ui/Alert';
+
+/**
+ * Interface pour les valeurs du formulaire de contact
+ */
+interface ContactFormValues {
+  fullName: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+/**
+ * Props pour le composant ContactForm
+ */
+interface ContactFormProps {
+  onSubmitSuccess?: () => void;
+}
+
+/**
+ * Composant de formulaire de contact avec validation
+ */
+export default function ContactForm({ onSubmitSuccess }: ContactFormProps) {
+  const [submitStatus, setSubmitStatus] = useState<{
+    success?: boolean;
+    message?: string;
+  }>({});
+
+  // Initialisation du formulaire avec les règles de validation
+  const {
+    values,
+    errors,
+    touched,
+    isSubmitting,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    resetForm
+  } = useFormValidation<ContactFormValues>({
+    initialValues: {
+      fullName: '',
+      email: '',
+      subject: '',
+      message: ''
+    },
+    validationRules: {
+      fullName: [validators.required(), validators.minLength(2), validators.maxLength(100)],
+      email: [validators.required(), validators.email()],
+      subject: [validators.required(), validators.minLength(5), validators.maxLength(200)],
+      message: [validators.required(), validators.minLength(20), validators.maxLength(2000)]
+    },
+    onSubmit: async (values, isValid) => {
+      if (!isValid) return;
+
+      try {
+        // Simulation d'envoi à une API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Réinitialisation et notification de succès
+        resetForm();
+        setSubmitStatus({
+          success: true,
+          message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.'
+        });
+
+        if (onSubmitSuccess) {
+          onSubmitSuccess();
+        }
+      } catch (error) {
+        setSubmitStatus({
+          success: false,
+          message: 'Une erreur est survenue lors de l\'envoi du formulaire. Veuillez réessayer.'
+        });
+      }
+    }
+  });
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      {submitStatus.message && (
+        <Alert
+          type={submitStatus.success ? 'success' : 'error'}
+          message={submitStatus.message}
+          className="mb-6"
+          onDismiss={() => setSubmitStatus({})}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <InputField
+          label="Nom complet"
+          id="fullName"
+          name="fullName"
+          type="text"
+          value={values.fullName}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          error={touched.fullName ? errors.fullName : undefined}
+          required
+        />
+
+        <InputField
+          label="Adresse email"
+          id="email"
+          name="email"
+          type="email"
+          value={values.email}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          error={touched.email ? errors.email : undefined}
+          required
+        />
+
+        <InputField
+          label="Sujet"
+          id="subject"
+          name="subject"
+          type="text"
+          value={values.subject}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          error={touched.subject ? errors.subject : undefined}
+          required
+        />
+
+        <div className="relative">
+          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+            Message
+          </label>
+          <textarea
+            id="message"
+            name="message"
+            rows={6}
+            className={`appearance-none block w-full px-3 py-2 border ${
+              errors.message && touched.message ? 'border-red-300' : 'border-gray-300'
+            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm`}
+            value={values.message}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            required
+          />
+          {errors.message && touched.message && (
+            <p className="mt-1 text-sm text-red-600">{errors.message}</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end">
+          <Button
+            type="button"
+            onClick={resetForm}
+            className="mr-4"
+            disabled={isSubmitting}
+          >
+            Réinitialiser
+          </Button>
+          <Button
+            primary
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Envoi en cours...' : 'Envoyer le message'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -1,0 +1,70 @@
+package <%= packageName %>.helpers;
+
+import <%= packageName %>.config.InertiaRenderEngine;
+import <%= packageName %>.config.InertiaViewModel;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Helper pour faciliter l'utilisation d'Inertia.js dans les contrôleurs Spring
+ */
+@Component
+public class InertiaHelper {
+
+    private final InertiaRenderEngine renderEngine;
+
+    public InertiaHelper(InertiaRenderEngine renderEngine) {
+        this.renderEngine = renderEngine;
+    }
+
+    /**
+     * Rendre une vue Inertia avec les propriétés spécifiées
+     *
+     * @param component Le nom du composant à rendre
+     * @param props Les propriétés à passer au composant
+     * @param request La requête HTTP
+     * @return Le modèle de vue Inertia
+     */
+    public InertiaViewModel render(String component, Map<String, Object> props, HttpServletRequest request) {
+        return renderEngine.render(component, props, request);
+    }
+
+    /**
+     * Rendre une vue Inertia avec les propriétés spécifiées sous forme de paires clé/valeur
+     *
+     * @param component Le nom du composant à rendre
+     * @param request La requête HTTP
+     * @param keyValuePairs Paires clé/valeur pour les propriétés (clé1, valeur1, clé2, valeur2, ...)
+     * @return Le modèle de vue Inertia
+     */
+    public InertiaViewModel render(String component, HttpServletRequest request, Object... keyValuePairs) {
+        Map<String, Object> props = new HashMap<>();
+
+        if (keyValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Les propriétés doivent être fournies par paires clé/valeur");
+        }
+
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            String key = String.valueOf(keyValuePairs[i]);
+            Object value = keyValuePairs[i + 1];
+            props.put(key, value);
+        }
+
+        return renderEngine.render(component, props, request);
+    }
+
+    /**
+     * Partager des données globales avec toutes les vues Inertia
+     *
+     * @param key La clé des données
+     * @param value La valeur des données
+     * @return Ce helper (pour le chaînage)
+     */
+    public InertiaHelper share(String key, Object value) {
+        renderEngine.share(key, value);
+        return this;
+    }
+}

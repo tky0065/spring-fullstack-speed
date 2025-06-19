@@ -1,0 +1,179 @@
+<template>
+  <div class="max-w-2xl mx-auto">
+    <Alert
+      v-if="submitStatus.message"
+      :type="submitStatus.success ? 'success' : 'error'"
+      :message="submitStatus.message"
+      :dismissable="true"
+      class="mb-6"
+      @dismiss="submitStatus = {}"
+    />
+
+    <form @submit="handleSubmit" class="space-y-6">
+      <InputField
+        id="fullName"
+        name="fullName"
+        type="text"
+        label="Nom complet"
+        v-model="values.fullName"
+        :error="touched.fullName ? errors.fullName : undefined"
+        @blur="() => handleBlur('fullName')"
+        required
+      />
+
+      <InputField
+        id="email"
+        name="email"
+        type="email"
+        label="Adresse email"
+        v-model="values.email"
+        :error="touched.email ? errors.email : undefined"
+        @blur="() => handleBlur('email')"
+        required
+      />
+
+      <InputField
+        id="subject"
+        name="subject"
+        type="text"
+        label="Sujet"
+        v-model="values.subject"
+        :error="touched.subject ? errors.subject : undefined"
+        @blur="() => handleBlur('subject')"
+        required
+      />
+
+      <div class="relative">
+        <label for="message" class="block text-sm font-medium text-gray-700 mb-1">
+          Message <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          id="message"
+          name="message"
+          rows="6"
+          :class="[
+            'appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm',
+            touched.message && errors.message ? 'border-red-300' : 'border-gray-300',
+          ]"
+          v-model="values.message"
+          @blur="() => handleBlur('message')"
+          required
+        ></textarea>
+        <p v-if="touched.message && errors.message" class="mt-1 text-sm text-red-600">
+          {{ errors.message }}
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end">
+        <Button
+          type="button"
+          @click="resetForm"
+          class="mr-4"
+          :disabled="isSubmitting"
+        >
+          Réinitialiser
+        </Button>
+        <Button
+          primary
+          type="submit"
+          :disabled="isSubmitting || !isValid"
+        >
+          {{ isSubmitting ? 'Envoi en cours...' : 'Envoyer le message' }}
+        </Button>
+      </div>
+    </form>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useFormValidation } from '../../utils/form-validation';
+import { validators } from '../../utils/validators';
+import InputField from '../ui/InputField.vue';
+import Button from '../ui/Button.vue';
+import Alert from '../ui/Alert.vue';
+
+/**
+ * Interface pour les props du composant
+ */
+interface ContactFormProps {
+  onSubmitSuccess?: () => void;
+}
+
+// Définir les props
+const props = defineProps<ContactFormProps>();
+
+/**
+ * Interface pour les valeurs du formulaire de contact
+ */
+interface ContactFormValues {
+  fullName: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+// État pour suivre le statut de soumission
+const submitStatus = ref<{ success?: boolean; message?: string }>({});
+
+// Initialisation du formulaire avec validation
+const {
+  values,
+  errors,
+  touched,
+  isSubmitting,
+  isValid,
+  handleChange,
+  handleBlur,
+  handleSubmit: onSubmit,
+  resetForm
+} = useFormValidation<ContactFormValues>({
+  initialValues: {
+    fullName: '',
+    email: '',
+    subject: '',
+    message: ''
+  },
+  validationRules: {
+    fullName: [validators.required(), validators.minLength(2), validators.maxLength(100)],
+    email: [validators.required(), validators.email()],
+    subject: [validators.required(), validators.minLength(5), validators.maxLength(200)],
+    message: [validators.required(), validators.minLength(20), validators.maxLength(2000)]
+  },
+  onSubmit: async (formValues, isValid) => {
+    if (!isValid) return;
+
+    try {
+      // Simulation d'envoi à une API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Notification de succès
+      submitStatus.value = {
+        success: true,
+        message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.'
+      };
+
+      // Réinitialisation du formulaire
+      resetForm();
+
+      // Appel du callback de succès si fourni
+      if (props.onSubmitSuccess) {
+        props.onSubmitSuccess();
+      }
+    } catch (error) {
+      submitStatus.value = {
+        success: false,
+        message: 'Une erreur est survenue lors de l\'envoi du formulaire. Veuillez réessayer.'
+      };
+    }
+  }
+});
+
+/**
+ * Gestionnaire de soumission avec preventDefault
+ */
+const handleSubmit = (e: Event) => {
+  e.preventDefault();
+  onSubmit(e);
+};
+</script>

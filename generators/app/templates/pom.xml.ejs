@@ -43,6 +43,13 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Inertia.js for Spring Boot -->
+        <dependency>
+            <groupId>dev.inertia</groupId>
+            <artifactId>inertia-spring-boot-starter</artifactId>
+            <version>0.5.1</version>
+        </dependency>
+
 <% if (database !== 'MongoDB') { %>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -202,9 +209,9 @@
 <% if (frontendFramework.includes('Inertia')) { %>
         <!-- Inertia.js -->
         <dependency>
-            <groupId>dev.inertia4j</groupId>
-            <artifactId>inertia-spring-boot-starter</artifactId>
-            <version>1.0.5</version>
+            <groupId>io.github.inertia4j</groupId>
+            <artifactId>inertia4j-spring</artifactId>
+            <version>1.0.4</version>
         </dependency>
 <% } %>
 

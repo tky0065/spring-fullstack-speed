@@ -1,0 +1,165 @@
+import React, { ChangeEvent, FormEvent, ReactNode } from 'react';
+
+/**
+ * Types pour la validation des formulaires
+ */
+export type ValidationRule = (value: any) => string | undefined;
+export type ValidationRules = Record<string, ValidationRule[]>;
+export type FormErrors = Record<string, string | undefined>;
+export type FormTouched = Record<string, boolean>;
+export type FormValues = Record<string, any>;
+
+/**
+ * Props pour le hook useForm
+ */
+interface UseFormOptions<T extends FormValues> {
+  initialValues: T;
+  validationRules?: ValidationRules;
+  onSubmit?: (values: T, isValid: boolean) => void;
+}
+
+/**
+ * Hook personnalisé pour la gestion des formulaires avec validation
+ */
+export function useFormValidation<T extends FormValues>({
+  initialValues,
+  validationRules = {},
+  onSubmit
+}: UseFormOptions<T>) {
+  const [values, setValues] = React.useState<T>(initialValues);
+  const [errors, setErrors] = React.useState<FormErrors>({});
+  const [touched, setTouched] = React.useState<FormTouched>({});
+  const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
+
+  /**
+   * Valider un seul champ
+   */
+  const validateField = (name: string, value: any): string | undefined => {
+    const fieldRules = validationRules[name];
+    if (!fieldRules) return undefined;
+
+    for (const rule of fieldRules) {
+      const errorMessage = rule(value);
+      if (errorMessage) return errorMessage;
+    }
+
+    return undefined;
+  };
+
+  /**
+   * Valider tous les champs du formulaire
+   */
+  const validateForm = (): FormErrors => {
+    const newErrors: FormErrors = {};
+
+    Object.keys(validationRules).forEach(fieldName => {
+      const value = values[fieldName];
+      const error = validateField(fieldName, value);
+      if (error) {
+        newErrors[fieldName] = error;
+      }
+    });
+
+    return newErrors;
+  };
+
+  /**
+   * Gérer le changement de valeur d'un champ
+   */
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ): void => {
+    const { name, value, type } = e.target;
+    const newValue = type === 'checkbox'
+      ? (e.target as HTMLInputElement).checked
+      : value;
+
+    setValues({
+      ...values,
+      [name]: newValue
+    });
+
+    setTouched({
+      ...touched,
+      [name]: true
+    });
+
+    const fieldError = validateField(name, newValue);
+    setErrors({
+      ...errors,
+      [name]: fieldError
+    });
+  };
+
+  /**
+   * Gérer le flou (perte de focus) sur un champ
+   */
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ): void => {
+    const { name, value } = e.target;
+
+    setTouched({
+      ...touched,
+      [name]: true
+    });
+
+    const fieldError = validateField(name, value);
+    setErrors({
+      ...errors,
+      [name]: fieldError
+    });
+  };
+
+  /**
+   * Gérer la soumission du formulaire
+   */
+  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Marquer tous les champs comme touchés
+    const allTouched: FormTouched = Object.keys(values).reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {} as FormTouched);
+
+    setTouched(allTouched);
+
+    // Valider tous les champs
+    const formErrors = validateForm();
+    setErrors(formErrors);
+
+    const isValid = Object.keys(formErrors).length === 0;
+
+    if (onSubmit) {
+      onSubmit(values, isValid);
+    }
+
+    setIsSubmitting(false);
+  };
+
+  /**
+   * Réinitialiser le formulaire
+   */
+  const resetForm = (): void => {
+    setValues(initialValues);
+    setErrors({});
+    setTouched({});
+    setIsSubmitting(false);
+  };
+
+  return {
+    values,
+    errors,
+    touched,
+    isSubmitting,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    resetForm,
+    setValues,
+    setErrors,
+    setTouched
+  };
+}

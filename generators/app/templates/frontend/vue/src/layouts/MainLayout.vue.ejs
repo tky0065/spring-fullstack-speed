@@ -1,0 +1,30 @@
+<template>
+  <div class="min-h-screen flex flex-col">
+    <Navbar v-if="showNavbar" />
+
+    <main class="flex-grow">
+      <slot />
+    </main>
+
+    <Footer v-if="showFooter" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import Navbar from '../components/navigation/Navbar.vue';
+import Footer from '../components/navigation/Footer.vue';
+
+/**
+ * Interface des props pour le layout principal
+ */
+interface MainLayoutProps {
+  showNavbar?: boolean;
+  showFooter?: boolean;
+}
+
+// Définir les props avec des valeurs par défaut
+withDefaults(defineProps<MainLayoutProps>(), {
+  showNavbar: true,
+  showFooter: true
+});
+</script>

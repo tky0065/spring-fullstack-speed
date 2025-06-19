@@ -1,0 +1,62 @@
+package <%= packageName %>.config;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Configuration pour l'intégration d'Inertia.js avec Spring Boot.
+ */
+@Configuration
+@ConditionalOnProperty(prefix = "app", name = "frontend", havingValue = "inertia")
+public class InertiaConfig implements WebMvcConfigurer {
+
+    private final InertiaProperties inertiaProperties;
+
+    public InertiaConfig(InertiaProperties inertiaProperties) {
+        this.inertiaProperties = inertiaProperties;
+    }
+
+    /**
+     * Configurer l'intercepteur Inertia pour vérifier les requêtes.
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(inertiaInterceptor());
+    }
+
+    /**
+     * Bean pour l'intercepteur Inertia.
+     * Cet intercepteur détecte si une requête est une requête Inertia.js.
+     */
+    @Bean
+    public HandlerInterceptor inertiaInterceptor() {
+        return new HandlerInterceptor() {
+            @Override
+            public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+                if (isInertiaRequest(request)) {
+                    request.setAttribute("inertia", true);
+                }
+                return true;
+            }
+
+            private boolean isInertiaRequest(HttpServletRequest request) {
+                return "XMLHttpRequest".equals(request.getHeader("X-Requested-With"))
+                        && "true".equals(request.getHeader("X-Inertia"));
+            }
+        };
+    }
+
+    /**
+     * Bean pour le moteur de rendu d'Inertia.
+     */
+    @Bean
+    public InertiaRenderEngine inertiaRenderEngine() {
+        return new InertiaRenderEngine(inertiaProperties);
+    }
+}

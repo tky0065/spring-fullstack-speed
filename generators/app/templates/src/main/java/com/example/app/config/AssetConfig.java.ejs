@@ -1,0 +1,23 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Configuration pour gérer les ressources statiques (assets) utilisées par Inertia.js.
+ */
+@Configuration
+public class AssetConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Configuration des ressources statiques
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/");
+
+        // Si vous utilisez des favicons ou autres ressources à la racine
+        registry.addResourceHandler("/favicon.ico", "/robots.txt", "/site.webmanifest", "/manifest.json")
+                .addResourceLocations("classpath:/static/");
+    }
+}

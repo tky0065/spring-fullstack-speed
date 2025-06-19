@@ -1,0 +1,164 @@
+import { reactive, computed, ComputedRef } from 'vue';
+
+/**
+ * Types pour la validation des formulaires
+ */
+export type ValidationRule = (value: any) => string | undefined;
+export type ValidationRules = Record<string, ValidationRule[]>;
+export type FormErrors = Record<string, string | undefined>;
+export type FormTouched = Record<string, boolean>;
+export type FormValues = Record<string, any>;
+
+/**
+ * Options pour le hook useForm
+ */
+export interface UseFormOptions<T extends FormValues> {
+  initialValues: T;
+  validationRules?: ValidationRules;
+  onSubmit?: (values: T, isValid: boolean) => void;
+}
+
+/**
+ * Hook personnalisé pour la gestion des formulaires avec validation
+ */
+export function useFormValidation<T extends FormValues>({
+  initialValues,
+  validationRules = {},
+  onSubmit
+}: UseFormOptions<T>) {
+  // État du formulaire
+  const values = reactive({ ...initialValues }) as T;
+  const errors = reactive<FormErrors>({});
+  const touched = reactive<FormTouched>({});
+  const isSubmitting = reactive({ value: false });
+
+  /**
+   * Valide un seul champ
+   */
+  const validateField = (name: string, value: any): string | undefined => {
+    const fieldRules = validationRules[name];
+    if (!fieldRules) return undefined;
+
+    for (const rule of fieldRules) {
+      const errorMessage = rule(value);
+      if (errorMessage) return errorMessage;
+    }
+
+    return undefined;
+  };
+
+  /**
+   * Valide tous les champs du formulaire
+   */
+  const validateForm = (): FormErrors => {
+    const newErrors: FormErrors = {};
+
+    Object.keys(validationRules).forEach(fieldName => {
+      const value = values[fieldName as keyof T];
+      const error = validateField(fieldName, value);
+      if (error) {
+        newErrors[fieldName] = error;
+      }
+    });
+
+    return newErrors;
+  };
+
+  /**
+   * Vérifie si le formulaire est valide
+   */
+  const isValid: ComputedRef<boolean> = computed(() => {
+    return Object.keys(validateForm()).length === 0;
+  });
+
+  /**
+   * Gère le changement de valeur d'un champ
+   */
+  const handleChange = (name: keyof T, value: any): void => {
+    (values[name as string] as any) = value;
+
+    touched[name as string] = true;
+
+    const fieldError = validateField(name as string, value);
+    errors[name as string] = fieldError;
+  };
+
+  /**
+   * Gère le flou (perte de focus) sur un champ
+   */
+  const handleBlur = (name: keyof T): void => {
+    touched[name as string] = true;
+
+    const value = values[name as string];
+    const fieldError = validateField(name as string, value);
+    errors[name as string] = fieldError;
+  };
+
+  /**
+   * Gère la soumission du formulaire
+   */
+  const handleSubmit = (e: Event): void => {
+    e.preventDefault();
+    isSubmitting.value = true;
+
+    // Marquer tous les champs comme touchés
+    Object.keys(values).forEach((key) => {
+      touched[key] = true;
+    });
+
+    // Valider tous les champs
+    const formErrors = validateForm();
+    Object.assign(errors, formErrors);
+
+    const formValid = Object.keys(formErrors).length === 0;
+
+    if (onSubmit) {
+      onSubmit(values, formValid);
+    }
+
+    isSubmitting.value = false;
+  };
+
+  /**
+   * Réinitialise le formulaire
+   */
+  const resetForm = (): void => {
+    Object.keys(values).forEach(key => {
+      (values[key as keyof T] as any) = initialValues[key as keyof T];
+    });
+
+    Object.keys(errors).forEach(key => {
+      delete errors[key];
+    });
+
+    Object.keys(touched).forEach(key => {
+      delete touched[key];
+    });
+
+    isSubmitting.value = false;
+  };
+
+  /**
+   * Met à jour toutes les valeurs du formulaire
+   */
+  const setValues = (newValues: Partial<T>): void => {
+    Object.keys(newValues).forEach(key => {
+      (values[key as keyof T] as any) = newValues[key as keyof T];
+    });
+  };
+
+  return {
+    values,
+    errors,
+    touched,
+    isSubmitting: computed(() => isSubmitting.value),
+    isValid,
+    handleChange,
+    handleBlur,
+    handleSubmit,
+    resetForm,
+    setValues,
+    validateField,
+    validateForm
+  };
+}

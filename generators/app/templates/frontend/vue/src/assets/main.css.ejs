@@ -1,0 +1,45 @@
+    @tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variables CSS personnalisées */
+:root {
+  --color-primary: #42b883;
+  --color-primary-dark: #33a06f;
+  --color-secondary: #35495e;
+  --color-secondary-dark: #2c3e50;
+  --color-background: #f9fafb;
+  --color-text: #1f2937;
+}
+
+/* Styles de base */
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  line-height: 1.5;
+}
+
+/* Styles utilitaires */
+.container-narrow {
+  max-width: 65ch;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Styles de composants personnalisés */
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-[color:var(--color-primary)] text-white hover:bg-[color:var(--color-primary-dark)];
+  }
+
+  .btn-secondary {
+    @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50;
+  }
+}

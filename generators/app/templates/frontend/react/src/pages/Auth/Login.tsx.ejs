@@ -1,0 +1,124 @@
+import React, { useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import MainLayout from '../../layouts/MainLayout';
+import Button from '../../components/ui/Button';
+import InputField from '../../components/ui/InputField';
+import Card from '../../components/ui/Card';
+import Alert from '../../components/ui/Alert';
+
+interface LoginForm {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+}
+
+/**
+ * Page de connexion
+ */
+export default function Login() {
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
+    email: '',
+    password: '',
+    rememberMe: false,
+  });
+
+  /**
+   * Gestionnaire de soumission du formulaire
+   */
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    post('/login');
+  };
+
+  return (
+    <MainLayout title="Connexion">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <div className="text-center">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Connexion</h2>
+          </div>
+
+          {errors.email && <Alert type="error" message={errors.email} className="mb-4" />}
+          {errors.password && <Alert type="error" message={errors.password} className="mb-4" />}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <InputField
+              label="Adresse email"
+              id="email"
+              name="email"
+              type="email"
+              value={data.email}
+              onChange={(e) => setData('email', e.target.value)}
+              autoComplete="email"
+              required
+            />
+
+            <div className="relative">
+              <InputField
+                label="Mot de passe"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={data.password}
+                onChange={(e) => setData('password', e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                className="absolute top-8 right-2 text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? 'Masquer' : 'Afficher'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={data.rememberMe}
+                  onChange={(e) => setData('rememberMe', e.target.checked)}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                />
+                <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
+                  Se souvenir de moi
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <a href="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+                  Mot de passe oublié?
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <Button
+                primary
+                type="submit"
+                className="w-full"
+                disabled={processing}
+              >
+                {processing ? 'Connexion...' : 'Se connecter'}
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Pas encore de compte?{' '}
+              <a href="/register" className="font-medium text-primary-600 hover:text-primary-500">
+                S'inscrire
+              </a>
+            </p>
+          </div>
+        </Card>
+      </div>
+    </MainLayout>
+  );
+}

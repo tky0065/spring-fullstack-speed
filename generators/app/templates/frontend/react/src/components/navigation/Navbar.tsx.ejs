@@ -1,0 +1,72 @@
+import React from 'react';
+import RouterLink from './RouterLink';
+import { useRouting } from '../../utils/routing';
+
+/**
+ * Type pour les éléments de navigation
+ */
+interface NavItem {
+  name: string;
+  route: string;
+  params?: Record<string, string | number>;
+}
+
+/**
+ * Composant de barre de navigation pour l'application
+ */
+export default function Navbar() {
+  // Exemple d'items de navigation
+  const navigation: NavItem[] = [
+    { name: 'Accueil', route: 'home' },
+    { name: 'À propos', route: 'about' },
+    { name: 'Contact', route: 'contact' },
+    { name: 'Tableau de bord', route: 'dashboard' },
+  ];
+
+  return (
+    <nav className="bg-gray-800">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <RouterLink route="home" className="text-white font-bold text-xl">
+                <%= appName %>
+              </RouterLink>
+            </div>
+            <div className="hidden md:block">
+              <div className="ml-10 flex items-baseline space-x-4">
+                {navigation.map((item) => (
+                  <RouterLink
+                    key={item.name}
+                    route={item.route}
+                    params={item.params}
+                    className="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+                    activeClassName="bg-gray-900 text-white"
+                  >
+                    {item.name}
+                  </RouterLink>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="hidden md:block">
+            <div className="ml-4 flex items-center md:ml-6">
+              <RouterLink
+                route="login"
+                className="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+              >
+                Connexion
+              </RouterLink>
+              <RouterLink
+                route="register"
+                className="ml-3 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+              >
+                Inscription
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}

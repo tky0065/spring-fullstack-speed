@@ -1,0 +1,191 @@
+<template>
+  <MainLayout title="Inscription">
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Card class="w-full max-w-md">
+        <div class="text-center">
+          <h2 class="text-2xl font-extrabold text-gray-900 mb-6">Créer un compte</h2>
+        </div>
+
+        <Alert v-if="errorMessage" type="error" :message="errorMessage" class="mb-4" />
+
+        <form class="space-y-6" @submit.prevent="handleSubmit">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <InputField
+              id="firstName"
+              name="firstName"
+              type="text"
+              label="Prénom"
+              v-model="form.firstName"
+              :error="errors.firstName"
+              required
+              autocomplete="given-name"
+            />
+
+            <InputField
+              id="lastName"
+              name="lastName"
+              type="text"
+              label="Nom"
+              v-model="form.lastName"
+              :error="errors.lastName"
+              required
+              autocomplete="family-name"
+            />
+          </div>
+
+          <InputField
+            id="email"
+            name="email"
+            type="email"
+            label="Adresse email"
+            v-model="form.email"
+            :error="errors.email"
+            required
+            autocomplete="email"
+          />
+
+          <div class="relative">
+            <InputField
+              id="password"
+              name="password"
+              :type="showPassword ? 'text' : 'password'"
+              label="Mot de passe"
+              v-model="form.password"
+              :error="errors.password"
+              required
+              autocomplete="new-password"
+            />
+            <button
+              type="button"
+              class="absolute top-8 right-2 text-gray-500"
+              @click="showPassword = !showPassword"
+            >
+              {{ showPassword ? 'Masquer' : 'Afficher' }}
+            </button>
+          </div>
+
+          <InputField
+            id="confirmPassword"
+            name="confirmPassword"
+            :type="showPassword ? 'text' : 'password'"
+            label="Confirmer le mot de passe"
+            v-model="form.confirmPassword"
+            :error="errors.confirmPassword"
+            required
+            autocomplete="new-password"
+          />
+
+          <div class="flex items-center">
+            <input
+              id="acceptTerms"
+              name="acceptTerms"
+              type="checkbox"
+              v-model="form.acceptTerms"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              required
+            />
+            <label for="acceptTerms" class="ml-2 block text-sm text-gray-900">
+              J'accepte les <router-link to="/terms" class="text-primary-600 hover:text-primary-500">conditions d'utilisation</router-link>
+              et la <router-link to="/privacy" class="text-primary-600 hover:text-primary-500">politique de confidentialité</router-link>
+            </label>
+          </div>
+          <p v-if="errors.acceptTerms" class="mt-1 text-sm text-red-600">{{ errors.acceptTerms }}</p>
+
+          <div>
+            <Button
+              primary
+              type="submit"
+              class="w-full"
+              :disabled="processing"
+            >
+              {{ processing ? "Création du compte..." : "Créer un compte" }}
+            </Button>
+          </div>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-sm text-gray-600">
+            Vous avez déjà un compte?{' '}
+            <router-link to="/login" class="font-medium text-primary-600 hover:text-primary-500">
+              Se connecter
+            </router-link>
+          </p>
+        </div>
+      </Card>
+    </div>
+  </MainLayout>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
+import MainLayout from '../../layouts/MainLayout.vue';
+import Button from '../../components/ui/Button.vue';
+import InputField from '../../components/ui/InputField.vue';
+import Card from '../../components/ui/Card.vue';
+import Alert from '../../components/ui/Alert.vue';
+
+/**
+ * Interface pour le formulaire d'inscription
+ */
+interface RegisterForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
+// État du formulaire
+const form = reactive<RegisterForm>({
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  acceptTerms: false
+});
+
+// États pour la gestion de l'UI
+const showPassword = ref(false);
+const processing = ref(false);
+const errors = reactive<Record<string, string>>({});
+const errorMessage = ref<string | null>(null);
+
+/**
+ * Gestionnaire de soumission du formulaire
+ */
+const handleSubmit = () => {
+  processing.value = true;
+
+  // Validation côté client
+  if (form.password !== form.confirmPassword) {
+    errors.confirmPassword = "Les mots de passe ne correspondent pas";
+    processing.value = false;
+    return;
+  }
+
+  // Réinitialiser les erreurs
+  Object.keys(errors).forEach(key => delete errors[key]);
+  errorMessage.value = null;
+
+  // Envoyer la requête avec Inertia.js
+  router.post('/register', form, {
+    onSuccess: () => {
+      // La redirection sera gérée par le backend
+    },
+    onError: (err) => {
+      // Copier les erreurs
+      Object.assign(errors, err);
+
+      // Afficher un message d'erreur général s'il y en a un
+      if (err.message) {
+        errorMessage.value = err.message;
+      }
+
+      processing.value = false;
+    }
+  });
+};
+</script>

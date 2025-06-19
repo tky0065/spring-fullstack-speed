@@ -1,0 +1,82 @@
+import React from 'react';
+import { usePage } from '@inertiajs/react';
+
+/**
+ * Interface pour les propriétés du contexte de routing
+ */
+export interface RoutingContextProps {
+  routes: Record<string, string>;
+  currentRoute: string;
+  generateUrl: (name: string, params?: Record<string, string | number>) => string;
+  isCurrentRoute: (name: string) => boolean;
+}
+
+/**
+ * Création du contexte de routing pour l'application
+ */
+const RoutingContext = React.createContext<RoutingContextProps | undefined>(undefined);
+
+/**
+ * Hook personnalisé pour utiliser le routing
+ */
+export function useRouting(): RoutingContextProps {
+  const context = React.useContext(RoutingContext);
+
+  if (context === undefined) {
+    throw new Error('useRouting must be used within a RoutingProvider');
+  }
+
+  return context;
+}
+
+/**
+ * Interface pour les propriétés du RoutingProvider
+ */
+interface RoutingProviderProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Provider pour le routing qui rend les routes disponibles dans l'application
+ */
+export function RoutingProvider({ children }: RoutingProviderProps): JSX.Element {
+  // Récupère les props Inertia, y compris les routes définies côté serveur
+  const { props } = usePage();
+  const routes = (props.routes as Record<string, string>) || {};
+  const currentRoute = (props.currentRoute as string) || '';
+
+  /**
+   * Génère une URL à partir d'un nom de route et de paramètres optionnels
+   */
+  const generateUrl = (name: string, params?: Record<string, string | number>): string => {
+    let url = routes[name] || '/';
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url = url.replace(`:${key}`, String(value));
+      });
+    }
+
+    return url;
+  };
+
+  /**
+   * Vérifie si une route est la route actuelle
+   */
+  const isCurrentRoute = (name: string): boolean => {
+    return name === currentRoute;
+  };
+
+  const value = {
+    routes,
+    currentRoute,
+    generateUrl,
+    isCurrentRoute
+  };
+
+  return (
+    <RoutingContext.Provider value={value}>
+      {children}
+    </RoutingContext.Provider>
+  );
+}

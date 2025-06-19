@@ -1,0 +1,61 @@
+import React from 'react';
+import { Head } from '@inertiajs/react';
+import MainLayout from '../layouts/MainLayout';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+
+/**
+ * Interface des props de la page d'accueil
+ */
+interface HomeProps {
+  appName: string;
+  welcomeMessage: string;
+  features: Array<{
+    title: string;
+    description: string;
+  }>;
+}
+
+/**
+ * Page d'accueil de l'application
+ */
+export default function Home({ appName, welcomeMessage, features }: HomeProps) {
+  return (
+    <MainLayout title="Accueil">
+      <div className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+              {welcomeMessage}
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              Bienvenue sur {appName}, une application générée avec Spring-Fullstack-Speed
+            </p>
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              <Button primary href="/getting-started">
+                Commencer
+              </Button>
+              <Button href="/docs">
+                Documentation
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-20">
+            <h2 className="text-2xl font-bold text-center mb-12">
+              Fonctionnalités principales
+            </h2>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature, index) => (
+                <Card key={index} title={feature.title}>
+                  {feature.description}
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  );
+}

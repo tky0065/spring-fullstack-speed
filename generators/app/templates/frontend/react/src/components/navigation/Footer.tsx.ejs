@@ -1,0 +1,36 @@
+import React from 'react';
+import { Link } from '@inertiajs/react';
+
+/**
+ * Composant pied de page de l'application
+ */
+export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="bg-gray-800 mt-auto">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="py-6 md:flex md:items-center md:justify-between">
+          <div className="text-center md:text-left">
+            <p className="text-sm text-gray-300">
+              &copy; {currentYear} <%= appName %>. Tous droits réservés.
+            </p>
+          </div>
+          <div className="mt-4 flex justify-center md:mt-0">
+            <div className="flex space-x-6">
+              <Link href="/privacy" className="text-sm text-gray-300 hover:text-white">
+                Confidentialité
+              </Link>
+              <Link href="/terms" className="text-sm text-gray-300 hover:text-white">
+                Conditions d'utilisation
+              </Link>
+              <Link href="/contact" className="text-sm text-gray-300 hover:text-white">
+                Contact
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

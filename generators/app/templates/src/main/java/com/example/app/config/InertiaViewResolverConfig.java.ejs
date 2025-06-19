@@ -1,0 +1,52 @@
+package <%= packageName %>.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.ViewResolver;
+import org.springframework.web.servlet.view.script.ScriptTemplateConfigurer;
+import org.springframework.web.servlet.view.script.ScriptTemplateViewResolver;
+
+import java.util.Map;
+
+/**
+ * Configuration du resolver de vues pour Inertia.js.
+ * Cette classe configure le moteur de template utilisé pour rendre les vues Inertia.
+ */
+@Configuration
+public class InertiaViewResolverConfig {
+
+    private final ObjectMapper objectMapper;
+
+    public InertiaViewResolverConfig(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Configure le resolver de vues pour les templates Inertia.
+     */
+    @Bean
+    public ViewResolver inertiaViewResolver() {
+        ScriptTemplateViewResolver resolver = new ScriptTemplateViewResolver();
+        resolver.setPrefix("/templates/");
+        resolver.setSuffix(".html");
+        return resolver;
+    }
+
+    /**
+     * Configuration du moteur de template script pour Inertia.
+     */
+    @Bean
+    public ScriptTemplateConfigurer scriptTemplateConfigurer() {
+        ScriptTemplateConfigurer configurer = new ScriptTemplateConfigurer();
+        configurer.setEngineName("nashorn");
+        configurer.setScripts("/templates/inertia/render-engine.js");
+        configurer.setRenderFunction("render");
+        configurer.setSharedEngine(false);
+
+        // Ajouter l'ObjectMapper pour être utilisé dans les templates
+        configurer.setBindings(Map.of("objectMapper", objectMapper));
+
+        return configurer;
+    }
+}

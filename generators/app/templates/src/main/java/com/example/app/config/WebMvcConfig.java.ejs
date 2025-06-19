@@ -1,0 +1,43 @@
+package <%= packageName %>.config;
+
+import <%= packageName %>.inertia.InertiaMiddleware;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Configuration MVC pour Inertia.js
+ */
+@Configuration
+public class WebMvcConfig implements WebMvcConfigurer {
+
+    private final InertiaMiddleware inertiaMiddleware;
+
+    public WebMvcConfig(InertiaMiddleware inertiaMiddleware) {
+        this.inertiaMiddleware = inertiaMiddleware;
+    }
+
+    /**
+     * Enregistre le middleware Inertia.
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // Application du middleware Inertia à toutes les requêtes
+        registry.addInterceptor(inertiaMiddleware);
+    }
+
+    /**
+     * Configure les gestionnaires de ressources statiques.
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Configuration pour servir les assets statiques du frontend
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/");
+
+        // Configuration supplémentaire pour d'autres ressources statiques
+        registry.addResourceHandler("/favicon.ico")
+                .addResourceLocations("classpath:/static/favicon.ico");
+    }
+}

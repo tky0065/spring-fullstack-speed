@@ -104,8 +104,8 @@ describe('Conditional Rendering Utils', () => {
 
   describe('Template helpers', () => {
     test('addConditionalHelpersToContext devrait ajouter des helpers conditionnels au contexte', () => {
-      const baseContext = { ...mockConfig };
-      const enrichedContext = addConditionalHelpersToContext(baseContext);
+      const baseContext = {};
+      const enrichedContext = addConditionalHelpersToContext(baseContext, mockConfig);
 
       expect(typeof enrichedContext.if_frontend).toBe('function');
       expect(typeof enrichedContext.if_database).toBe('function');
@@ -114,37 +114,20 @@ describe('Conditional Rendering Utils', () => {
       expect(typeof enrichedContext.if_has_auth).toBe('function');
     });
 
-    test('if_frontend devrait appeler fn quand le frontend correspond', () => {
-      const baseContext = { ...mockConfig };
-      const enrichedContext = addConditionalHelpersToContext(baseContext);
+    test('if_frontend devrait renvoyer le contenu correct selon le frontend', () => {
+      const baseContext = {};
+      const enrichedContext = addConditionalHelpersToContext(baseContext, mockConfig);
 
-      const mockOptions = {
-        fn: jest.fn().mockReturnValue('match'),
-        inverse: jest.fn().mockReturnValue('no match')
-      };
-
-      expect(enrichedContext.if_frontend(FRONTEND_OPTIONS.REACT_INERTIA, mockOptions)).toBe('match');
-      expect(mockOptions.fn).toHaveBeenCalled();
-      expect(mockOptions.inverse).not.toHaveBeenCalled();
-
-      expect(enrichedContext.if_frontend(FRONTEND_OPTIONS.ANGULAR, mockOptions)).toBe('no match');
-      expect(mockOptions.inverse).toHaveBeenCalled();
+      expect(enrichedContext.if_frontend(FRONTEND_OPTIONS.REACT_INERTIA, 'match', 'no match')).toBe('match');
+      expect(enrichedContext.if_frontend(FRONTEND_OPTIONS.ANGULAR, 'match', 'no match')).toBe('no match');
     });
 
-    test('if_database devrait appeler fn quand la base de données correspond', () => {
-      const baseContext = { ...mockConfig };
-      const enrichedContext = addConditionalHelpersToContext(baseContext);
+    test('if_database devrait renvoyer le contenu correct selon la base de données', () => {
+      const baseContext = {};
+      const enrichedContext = addConditionalHelpersToContext(baseContext, mockConfig);
 
-      const mockOptions = {
-        fn: jest.fn().mockReturnValue('match'),
-        inverse: jest.fn().mockReturnValue('no match')
-      };
-
-      expect(enrichedContext.if_database(DATABASE_OPTIONS.POSTGRESQL, mockOptions)).toBe('match');
-      expect(mockOptions.fn).toHaveBeenCalled();
-
-      expect(enrichedContext.if_database(DATABASE_OPTIONS.MYSQL, mockOptions)).toBe('no match');
-      expect(mockOptions.inverse).toHaveBeenCalled();
+      expect(enrichedContext.if_database(DATABASE_OPTIONS.POSTGRESQL, 'match', 'no match')).toBe('match');
+      expect(enrichedContext.if_database(DATABASE_OPTIONS.MYSQL, 'match', 'no match')).toBe('no match');
     });
   });
 });

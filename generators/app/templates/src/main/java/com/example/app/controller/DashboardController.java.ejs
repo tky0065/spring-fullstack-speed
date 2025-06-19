@@ -1,0 +1,191 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.inertia.InertiaHelper;
+<% if (includeAuth) { %>
+import <%= packageName %>.service.UserService;
+import <%= packageName %>.dto.UserDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+<% } %>
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Contrôleur Inertia pour les pages nécessitant une authentification.
+ * Ce contrôleur gère les pages accessibles uniquement aux utilisateurs authentifiés.
+ */
+@Controller
+@RequestMapping("/dashboard")
+<% if (includeAuth) { %>
+@PreAuthorize("isAuthenticated()")
+<% } %>
+public class DashboardController {
+
+    private final InertiaHelper inertiaHelper;
+    <% if (includeAuth) { %>
+    private final UserService userService;
+    <% } %>
+
+    @Autowired
+    public DashboardController(
+        InertiaHelper inertiaHelper
+        <% if (includeAuth) { %>
+        , UserService userService
+        <% } %>
+    ) {
+        this.inertiaHelper = inertiaHelper;
+        <% if (includeAuth) { %>
+        this.userService = userService;
+        <% } %>
+    }
+
+    /**
+     * Page principale du tableau de bord
+     */
+    @GetMapping
+    public String index() {
+        <% if (includeAuth) { %>
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UserDTO currentUser = userService.getCurrentUser();
+        <% } %>
+
+        return inertiaHelper.render("Dashboard/Index",
+            "title", "Tableau de bord",
+            <% if (includeAuth) { %>
+            "currentUser", currentUser,
+            <% } %>
+            "stats", Map.of(
+                "users", 42,
+                "articles", 148,
+                "comments", 358,
+                "views", 12589
+            )
+        );
+    }
+
+    /**
+     * Page de profil utilisateur
+     */
+    @GetMapping("/profile")
+    public String profile() {
+        <% if (includeAuth) { %>
+        UserDTO currentUser = userService.getCurrentUser();
+        <% } else { %>
+        Map<String, Object> currentUser = new HashMap<>();
+        currentUser.put("name", "Utilisateur Démo");
+        currentUser.put("email", "demo@example.com");
+        <% } %>
+
+        return inertiaHelper.render("Dashboard/Profile",
+            "title", "Mon profil",
+            <% if (includeAuth) { %>
+            "user", currentUser,
+            <% } else { %>
+            "user", currentUser,
+            <% } %>
+            "activities", Arrays.asList(
+                Map.of(
+                    "date", "2025-06-18T14:30:00",
+                    "type", "login",
+                    "description", "Connexion réussie"
+                ),
+                Map.of(
+                    "date", "2025-06-17T11:15:00",
+                    "type", "update",
+                    "description", "Profil mis à jour"
+                ),
+                Map.of(
+                    "date", "2025-06-15T09:30:00",
+                    "type", "login",
+                    "description", "Connexion réussie"
+                )
+            )
+        );
+    }
+
+    /**
+     * Page de paramètres
+     */
+    @GetMapping("/settings")
+    public String settings() {
+        Map<String, Object> settings = new HashMap<>();
+        settings.put("notifications", true);
+        settings.put("twoFactorAuth", false);
+        settings.put("theme", "light");
+        settings.put("language", "fr");
+
+        return inertiaHelper.render("Dashboard/Settings",
+            "title", "Paramètres",
+            "settings", settings,
+            "availableLanguages", Arrays.asList(
+                Map.of("code", "fr", "name", "Français"),
+                Map.of("code", "en", "name", "English"),
+                Map.of("code", "es", "name", "Español"),
+                Map.of("code", "de", "name", "Deutsch")
+            ),
+            "availableThemes", Arrays.asList(
+                Map.of("code", "light", "name", "Clair"),
+                Map.of("code", "dark", "name", "Sombre"),
+                Map.of("code", "system", "name", "Système")
+            )
+        );
+    }
+
+    /**
+     * Page de gestion des données
+     */
+    @GetMapping("/data")
+    public String data() {
+        List<Map<String, Object>> tableData = Arrays.asList(
+            Map.of(
+                "id", 1,
+                "name", "Projet A",
+                "status", "Actif",
+                "created", "2025-01-15"
+            ),
+            Map.of(
+                "id", 2,
+                "name", "Projet B",
+                "status", "Terminé",
+                "created", "2025-02-20"
+            ),
+            Map.of(
+                "id", 3,
+                "name", "Projet C",
+                "status", "En pause",
+                "created", "2025-03-10"
+            ),
+            Map.of(
+                "id", 4,
+                "name", "Projet D",
+                "status", "Actif",
+                "created", "2025-05-05"
+            ),
+            Map.of(
+                "id", 5,
+                "name", "Projet E",
+                "status", "Planifié",
+                "created", "2025-06-01"
+            )
+        );
+
+        return inertiaHelper.render("Dashboard/Data",
+            "title", "Gestion des données",
+            "items", tableData,
+            "pagination", Map.of(
+                "current", 1,
+                "total", 5,
+                "perPage", 10,
+                "totalItems", 45
+            )
+        );
+    }
+}

@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import MainLayout from '../layouts/MainLayout';
+import Card from '../components/ui/Card';
+import ContactForm from '../components/forms/ContactForm';
+import ProfileForm from '../components/forms/ProfileForm';
+import Button from '../components/ui/Button';
+
+/**
+ * Page de démonstration des formulaires avec validation
+ */
+export default function FormsDemo() {
+  const [activeDemo, setActiveDemo] = useState<'contact' | 'profile'>('contact');
+
+  return (
+    <MainLayout title="Démonstration de formulaires">
+      <div className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Démonstration de formulaires avec validation
+            </h1>
+            <p className="mt-4 text-lg text-gray-600">
+              Exemples de formulaires avec validation en temps réel
+            </p>
+          </div>
+
+          <div className="mb-8 flex justify-center space-x-4">
+            <Button
+              primary={activeDemo === 'contact'}
+              onClick={() => setActiveDemo('contact')}
+            >
+              Formulaire de contact
+            </Button>
+            <Button
+              primary={activeDemo === 'profile'}
+              onClick={() => setActiveDemo('profile')}
+            >
+              Formulaire de profil
+            </Button>
+          </div>
+
+          <Card className="p-6">
+            {activeDemo === 'contact' ? (
+              <>
+                <h2 className="text-xl font-bold mb-6">Formulaire de contact</h2>
+                <ContactForm />
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-bold mb-6">Formulaire de profil utilisateur</h2>
+                <ProfileForm
+                  initialData={{
+                    firstName: 'Jean',
+                    lastName: 'Dupont',
+                    email: 'jean.dupont@example.com',
+                    birthDate: '1985-06-15'
+                  }}
+                />
+              </>
+            )}
+          </Card>
+
+          <div className="mt-10 bg-white shadow overflow-hidden rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Instructions de validation
+              </h3>
+              <div className="mt-5">
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        Pour tester la validation, essayez :
+                      </p>
+                      <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-yellow-700">
+                        <li>Laisser des champs requis vides</li>
+                        <li>Entrer un email invalide (sans @)</li>
+                        <li>Écrire un message trop court</li>
+                        <li>Dans le formulaire de profil, choisir une date de naissance future</li>
+                        <li>Entrer un mot de passe qui ne respecte pas les critères</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  );
+}

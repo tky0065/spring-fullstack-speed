@@ -22,16 +22,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
+interface Props {
+  appName: string;
+}
+
 // Propriétés reçues du serveur
-defineProps({
-  appName: {
-    type: String,
-    required: true
-  }
-});
+defineProps<Props>();
 </script>
 
 <Head title="Accueil" />

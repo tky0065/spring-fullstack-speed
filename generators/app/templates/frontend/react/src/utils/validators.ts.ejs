@@ -1,0 +1,142 @@
+import { ValidationRule } from './form-validation';
+
+/**
+ * Collection de règles de validation réutilisables
+ */
+export const validators = {
+  /**
+   * Valide qu'un champ est obligatoire
+   */
+  required: (message = 'Ce champ est obligatoire'): ValidationRule => {
+    return (value) => {
+      if (value === undefined || value === null || value === '') {
+        return message;
+      }
+      if (Array.isArray(value) && value.length === 0) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur est un email valide
+   */
+  email: (message = 'Adresse email invalide'): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+
+      const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!regex.test(String(value).toLowerCase())) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur a une longueur minimale
+   */
+  minLength: (min: number, message = `La valeur doit contenir au moins ${min} caractères`): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (String(value).length < min) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur a une longueur maximale
+   */
+  maxLength: (max: number, message = `La valeur doit contenir au maximum ${max} caractères`): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (String(value).length > max) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur est un nombre
+   */
+  number: (message = 'La valeur doit être un nombre'): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (isNaN(Number(value))) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur est supérieure à un minimum
+   */
+  min: (min: number, message = `La valeur doit être supérieure ou égale à ${min}`): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (Number(value) < min) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur est inférieure à un maximum
+   */
+  max: (max: number, message = `La valeur doit être inférieure ou égale à ${max}`): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (Number(value) > max) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur correspond à une expression régulière
+   */
+  pattern: (regex: RegExp, message = 'Format invalide'): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (!regex.test(String(value))) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide qu'une valeur correspond à une autre valeur (ex: confirmation de mot de passe)
+   */
+  match: (compareToValue: any, message = 'Les valeurs ne correspondent pas'): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+      if (value !== compareToValue) {
+        return message;
+      }
+      return undefined;
+    };
+  },
+
+  /**
+   * Valide un mot de passe fort (8+ caractères, au moins une majuscule, une minuscule, un chiffre)
+   */
+  strongPassword: (message = 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre'): ValidationRule => {
+    return (value) => {
+      if (!value) return undefined;
+
+      const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!regex.test(String(value))) {
+        return message;
+      }
+      return undefined;
+    };
+  }
+};

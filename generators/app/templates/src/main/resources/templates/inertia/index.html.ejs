@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="${_csrf != null ? _csrf.token : ''}">
+    <title><%= appName %></title>
+
+    <!-- Inertia -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=smoothscroll,NodeList.prototype.forEach,Promise,Object.values,Object.assign" defer></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/assets/css/app.css">
+
+    <!-- Scripts -->
+    <script src="/assets/js/app.js" defer></script>
+</head>
+<body>
+    <!-- Inertia app placeholder -->
+    <div id="app" data-page="${inertia.page}"></div>
+</body>
+</html>
+

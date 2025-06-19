@@ -1,0 +1,44 @@
+import React, { ButtonHTMLAttributes, AnchorHTMLAttributes, ReactNode } from 'react';
+import { Link } from '@inertiajs/react';
+
+/**
+ * Props pour le composant Button
+ */
+interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> {
+  children: ReactNode;
+  primary?: boolean;
+  href?: string;
+  className?: string;
+}
+
+/**
+ * Composant Button réutilisable
+ */
+export default function Button({
+  children,
+  primary = false,
+  href,
+  className = '',
+  ...props
+}: ButtonProps) {
+  const baseClasses = "inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors";
+  const colorClasses = primary
+    ? "bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500"
+    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500";
+
+  const classes = `${baseClasses} ${colorClasses} ${className}`;
+
+  if (href) {
+    return (
+      <Link href={href} className={classes}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" className={classes} {...props}>
+      {children}
+    </button>
+  );
+}

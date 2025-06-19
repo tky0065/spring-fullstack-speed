@@ -1,0 +1,165 @@
+import React, { useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import MainLayout from '../../layouts/MainLayout';
+import Button from '../../components/ui/Button';
+import InputField from '../../components/ui/InputField';
+import Card from '../../components/ui/Card';
+import Alert from '../../components/ui/Alert';
+
+interface RegisterForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+}
+
+/**
+ * Page d'inscription
+ */
+export default function Register() {
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const { data, setData, post, processing, errors } = useForm<RegisterForm>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    acceptTerms: false,
+  });
+
+  /**
+   * Gestionnaire de soumission du formulaire
+   */
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    post('/register');
+  };
+
+  return (
+    <MainLayout title="Inscription">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <div className="text-center">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Créer un compte</h2>
+          </div>
+
+          {errors.email && <Alert type="error" message={errors.email} className="mb-4" />}
+          {errors.password && <Alert type="error" message={errors.password} className="mb-4" />}
+          {errors.confirmPassword && <Alert type="error" message={errors.confirmPassword} className="mb-4" />}
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <InputField
+                label="Prénom"
+                id="firstName"
+                name="firstName"
+                type="text"
+                value={data.firstName}
+                onChange={(e) => setData('firstName', e.target.value)}
+                autoComplete="given-name"
+                required
+                error={errors.firstName}
+              />
+
+              <InputField
+                label="Nom"
+                id="lastName"
+                name="lastName"
+                type="text"
+                value={data.lastName}
+                onChange={(e) => setData('lastName', e.target.value)}
+                autoComplete="family-name"
+                required
+                error={errors.lastName}
+              />
+            </div>
+
+            <InputField
+              label="Adresse email"
+              id="email"
+              name="email"
+              type="email"
+              value={data.email}
+              onChange={(e) => setData('email', e.target.value)}
+              autoComplete="email"
+              required
+              error={errors.email}
+            />
+
+            <div className="relative">
+              <InputField
+                label="Mot de passe"
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={data.password}
+                onChange={(e) => setData('password', e.target.value)}
+                autoComplete="new-password"
+                required
+                error={errors.password}
+              />
+              <button
+                type="button"
+                className="absolute top-8 right-2 text-gray-500"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? 'Masquer' : 'Afficher'}
+              </button>
+            </div>
+
+            <InputField
+              label="Confirmer le mot de passe"
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              value={data.confirmPassword}
+              onChange={(e) => setData('confirmPassword', e.target.value)}
+              autoComplete="new-password"
+              required
+              error={errors.confirmPassword}
+            />
+
+            <div className="flex items-center">
+              <input
+                id="acceptTerms"
+                name="acceptTerms"
+                type="checkbox"
+                checked={data.acceptTerms}
+                onChange={(e) => setData('acceptTerms', e.target.checked)}
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                required
+              />
+              <label htmlFor="acceptTerms" className="ml-2 block text-sm text-gray-900">
+                J'accepte les <a href="/terms" className="text-primary-600 hover:text-primary-500">conditions d'utilisation</a>
+                {' '}et la <a href="/privacy" className="text-primary-600 hover:text-primary-500">politique de confidentialité</a>
+              </label>
+            </div>
+
+            <div>
+              <Button
+                primary
+                type="submit"
+                className="w-full"
+                disabled={processing}
+              >
+                {processing ? "Création du compte..." : "Créer un compte"}
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Vous avez déjà un compte?{' '}
+              <a href="/login" className="font-medium text-primary-600 hover:text-primary-500">
+                Se connecter
+              </a>
+            </p>
+          </div>
+        </Card>
+      </div>
+    </MainLayout>
+  );
+}
