@@ -1,0 +1,96 @@
+import { useState } from 'react';
+import ApiService from '@/services/ApiService';
+
+/**
+ * Hook personnalisé pour faciliter l'utilisation des API générées
+ * @param apiInstance Instance d'une API générée par OpenAPI Generator
+ * @returns Méthodes et états pour interagir avec l'API
+ */
+export function useApi<T>(endpoint: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  /**
+   * Récupère des données depuis l'API
+   */
+  const fetchData = async (params?: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await ApiService.get<T>(endpoint, { params });
+      setData(result);
+      return result;
+    } catch (err: any) {
+      const error = new Error(err.message || 'Une erreur est survenue lors de la requête API');
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Envoie des données à l'API via POST
+   */
+  const postData = async (data: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await ApiService.post<T>(endpoint, data);
+      return result;
+    } catch (err: any) {
+      const error = new Error(err.message || 'Une erreur est survenue lors de la requête API');
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Met à jour des données via PUT
+   */
+  const updateData = async (id: string | number, data: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await ApiService.put<T>(`${endpoint}/${id}`, data);
+      return result;
+    } catch (err: any) {
+      const error = new Error(err.message || 'Une erreur est survenue lors de la requête API');
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Supprime des données via DELETE
+   */
+  const deleteData = async (id: string | number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await ApiService.delete<T>(`${endpoint}/${id}`);
+      return result;
+    } catch (err: any) {
+      const error = new Error(err.message || 'Une erreur est survenue lors de la requête API');
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    fetchData,
+    postData,
+    updateData,
+    deleteData
+  };
+}

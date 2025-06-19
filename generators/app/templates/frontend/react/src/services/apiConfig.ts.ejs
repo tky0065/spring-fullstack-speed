@@ -1,0 +1,37 @@
+import { Configuration } from '@api/configuration';
+import ApiService from './ApiService';
+
+/**
+ * Configuration globale pour toutes les API générées
+ * Cette configuration peut être importée et utilisée lors de l'initialisation de n'importe quelle API
+ */
+export const apiConfiguration = new Configuration({
+  basePath: '',
+  middleware: [],
+  baseOptions: {
+    // Utilisation de l'instance Axios configurée dans ApiService
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }
+  },
+  // Utilisation de l'instance Axios avec les intercepteurs configurés
+  axios: ApiService.getAxiosInstance()
+});
+
+/**
+ * Fonction d'initialisation d'API - crée une instance d'API générée par OpenAPI Generator
+ * @param ApiClass Classe d'API générée par OpenAPI Generator
+ * @returns Instance configurée de l'API
+ *
+ * Exemple d'utilisation:
+ * ```typescript
+ * import { UserApi } from '@api/api';
+ * import { initApi } from '@/services/apiConfig';
+ *
+ * const userApi = initApi(UserApi);
+ * ```
+ */
+export function initApi<T>(ApiClass: new (configuration: Configuration) => T): T {
+  return new ApiClass(apiConfiguration);
+}

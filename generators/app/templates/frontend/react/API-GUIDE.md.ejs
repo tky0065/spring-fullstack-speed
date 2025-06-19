@@ -1,0 +1,157 @@
+# API Frontend avec OpenAPI Generator
+
+Ce projet utilise OpenAPI Generator pour générer automatiquement des clients API TypeScript à partir de votre API Spring Boot.
+
+## 💡 Comment ça fonctionne
+
+1. Votre backend Spring Boot expose une documentation OpenAPI/Swagger
+2. Le générateur d'API récupère cette documentation et génère des clients TypeScript typés
+3. Vous utilisez ces clients dans votre code React avec autocomplétion et typage fort
+
+## 🚀 Génération des clients API
+
+### Prérequis
+
+- Backend Spring Boot en cours d'exécution avec SpringDoc configuré
+- npm/Node.js installé
+
+### Commande simple
+
+```bash
+npm run api
+```
+
+Cette commande vérifie automatiquement si votre serveur est accessible et génère les clients API dans le dossier `src/api`.
+
+### Options avancées
+
+```bash
+# Utiliser une URL spécifique
+npm run api -- --url=http://localhost:8080/v3/api-docs
+
+# Spécifier un dossier de sortie
+npm run api -- --output=./src/api-clients
+
+# Utiliser un générateur différent
+npm run api -- --generator=typescript-fetch
+
+# Ignorer la vérification du serveur
+npm run api -- --skip-validation
+
+# Afficher l'aide
+npm run api -- --help
+```
+
+## 📚 Utilisation des API générées
+
+### Exemple simple
+
+```tsx
+import { UserApi } from '../api';
+import { apiConfiguration } from '../services/apiConfig';
+
+// Composant React
+function UsersList() {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    // Initialiser l'API générée
+    const userApi = new UserApi(apiConfiguration);
+
+    // Appeler l'API
+    userApi.getAllUsers()
+      .then(response => setUsers(response.data))
+      .catch(error => console.error(error));
+  }, []);
+
+  return (
+    <div>
+      <h2>Liste des utilisateurs</h2>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### Avec React Query
+
+```tsx
+import { useQuery } from 'react-query';
+import { UserApi } from '../api';
+import { apiConfiguration } from '../services/apiConfig';
+
+// Composant React avec React Query
+function UsersListWithQuery() {
+  const userApi = new UserApi(apiConfiguration);
+
+  const { data: users, isLoading, error } = useQuery('users',
+    async () => {
+      const response = await userApi.getAllUsers();
+      return response.data;
+    }
+  );
+
+  if (isLoading) return <div>Chargement...</div>;
+  if (error) return <div>Erreur: {error.message}</div>;
+
+  return (
+    <div>
+      <h2>Liste des utilisateurs</h2>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### Avec notre hook personnalisé
+
+```tsx
+import { useApi } from '../hooks/useApi';
+
+// Composant React avec notre hook personnalisé
+function UsersListWithHook() {
+  const { data: users, loading, error, fetchData } = useApi('/users');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading) return <div>Chargement...</div>;
+  if (error) return <div>Erreur: {error.message}</div>;
+
+  return (
+    <div>
+      <h2>Liste des utilisateurs</h2>
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## 🔄 Automatisation
+
+Pour assurer que vos clients API sont toujours à jour, vous pouvez :
+
+1. **Régénérer lors des changements backend** : Ajoutez un script dans votre package.json qui surveille les changements de l'API
+2. **Intégrer dans votre CI/CD** : Générez les clients API lors de votre processus de build
+3. **Pre-commit hook** : Générez les clients avant chaque commit pour vous assurer qu'ils sont à jour
+
+## ✨ Avantages par rapport à Inertia.js
+
+- **Typage fort** : TypeScript connaît exactement la structure de vos API
+- **Indépendance du framework** : Fonctionne avec n'importe quel framework frontend
+- **Documentation intégrée** : Les clients générés incluent des commentaires JSDoc
+- **Evolutivité** : S'adapte automatiquement à l'évolution de votre API
+- **Cohérence** : Assure que frontend et backend partagent les mêmes contrats d'API

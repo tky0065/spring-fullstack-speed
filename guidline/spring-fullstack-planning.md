@@ -155,7 +155,7 @@ generator-spring-fullstack/
 - [ ] Tester l'intégration React-Inertia
 
 
-### Module 3.3 : Templates Vue.js + Inertia
+### Module 3.3 : Templates Vue.js + openapi generator
 - [x] Créer le template Vue.js de base
 - [x] Configurer Vite pour Vue
 - [x] Générer les composants Vue de base
@@ -166,7 +166,7 @@ generator-spring-fullstack/
 - [x] Configurer les styles (Vuetify/Quasar)
 - [x] Créer les composants UI réutilisables
 - [ ] Implémenter Vuex/Pinia pour l'état
-- [ ] Tester l'intégration Vue-Inertia
+- [ ] `Je veux tu supprime tous ce qui concerne inertia je veux qu'on openapi generator pour generer les api dans le frontend pas besoin de inertia (important) et la generation doit etre automatique ou une commande pour generer facilement`
 - [ ] posibilté de générer api dans le frontend avec openapi generator à partir de la docs-api
 
 ### Module 3.4 : Templates Traditionnels (Angular + openapi generator, Thymeleaf, JTE)

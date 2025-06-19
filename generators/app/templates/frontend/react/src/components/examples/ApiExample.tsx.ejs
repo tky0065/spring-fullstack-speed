@@ -1,0 +1,85 @@
+import React from 'react';
+import { useQuery, useMutation, QueryClient, QueryClientProvider } from 'react-query';
+import { UserApi } from '@api/api'; // Importation d'une API générée par OpenAPI Generator
+import { apiConfig } from '@/services/ApiService';
+
+// Création du client Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 30000, // 30 secondes
+    },
+  },
+});
+
+// Exemple de composant qui utilise l'API générée
+const UserList = () => {
+  // Initialisation de l'API utilisateur générée
+  const userApi = new UserApi(apiConfig);
+
+  // Utilisation de useQuery pour récupérer les utilisateurs
+  const { data: users, isLoading, error } = useQuery('users',
+    async () => {
+      const response = await userApi.getAllUsers();
+      return response.data;
+    }
+  );
+
+  // Mutation pour ajouter un utilisateur
+  const createUserMutation = useMutation(
+    async (newUser: any) => {
+      const response = await userApi.createUser(newUser);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        // Invalider la requête 'users' pour déclencher un rechargement
+        queryClient.invalidateQueries('users');
+      },
+    }
+  );
+
+  // Gestion du chargement
+  if (isLoading) return <div>Chargement des utilisateurs...</div>;
+
+  // Gestion des erreurs
+  if (error) return <div>Erreur lors du chargement des utilisateurs: {(error as Error).message}</div>;
+
+  return (
+    <div>
+      <h2>Liste des utilisateurs</h2>
+      {users && users.length > 0 ? (
+        <ul>
+          {users.map((user: any) => (
+            <li key={user.id}>{user.username} - {user.email}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>Aucun utilisateur trouvé</p>
+      )}
+
+      <button
+        onClick={() => {
+          createUserMutation.mutate({
+            username: 'nouveau_utilisateur',
+            email: 'nouveau@example.com',
+            password: 'password123'
+          });
+        }}
+      >
+        Ajouter un utilisateur
+      </button>
+    </div>
+  );
+};
+
+// Composant wrapper qui fournit le contexte React Query
+export const ApiExampleWrapper = () => (
+  <QueryClientProvider client={queryClient}>
+    <UserList />
+  </QueryClientProvider>
+);
+
+export default ApiExampleWrapper;

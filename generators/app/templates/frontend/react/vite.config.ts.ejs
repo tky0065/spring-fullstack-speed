@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@api': path.resolve(__dirname, './src/api'),
     },
   },
   build: {
@@ -22,7 +23,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      '/@inertia': {
+      // Proxy pour les endpoints de documentation Swagger/OpenAPI
+      '/swagger-ui': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/v3/api-docs': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       }
@@ -30,6 +36,6 @@ export default defineConfig({
   },
   // Configuration optimisée pour TypeScript
   optimizeDeps: {
-    include: ['react', 'react-dom', '@inertiajs/react']
+    include: ['react', 'react-dom', 'axios', 'react-router-dom', 'react-query']
   }
 });
