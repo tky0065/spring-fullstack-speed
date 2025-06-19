@@ -1,0 +1,88 @@
+package <%= packageName %>.util;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Optional;
+
+/**
+ * Classe utilitaire pour les opérations liées à la sécurité
+ */
+public final class SecurityUtils {
+
+    private SecurityUtils() {
+    }
+
+    /**
+     * Obtient le nom d'utilisateur de l'utilisateur actuellement authentifié.
+     *
+     * @return le nom d'utilisateur de l'utilisateur actuel
+     */
+    public static Optional<String> getCurrentUsername() {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        return Optional.ofNullable(extractPrincipal(securityContext.getAuthentication()));
+    }
+
+    private static String extractPrincipal(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        } else if (authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails springSecurityUser = (UserDetails) authentication.getPrincipal();
+            return springSecurityUser.getUsername();
+        } else if (authentication.getPrincipal() instanceof String) {
+            return (String) authentication.getPrincipal();
+        }
+        return null;
+    }
+
+    /**
+     * Vérifie si l'utilisateur actuel est authentifié.
+     *
+     * @return true si l'utilisateur est authentifié
+     */
+    public static boolean isAuthenticated() {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
+        return authentication != null && authentication.isAuthenticated();
+    }
+
+    /**
+     * Vérifie si l'utilisateur actuel a une autorité spécifique.
+     *
+     * @param authority l'autorité à vérifier
+     * @return true si l'utilisateur possède l'autorité
+     */
+    public static boolean hasAuthority(String authority) {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(authority));
+    }
+
+    /**
+     * Vérifie si l'utilisateur actuel a au moins une des autorités spécifiées.
+     *
+     * @param authorities les autorités à vérifier
+     * @return true si l'utilisateur possède au moins une des autorités
+     */
+    public static boolean hasAnyAuthority(String... authorities) {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
+        Authentication authentication = securityContext.getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        for (String authority : authorities) {
+            if (authentication.getAuthorities().stream()
+                    .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(authority))) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

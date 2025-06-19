@@ -88,17 +88,17 @@ generator-spring-fullstack/
 ### Module 2.1 : Génération Spring Boot Base
 - [ ] Créer le template Spring Boot principal
 - [ ] Générer la structure Maven/Gradle
-- [ ] Configurer Spring Boot Starter dependencies
-- [ ] Créer la classe Application principale
-- [ ] Générer les fichiers de configuration (application.yml/properties)
-- [ ] Implémenter les profils (dev, test, prod)
-- [ ] Créer les packages de base (controller, service, repository, entity)
-- [ ] Générer les classes utilitaires communes
-- [ ] Configurer les logs (Logback)
-- [ ] Tester la génération d'un projet Spring Boot minimal
+- [x] Configurer Spring Boot Starter dependencies
+- [x] Créer la classe Application principale
+- [x] Générer les fichiers de configuration (application.yml/properties)
+- [x] Implémenter les profils (dev, test, prod)
+- [x] Créer les packages de base (controller, service, repository, entity)
+- [x] Générer les classes utilitaires communes
+- [x] Configurer les logs (Logback)
+- [x] Tester la génération d'un projet Spring Boot minimal
 
 ### Module 2.2 : Configuration Base de Données
-- [ ] Implémenter le support MySQL
+- [x] Implémenter le support MySQL
 - [ ] Implémenter le support PostgreSQL
 - [ ] Implémenter le support MongoDB
 - [ ] Implémenter le support H2 (développement)

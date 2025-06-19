@@ -1,0 +1,97 @@
+package <%= packageName %>.config;
+
+<% if (database === 'PostgreSQL') { %>
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+import java.util.Properties;
+
+/**
+ * Configuration spécifique à PostgreSQL.
+ * Active uniquement lorsque PostgreSQL est sélectionné comme base de données.
+ */
+@Configuration
+public class PostgreSQLDatabaseConfig {
+
+    @Value("${spring.datasource.url}")
+    private String url;
+
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    /**
+     * Configuration avancée PostgreSQL pour l'environnement de production.
+     * Ces paramètres sont optimisés pour les performances et la sécurité.
+     *
+     * @return DataSource configurée avec les paramètres PostgreSQL optimisés
+     */
+    @Bean
+    @Profile("prod")
+    public DataSource productionDataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        dataSource.setDriverClassName("org.postgresql.Driver");
+
+        Properties props = new Properties();
+        // Performance optimizations
+        props.setProperty("reWriteBatchedInserts", "true");
+        props.setProperty("prepareThreshold", "5");
+        props.setProperty("preparedStatementCacheQueries", "256");
+        props.setProperty("preparedStatementCacheSizeMiB", "5");
+
+        // Security & connections
+        props.setProperty("ssl", "true");
+        props.setProperty("sslmode", "prefer");
+        props.setProperty("tcpKeepAlive", "true");
+        props.setProperty("connectTimeout", "10");
+        props.setProperty("loginTimeout", "10");
+
+        // Additional settings for stability
+        props.setProperty("ApplicationName", "<%= appName %> Production");
+        props.setProperty("socketTimeout", "60");
+        props.setProperty("cancelSignalTimeout", "10");
+
+        dataSource.setConnectionProperties(props);
+
+        return dataSource;
+    }
+
+    /**
+     * Configuration PostgreSQL pour l'environnement de développement.
+     * Ces paramètres sont optimisés pour le développement et le débogage.
+     *
+     * @return DataSource configurée pour environnement de développement
+     */
+    @Bean
+    @Profile("dev")
+    public DataSource developmentDataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        dataSource.setDriverClassName("org.postgresql.Driver");
+
+        Properties props = new Properties();
+        // Development friendly settings
+        props.setProperty("ssl", "false");
+        props.setProperty("loggerLevel", "TRACE");
+        props.setProperty("ApplicationName", "<%= appName %> Development");
+        props.setProperty("autosave", "always");
+        props.setProperty("tcpKeepAlive", "true");
+        props.setProperty("stringtype", "unspecified");
+
+        dataSource.setConnectionProperties(props);
+
+        return dataSource;
+    }
+}
+<% } %>

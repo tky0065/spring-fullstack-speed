@@ -1,0 +1,89 @@
+#!/bin/bash
+# Script d'initialisation PostgreSQL pour <%= appName %>
+# Généré par Spring-Fullstack-Speed
+
+# Couleurs pour les messages
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Configuration de la base de données
+DB_NAME="<%= appName.toLowerCase().replace(/-/g, '_') %>"
+DB_USER="<%= appName.toLowerCase().replace(/-/g, '_') %>_user"
+DB_PASSWORD="change_this_password"
+DB_ADMIN_USER="postgres"
+
+echo -e "${YELLOW}=== Initialisation de la base de données PostgreSQL pour <%= appName %> ===${NC}"
+
+# Vérification si PostgreSQL est installé
+if ! command -v psql &> /dev/null; then
+    echo -e "${RED}PostgreSQL n'est pas installé. Veuillez installer PostgreSQL avant de continuer.${NC}"
+    exit 1
+fi
+
+# Demande des informations de connexion
+read -p "Entrez le nom d'utilisateur PostgreSQL admin [$DB_ADMIN_USER]: " ADMIN_USER
+ADMIN_USER=${ADMIN_USER:-$DB_ADMIN_USER}
+
+read -sp "Entrez le mot de passe PostgreSQL admin: " ADMIN_PASSWORD
+echo ""
+
+# Création de la base de données et de l'utilisateur
+echo -e "${YELLOW}Création de la base de données et de l'utilisateur...${NC}"
+
+export PGPASSWORD="$ADMIN_PASSWORD"
+
+# Vérifier si l'utilisateur existe déjà
+USER_EXISTS=$(psql -h localhost -U "$ADMIN_USER" -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null)
+
+if [ "$USER_EXISTS" != "1" ]; then
+    psql -h localhost -U "$ADMIN_USER" -c "CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASSWORD';" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Erreur lors de la création de l'utilisateur. Vérifiez les identifiants PostgreSQL.${NC}"
+        exit 1
+    else
+        echo -e "${GREEN}Utilisateur $DB_USER créé avec succès.${NC}"
+    fi
+else
+    echo -e "${YELLOW}L'utilisateur $DB_USER existe déjà.${NC}"
+fi
+
+# Vérifier si la base de données existe déjà
+DB_EXISTS=$(psql -h localhost -U "$ADMIN_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null)
+
+if [ "$DB_EXISTS" != "1" ]; then
+    psql -h localhost -U "$ADMIN_USER" -c "CREATE DATABASE $DB_NAME WITH OWNER = $DB_USER ENCODING = 'UTF8' LC_COLLATE = 'en_US.utf8' LC_CTYPE = 'en_US.utf8';" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Erreur lors de la création de la base de données. Vérifiez les identifiants PostgreSQL.${NC}"
+        exit 1
+    else
+        echo -e "${GREEN}Base de données $DB_NAME créée avec succès.${NC}"
+    fi
+else
+    echo -e "${YELLOW}La base de données $DB_NAME existe déjà.${NC}"
+fi
+
+# Accordez les privilèges à l'utilisateur
+psql -h localhost -U "$ADMIN_USER" -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;" 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Privilèges accordés avec succès à l'utilisateur $DB_USER.${NC}"
+else
+    echo -e "${RED}Erreur lors de l'attribution des privilèges.${NC}"
+    exit 1
+fi
+
+# Également pour les environnements de développement et de test
+psql -h localhost -U "$ADMIN_USER" -c "CREATE DATABASE ${DB_NAME}_dev WITH OWNER = $DB_USER ENCODING = 'UTF8';" 2>/dev/null
+psql -h localhost -U "$ADMIN_USER" -c "CREATE DATABASE ${DB_NAME}_test WITH OWNER = $DB_USER ENCODING = 'UTF8';" 2>/dev/null
+
+echo -e "${GREEN}Configuration de la base de données terminée!${NC}"
+
+# Informations de connexion pour application.yml
+echo -e "${YELLOW}Configuration de la base de données pour application.yml:${NC}"
+echo -e "${GREEN}spring.datasource.url=jdbc:postgresql://localhost:5432/$DB_NAME${NC}"
+echo -e "${GREEN}spring.datasource.username=$DB_USER${NC}"
+echo -e "${GREEN}spring.datasource.password=$DB_PASSWORD${NC}"
+
+# Instructions pour l'application.yml
+echo -e "${YELLOW}Copiez ces informations dans votre fichier application.yml${NC}"

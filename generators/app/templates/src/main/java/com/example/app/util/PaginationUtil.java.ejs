@@ -1,0 +1,59 @@
+package <%= packageName %>.util;
+
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.util.UriComponentsBuilder;
+
+/**
+ * Classe utilitaire pour la pagination des résultats API REST
+ */
+public final class PaginationUtil {
+
+    private static final String HEADER_X_TOTAL_COUNT = "X-Total-Count";
+    private static final String HEADER_LINK_FORMAT = "<{0}>; rel=\"{1}\"";
+
+    private PaginationUtil() {
+    }
+
+    /**
+     * Génère les en-têtes HTTP pour la pagination
+     *
+     * @param page la page actuelle
+     * @param baseUrl l'URL de base pour construire les liens
+     * @return les en-têtes HTTP pour la pagination
+     */
+    public static <T> HttpHeaders generatePaginationHttpHeaders(Page<T> page, String baseUrl) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HEADER_X_TOTAL_COUNT, Long.toString(page.getTotalElements()));
+
+        int pageNumber = page.getNumber();
+        int pageSize = page.getSize();
+        StringBuilder link = new StringBuilder();
+
+        if (pageNumber < page.getTotalPages() - 1) {
+            link.append(prepareLink(baseUrl, pageNumber + 1, pageSize, "next")).append(",");
+        }
+
+        if (pageNumber > 0) {
+            link.append(prepareLink(baseUrl, pageNumber - 1, pageSize, "prev")).append(",");
+        }
+
+        link.append(prepareLink(baseUrl, page.getTotalPages() - 1, pageSize, "last"))
+            .append(",")
+            .append(prepareLink(baseUrl, 0, pageSize, "first"));
+
+        headers.add(HttpHeaders.LINK, link.toString());
+        return headers;
+    }
+
+    private static String prepareLink(String baseUrl, int page, int size, String rel) {
+        String url = UriComponentsBuilder.fromUriString(baseUrl)
+            .queryParam("page", page)
+            .queryParam("size", size)
+            .toUriString()
+            .replace(",", "%2C")
+            .replace(";", "%3B");
+
+        return String.format(HEADER_LINK_FORMAT, url, rel);
+    }
+}

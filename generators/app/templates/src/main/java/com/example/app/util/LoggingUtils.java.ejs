@@ -1,0 +1,121 @@
+package <%= packageName %>.util;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.function.Supplier;
+
+/**
+ * Utilitaire de journalisation qui améliore l'utilisation de SLF4J
+ * et évite l'évaluation de messages coûteux lorsque le niveau de log n'est pas activé.
+ */
+public final class LoggingUtils {
+
+    private LoggingUtils() {
+        // Classe utilitaire, pas d'instance
+    }
+
+    /**
+     * Journalise un message au niveau DEBUG si ce niveau est activé pour le logger donné.
+     * Utilise un Supplier pour éviter les évaluations de chaînes coûteuses.
+     *
+     * @param logger le logger SLF4J
+     * @param messageSupplier fournisseur du message à journaliser
+     */
+    public static void logDebug(Logger logger, Supplier<String> messageSupplier) {
+        if (logger.isDebugEnabled()) {
+            logger.debug(messageSupplier.get());
+        }
+    }
+
+    /**
+     * Journalise un message au niveau TRACE si ce niveau est activé pour le logger donné.
+     * Utilise un Supplier pour éviter les évaluations de chaînes coûteuses.
+     *
+     * @param logger le logger SLF4J
+     * @param messageSupplier fournisseur du message à journaliser
+     */
+    public static void logTrace(Logger logger, Supplier<String> messageSupplier) {
+        if (logger.isTraceEnabled()) {
+            logger.trace(messageSupplier.get());
+        }
+    }
+
+    /**
+     * Configure et retourne un logger pour la classe appelante.
+     *
+     * @return le logger SLF4J configuré
+     */
+    public static Logger getLogger() {
+        // Récupère la classe appelante
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        String callingClass = stackTrace[2].getClassName();
+        return LoggerFactory.getLogger(callingClass);
+    }
+
+    /**
+     * Journalise les détails d'une exception et sa trace de pile.
+     *
+     * @param logger le logger SLF4J
+     * @param message le message de contexte
+     * @param ex l'exception à journaliser
+     */
+    public static void logException(Logger logger, String message, Throwable ex) {
+        logger.error("{}: {} - {}", message, ex.getClass().getName(), ex.getMessage());
+        if (logger.isDebugEnabled()) {
+            logger.debug("Stack trace:", ex);
+        }
+    }
+
+    /**
+     * Journalise les performances d'une méthode.
+     * À utiliser dans un bloc try-finally.
+     *
+     * @param logger le logger SLF4J
+     * @param methodName nom de la méthode
+     * @param startTime temps de démarrage en millisecondes
+     */
+    public static void logPerformance(Logger logger, String methodName, long startTime) {
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        if (logger.isDebugEnabled()) {
+            logger.debug("Method [{}] executed in {} ms", methodName, elapsedTime);
+        }
+    }
+
+    /**
+     * Journalise les paramètres d'une méthode au niveau TRACE.
+     *
+     * @param logger le logger SLF4J
+     * @param methodName nom de la méthode
+     * @param params paramètres à journaliser
+     */
+    public static void logMethodParams(Logger logger, String methodName, Object... params) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("Method [{}] called with params: {}", methodName, Arrays.toString(params));
+        }
+    }
+
+    /**
+     * Crée une chaîne formatée de contexte d'application incluant l'utilisateur et l'ID de transaction.
+     *
+     * @param userId ID de l'utilisateur ou null
+     * @param transactionId ID de transaction ou null
+     * @return chaîne de contexte formatée
+     */
+    public static String createContextString(String userId, String transactionId) {
+        StringBuilder context = new StringBuilder("[");
+        if (userId != null && !userId.isEmpty()) {
+            context.append("userId=").append(userId);
+        } else {
+            context.append("userId=anonymous");
+        }
+
+        if (transactionId != null && !transactionId.isEmpty()) {
+            context.append(", txId=").append(transactionId);
+        }
+
+        context.append("]");
+        return context.toString();
+    }
+}

@@ -1,0 +1,98 @@
+package <%= packageName %>.config;
+
+<% if (database === 'MySQL') { %>
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+import java.util.Properties;
+
+/**
+ * Configuration spécifique à MySQL.
+ * Active uniquement lorsque MySQL est sélectionné comme base de données.
+ */
+@Configuration
+public class MySQLDatabaseConfig {
+
+    @Value("${spring.datasource.url}")
+    private String url;
+
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    /**
+     * Configuration avancée MySQL pour l'environnement de production.
+     * Ces paramètres sont optimisés pour les performances et la sécurité.
+     *
+     * @return DataSource configurée avec les paramètres MySQL optimisés
+     */
+    @Bean
+    @Profile("prod")
+    public DataSource productionDataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+        Properties props = new Properties();
+        // Performance optimizations
+        props.setProperty("cachePrepStmts", "true");
+        props.setProperty("prepStmtCacheSize", "250");
+        props.setProperty("prepStmtCacheSqlLimit", "2048");
+        props.setProperty("useServerPrepStmts", "true");
+        props.setProperty("useLocalSessionState", "true");
+        props.setProperty("rewriteBatchedStatements", "true");
+        props.setProperty("cacheResultSetMetadata", "true");
+        props.setProperty("cacheServerConfiguration", "true");
+        props.setProperty("elideSetAutoCommits", "true");
+        props.setProperty("maintainTimeStats", "false");
+
+        // Security
+        props.setProperty("allowPublicKeyRetrieval", "true");
+        props.setProperty("useSSL", "true");
+
+        // Additional settings for stability
+        props.setProperty("connectTimeout", "10000"); // 10 seconds
+        props.setProperty("socketTimeout", "60000"); // 60 seconds
+
+        dataSource.setConnectionProperties(props);
+
+        return dataSource;
+    }
+
+    /**
+     * Configuration MySQL pour l'environnement de développement.
+     * Ces paramètres sont optimisés pour le développement et le débogage.
+     *
+     * @return DataSource configurée pour environnement de développement
+     */
+    @Bean
+    @Profile("dev")
+    public DataSource developmentDataSource() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setUrl(url);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+        Properties props = new Properties();
+        // Development friendly settings
+        props.setProperty("createDatabaseIfNotExist", "true");
+        props.setProperty("useSSL", "false");
+        props.setProperty("allowPublicKeyRetrieval", "true");
+        props.setProperty("characterEncoding", "utf8");
+        props.setProperty("useUnicode", "true");
+
+        dataSource.setConnectionProperties(props);
+
+        return dataSource;
+    }
+}
+<% } %>

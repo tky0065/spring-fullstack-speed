@@ -1,4 +1,4 @@
-base toi sur les fichier dans le dossier guidline pour continue les tasks
+base toi sur les fichier dans le dossier guidline pour continue les tasks, n'oublie pas de marker les tasks terminer
 
 
 

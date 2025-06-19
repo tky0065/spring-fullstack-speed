@@ -1,0 +1,39 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.entity.Example;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository pour gérer l'entité Example
+ * Utilise Spring Data JPA pour simplifier l'accès aux données
+ */
+@Repository
+public interface ExampleRepository extends JpaRepository<Example, Long> {
+
+    /**
+     * Trouve un exemple par son nom
+     * @param name le nom à rechercher
+     * @return l'exemple trouvé, ou empty si aucun n'existe
+     */
+    Optional<Example> findByName(String name);
+
+    /**
+     * Trouve tous les exemples actifs
+     * @return liste des exemples actifs
+     */
+    List<Example> findByActiveTrue();
+
+    /**
+     * Trouve tous les exemples dont le nom contient la chaîne spécifiée (insensible à la casse)
+     * @param namePart partie du nom à rechercher
+     * @return liste des exemples correspondants
+     */
+    @Query("SELECT e FROM Example e WHERE LOWER(e.name) LIKE LOWER(CONCAT('%', :namePart, '%'))")
+    List<Example> findByNameContainingIgnoreCase(@Param("namePart") String namePart);
+}

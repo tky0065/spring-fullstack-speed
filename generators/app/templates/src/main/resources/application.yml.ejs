@@ -4,38 +4,29 @@
 spring:
   application:
     name: <%= appName %>
+  profiles:
+    active: dev  # Profil actif par défaut
 
-  # Configuration de la base de données
-  datasource:
-<% if (database === 'MySQL') { %>
-    url: jdbc:mysql://localhost:3306/<%= appName %>?useSSL=false&serverTimezone=UTC
-    username: root
-    password:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-<% } else if (database === 'PostgreSQL') { %>
-    url: jdbc:postgresql://localhost:5432/<%= appName %>
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
-<% } else if (database === 'MongoDB') { %>
+  # Configuration commune de la base de données
+<% if (database === 'MongoDB') { %>
   data:
     mongodb:
       host: localhost
       port: 27017
       database: <%= appName %>
-<% } else if (database === 'H2') { %>
-    url: jdbc:h2:mem:<%= appName %>;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+<% } else { %>
+  datasource:
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: <%= appName %>HikariCP
+      max-lifetime: 2000000
+      connection-timeout: 30000
 <% } %>
 
-  # Configuration JPA
 <% if (database !== 'MongoDB') { %>
+  # Configuration JPA
   jpa:
     hibernate:
       ddl-auto: update
@@ -45,24 +36,80 @@ spring:
         format_sql: true
 <% if (database === 'MySQL') { %>
         dialect: org.hibernate.dialect.MySQL8Dialect
+        jdbc:
+          time_zone: UTC
+        # Optimisations MySQL spécifiques
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        batch_size: 30
 <% } else if (database === 'PostgreSQL') { %>
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+          time_zone: UTC
+        # Optimisations PostgreSQL spécifiques
+        temp:
+          use_jdbc_metadata_defaults: false
+        default_schema: public
 <% } else if (database === 'H2') { %>
         dialect: org.hibernate.dialect.H2Dialect
 <% } %>
+    open-in-view: false
+<% } %>
+
+<% if (additionalFeatures.includes('redis')) { %>
+  # Configuration Redis
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: false
+<% } %>
+
+<% if (frontendFramework === 'Thymeleaf') { %>
+  # Configuration Thymeleaf
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+<% } else if (frontendFramework === 'JTE') { %>
+  # Configuration JTE
+gg:
+  jte:
+    developmentMode: true
+    templateLocation: src/main/resources/templates
 <% } %>
 
   # Configuration des messages internationaux
   messages:
     basename: i18n/messages
+    encoding: UTF-8
+    cache-duration: 3600
 
 # Configuration du serveur
 server:
   port: 8080
+<% if (additionalFeatures.includes('openapi')) { %>
+  servlet:
+    context-path: /api
+<% } else { %>
   servlet:
     context-path: /
+<% } %>
   compression:
     enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+    min-response-size: 1024
 
 # Configuration du logging
 logging:
@@ -70,27 +117,233 @@ logging:
     root: INFO
     <%= packageName %>: DEBUG
     org.springframework.web: INFO
-    org.hibernate: INFO
+<% if (database !== 'MongoDB') { %>
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+<% } %>
+  file:
+    name: logs/<%= appName %>.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
 
-# Configuration de la sécurité (si activée)
 <% if (includeAuth) { %>
-security:
-  jwt:
-    secret: <%= generateRandomSecret() %>
-    expiration: 86400000  # 24 heures en millisecondes
+# Configuration JWT
+app:
+  security:
+    jwt:
+      secret: <%= generateRandomSecret(64) %>
+      expiration-ms: 86400000  # 24 heures en millisecondes
+      token-prefix: Bearer
+      header: Authorization
+<% } %>
+
+<% if (additionalFeatures.includes('prometheus')) { %>
+# Configuration Actuator/Prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+<% } %>
+
+<% if (additionalFeatures.includes('openapi')) { %>
+# Configuration OpenAPI/Swagger
+springdoc:
+  api-docs:
+    path: /docs
+  swagger-ui:
+    path: /swagger-ui
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+  show-actuator: true
 <% } %>
 
 # Configuration spécifique à l'application
 app:
   name: <%= appName %>
   description: Application générée avec Spring-Fullstack-Speed
-<% if (additionalFeatures.includes('openapi')) { %>
 
-# Configuration OpenAPI/Swagger
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: method
+---
+# Profil: dev (développement)
+spring:
+  config:
+    activate:
+      on-profile: dev
+<% if (database === 'MySQL') { %>
+  datasource:
+    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase().replace(/-/g, '_') %>_dev?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+<% } else if (database === 'PostgreSQL') { %>
+  datasource:
+    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase().replace(/-/g, '_') %>_dev
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: public
+      connection-init-sql: SET search_path TO public
+<% } else if (database === 'H2') { %>
+  datasource:
+    url: jdbc:h2:mem:<%= appName %>;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+<% } else if (database === 'MongoDB') { %>
+  data:
+    mongodb:
+      database: <%= appName %>_dev
 <% } %>
+<% if (database !== 'MongoDB') { %>
+  jpa:
+    hibernate:
+      ddl-auto: update
+<% } %>
+logging:
+  level:
+    <%= packageName %>: DEBUG
+
+---
+# Profil: test
+spring:
+  config:
+    activate:
+      on-profile: test
+<% if (database === 'MySQL') { %>
+  datasource:
+    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase().replace(/-/g, '_') %>_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+<% } else if (database === 'PostgreSQL') { %>
+  datasource:
+    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase().replace(/-/g, '_') %>_test
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+<% } else if (database === 'H2') { %>
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+<% } else if (database === 'MongoDB') { %>
+  data:
+    mongodb:
+      database: <%= appName %>_test
+<% } %>
+<% if (database !== 'MongoDB') { %>
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+<% } %>
+logging:
+  level:
+    root: WARN
+
+---
+# Profil: prod (production)
+spring:
+  config:
+    activate:
+      on-profile: prod
+<% if (database === 'MySQL') { %>
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:<%= appName.toLowerCase().replace(/-/g, '_') %>}?useSSL=true&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Configuration HikariCP optimisée pour production
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+<% } else if (database === 'PostgreSQL') { %>
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:<%= appName.toLowerCase().replace(/-/g, '_') %>}?ssl=true
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    # Configuration HikariCP optimisée pour production
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+      schema: public
+      data-source-properties:
+        ApplicationName: <%= appName %> (Production)
+        reWriteBatchedInserts: true
+<% } else if (database === 'H2') { %>
+  datasource:
+    url: jdbc:h2:file:./data/<%= appName %>_prod;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+  h2:
+    console:
+      enabled: false
+<% } else if (database === 'MongoDB') { %>
+  data:
+    mongodb:
+      host: ${DB_HOST:localhost}
+      port: ${DB_PORT:27017}
+      database: ${DB_NAME:<%= appName %>}
+      username: ${DB_USERNAME:}
+      password: ${DB_PASSWORD:}
+<% } %>
+<% if (database !== 'MongoDB') { %>
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+<% if (database === 'MySQL') { %>
+        # Cache de second niveau pour MySQL en production
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+<% } else if (database === 'PostgreSQL') { %>
+        # Cache de second niveau pour PostgreSQL en production
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+        generate_statistics: true
+<% } %>
+<% } %>
+<% if (frontendFramework === 'Thymeleaf') { %>
+  thymeleaf:
+    cache: true
+<% } %>
+server:
+  compression:
+    enabled: true
+logging:
+  level:
+    root: WARN
+    <%= packageName %>: INFO
+  file:
+    name: /var/log/<%= appName %>/<%= appName %>.log

@@ -1,0 +1,156 @@
+package <%= packageName %>.util;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
+/**
+ * Classe utilitaire pour les opérations sur les dates et heures
+ */
+public final class DateTimeUtils {
+
+    private static final String DEFAULT_DATE_FORMAT = "yyyy-MM-dd";
+    private static final String DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final ZoneId DEFAULT_ZONE = ZoneId.systemDefault();
+
+    private DateTimeUtils() {
+    }
+
+    /**
+     * Convertit une date LocalDate en chaîne de caractères avec le format par défaut
+     *
+     * @param date la date à convertir
+     * @return chaîne formatée représentant la date
+     */
+    public static String formatDate(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
+        return formatDate(date, DEFAULT_DATE_FORMAT);
+    }
+
+    /**
+     * Convertit une date LocalDate en chaîne de caractères avec le format spécifié
+     *
+     * @param date la date à convertir
+     * @param pattern le format souhaité
+     * @return chaîne formatée représentant la date
+     */
+    public static String formatDate(LocalDate date, String pattern) {
+        if (date == null) {
+            return null;
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+        return date.format(formatter);
+    }
+
+    /**
+     * Convertit un datetime LocalDateTime en chaîne de caractères avec le format par défaut
+     *
+     * @param dateTime le datetime à convertir
+     * @return chaîne formatée représentant le datetime
+     */
+    public static String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return null;
+        }
+        return formatDateTime(dateTime, DEFAULT_DATETIME_FORMAT);
+    }
+
+    /**
+     * Convertit un datetime LocalDateTime en chaîne de caractères avec le format spécifié
+     *
+     * @param dateTime le datetime à convertir
+     * @param pattern le format souhaité
+     * @return chaîne formatée représentant le datetime
+     */
+    public static String formatDateTime(LocalDateTime dateTime, String pattern) {
+        if (dateTime == null) {
+            return null;
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+        return dateTime.format(formatter);
+    }
+
+    /**
+     * Parse une chaîne de caractères en LocalDate avec le format par défaut
+     *
+     * @param dateStr la chaîne à parser
+     * @return l'objet LocalDate parsé
+     */
+    public static LocalDate parseDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        return parseDate(dateStr, DEFAULT_DATE_FORMAT);
+    }
+
+    /**
+     * Parse une chaîne de caractères en LocalDate avec le format spécifié
+     *
+     * @param dateStr la chaîne à parser
+     * @param pattern le format attendu
+     * @return l'objet LocalDate parsé
+     */
+    public static LocalDate parseDate(String dateStr, String pattern) {
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
+        }
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+        return LocalDate.parse(dateStr, formatter);
+    }
+
+    /**
+     * Convertit un Instant en LocalDateTime
+     *
+     * @param instant l'instant à convertir
+     * @return l'objet LocalDateTime correspondant
+     */
+    public static LocalDateTime toLocalDateTime(Instant instant) {
+        if (instant == null) {
+            return null;
+        }
+        return LocalDateTime.ofInstant(instant, DEFAULT_ZONE);
+    }
+
+    /**
+     * Calcule l'âge à partir d'une date de naissance
+     *
+     * @param birthDate la date de naissance
+     * @return l'âge en années
+     */
+    public static int calculateAge(LocalDate birthDate) {
+        if (birthDate == null) {
+            return 0;
+        }
+        return birthDate.until(LocalDate.now()).getYears();
+    }
+
+    /**
+     * Vérifie si une date est dans le passé
+     *
+     * @param date la date à vérifier
+     * @return true si la date est dans le passé
+     */
+    public static boolean isPast(LocalDate date) {
+        if (date == null) {
+            return false;
+        }
+        return date.isBefore(LocalDate.now());
+    }
+
+    /**
+     * Vérifie si une date est dans le futur
+     *
+     * @param date la date à vérifier
+     * @return true si la date est dans le futur
+     */
+    public static boolean isFuture(LocalDate date) {
+        if (date == null) {
+            return false;
+        }
+        return date.isAfter(LocalDate.now());
+    }
+}

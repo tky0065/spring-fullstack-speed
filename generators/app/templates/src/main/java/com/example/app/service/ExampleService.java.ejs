@@ -1,0 +1,128 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.entity.Example;
+import <%= packageName %>.repository.ExampleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les opérations liées à l'entité Example
+ */
+@Service
+@Transactional
+public class ExampleService {
+
+    private final Logger log = LoggerFactory.getLogger(ExampleService.class);
+
+    private final ExampleRepository exampleRepository;
+
+    @Autowired
+    public ExampleService(ExampleRepository exampleRepository) {
+        this.exampleRepository = exampleRepository;
+    }
+
+    /**
+     * Enregistre un nouvel exemple
+     *
+     * @param example l'exemple à sauvegarder
+     * @return l'exemple sauvegardé avec son ID généré
+     */
+    public Example save(Example example) {
+        log.debug("Request to save Example : {}", example);
+        return exampleRepository.save(example);
+    }
+
+    /**
+     * Met à jour un exemple existant
+     *
+     * @param example l'exemple à mettre à jour
+     * @return l'exemple mis à jour
+     */
+    public Example update(Example example) {
+        log.debug("Request to update Example : {}", example);
+        if (example.getId() == null) {
+            throw new IllegalArgumentException("Cannot update an example without ID");
+        }
+        return exampleRepository.save(example);
+    }
+
+    /**
+     * Récupère tous les exemples
+     *
+     * @return liste de tous les exemples
+     */
+    @Transactional(readOnly = true)
+    public List<Example> findAll() {
+        log.debug("Request to get all Examples");
+        return exampleRepository.findAll();
+    }
+
+    /**
+     * Récupère une page d'exemples
+     *
+     * @param pageable les informations de pagination
+     * @return page d'exemples
+     */
+    @Transactional(readOnly = true)
+    public Page<Example> findAll(Pageable pageable) {
+        log.debug("Request to get a page of Examples");
+        return exampleRepository.findAll(pageable);
+    }
+
+    /**
+     * Récupère un exemple par son ID
+     *
+     * @param id l'ID de l'exemple à récupérer
+     * @return l'exemple trouvé
+     * @throws EntityNotFoundException si l'exemple n'est pas trouvé
+     */
+    @Transactional(readOnly = true)
+    public Example findById(Long id) {
+        log.debug("Request to get Example : {}", id);
+        return exampleRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Example not found with id: " + id));
+    }
+
+    /**
+     * Supprime un exemple par son ID
+     *
+     * @param id l'ID de l'exemple à supprimer
+     */
+    public void delete(Long id) {
+        log.debug("Request to delete Example : {}", id);
+        exampleRepository.deleteById(id);
+    }
+
+    /**
+     * Recherche des exemples par partie de nom (insensible à la casse)
+     *
+     * @param namePart partie du nom à rechercher
+     * @return liste des exemples correspondants
+     */
+    @Transactional(readOnly = true)
+    public List<Example> searchByName(String namePart) {
+        log.debug("Request to search Examples by name containing : {}", namePart);
+        return exampleRepository.findByNameContainingIgnoreCase(namePart);
+    }
+
+    /**
+     * Recherche un exemple par son nom exact
+     *
+     * @param name nom exact à rechercher
+     * @return l'exemple trouvé ou vide si non trouvé
+     */
+    @Transactional(readOnly = true)
+    public Optional<Example> findByName(String name) {
+        log.debug("Request to get Example by name: {}", name);
+        return exampleRepository.findByName(name);
+    }
+}

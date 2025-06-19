@@ -1,0 +1,171 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.entity.Example;
+import <%= packageName %>.service.ExampleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+<% if (additionalFeatures.includes('openapi')) { %>
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+<% } %>
+
+/**
+ * REST Controller pour gérer les opérations sur l'entité Example
+ */
+<% if (additionalFeatures.includes('openapi')) { %>
+@Tag(name = "Example", description = "API pour la gestion des exemples")
+<% } %>
+@RestController
+@RequestMapping("/api/examples")
+public class ExampleController {
+
+    private final Logger log = LoggerFactory.getLogger(ExampleController.class);
+
+    private final ExampleService exampleService;
+
+    @Autowired
+    public ExampleController(ExampleService exampleService) {
+        this.exampleService = exampleService;
+    }
+
+    /**
+     * {@code POST  /api/examples} : Créer un nouvel exemple.
+     *
+     * @param example l'exemple à créer
+     * @return l'exemple créé avec un status {@code 201 (Created)} et l'URI vers la nouvelle ressource
+     * @throws URISyntaxException si l'URI de la location est incorrect
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Créer un nouvel exemple",
+              description = "Crée un nouvel exemple avec les informations fournies")
+    @ApiResponse(responseCode = "201", description = "Exemple créé avec succès")
+    @ApiResponse(responseCode = "400", description = "Requête invalide")
+<% } %>
+    @PostMapping
+    public ResponseEntity<Example> createExample(@Valid @RequestBody Example example) throws URISyntaxException {
+        log.debug("REST request to save Example : {}", example);
+        Example result = exampleService.save(example);
+        return ResponseEntity
+            .created(new URI("/api/examples/" + result.getId()))
+            .body(result);
+    }
+
+    /**
+     * {@code PUT  /api/examples} : Met à jour un exemple existant.
+     *
+     * @param example l'exemple à mettre à jour
+     * @return l'exemple mis à jour avec un status {@code 200 (OK)}
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Mettre à jour un exemple existant",
+              description = "Met à jour un exemple existant avec les informations fournies")
+    @ApiResponse(responseCode = "200", description = "Exemple mis à jour avec succès")
+    @ApiResponse(responseCode = "400", description = "Requête invalide")
+    @ApiResponse(responseCode = "404", description = "Exemple non trouvé")
+<% } %>
+    @PutMapping
+    public ResponseEntity<Example> updateExample(@Valid @RequestBody Example example) {
+        log.debug("REST request to update Example : {}", example);
+        Example result = exampleService.update(example);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * {@code GET  /api/examples} : Récupère tous les exemples.
+     *
+     * @param pageable les informations de pagination
+     * @return la liste des exemples avec un status {@code 200 (OK)}
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Récupérer tous les exemples",
+              description = "Retourne une liste paginée de tous les exemples")
+    @ApiResponse(responseCode = "200", description = "Opération réussie")
+<% } %>
+    @GetMapping
+    public ResponseEntity<Page<Example>> getAllExamples(Pageable pageable) {
+        log.debug("REST request to get all Examples");
+        Page<Example> page = exampleService.findAll(pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    /**
+     * {@code GET  /api/examples/:id} : Récupère un exemple par son id.
+     *
+     * @param id l'id de l'exemple à récupérer
+     * @return l'exemple avec un status {@code 200 (OK)} ou un status {@code 404 (Not Found)}
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Récupérer un exemple par ID",
+              description = "Retourne un exemple basé sur son ID")
+    @ApiResponse(responseCode = "200", description = "Opération réussie")
+    @ApiResponse(responseCode = "404", description = "Exemple non trouvé")
+<% } %>
+    @GetMapping("/{id}")
+    public ResponseEntity<Example> getExample(
+<% if (additionalFeatures.includes('openapi')) { %>
+        @Parameter(description = "ID de l'exemple à récupérer", required = true)
+<% } %>
+        @PathVariable Long id) {
+        log.debug("REST request to get Example : {}", id);
+        Example example = exampleService.findById(id);
+        return ResponseEntity.ok(example);
+    }
+
+    /**
+     * {@code DELETE  /api/examples/:id} : Supprime un exemple.
+     *
+     * @param id l'id de l'exemple à supprimer
+     * @return response avec status {@code 204 (NO_CONTENT)}
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Supprimer un exemple",
+              description = "Supprime un exemple basé sur son ID")
+    @ApiResponse(responseCode = "204", description = "Exemple supprimé avec succès")
+    @ApiResponse(responseCode = "404", description = "Exemple non trouvé")
+<% } %>
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteExample(
+<% if (additionalFeatures.includes('openapi')) { %>
+        @Parameter(description = "ID de l'exemple à supprimer", required = true)
+<% } %>
+        @PathVariable Long id) {
+        log.debug("REST request to delete Example : {}", id);
+        exampleService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * {@code GET  /api/examples/search} : Recherche des exemples par nom.
+     *
+     * @param query la partie du nom à rechercher
+     * @return la liste des exemples correspondants avec un status {@code 200 (OK)}
+     */
+<% if (additionalFeatures.includes('openapi')) { %>
+    @Operation(summary = "Rechercher des exemples par nom",
+              description = "Recherche des exemples dont le nom contient la chaîne spécifiée")
+    @ApiResponse(responseCode = "200", description = "Opération réussie")
+<% } %>
+    @GetMapping("/search")
+    public ResponseEntity<List<Example>> searchExamples(
+<% if (additionalFeatures.includes('openapi')) { %>
+        @Parameter(description = "Terme de recherche", required = true)
+<% } %>
+        @RequestParam String query) {
+        log.debug("REST request to search Examples with query: {}", query);
+        List<Example> results = exampleService.searchByName(query);
+        return ResponseEntity.ok(results);
+    }
+}

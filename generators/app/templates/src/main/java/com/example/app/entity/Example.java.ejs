@@ -1,0 +1,75 @@
+package <%= packageName %>.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/**
+ * Entité exemple utilisée comme démonstration
+ * Remplacer ou adapter selon les besoins spécifiques du projet
+ */
+@Entity
+@Table(name = "example")
+public class Example extends BaseEntity {
+
+    @NotBlank
+    @Size(max = 100)
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "active")
+    private boolean active = true;
+
+    // Constructeurs
+    public Example() {
+    }
+
+    public Example(String name) {
+        this.name = name;
+    }
+
+    public Example(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    // Getters et Setters
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    @Override
+    public String toString() {
+        return "Example{" +
+                "id=" + getId() +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", active=" + active +
+                '}';
+    }
+}

@@ -1,0 +1,100 @@
+package <%= packageName %>.util;
+
+import java.text.Normalizer;
+import java.util.Locale;
+import java.util.regex.Pattern;
+
+/**
+ * Classe utilitaire pour les opérations sur les chaînes de caractères
+ */
+public final class StringUtils {
+
+    private static final Pattern NONLATIN = Pattern.compile("[^\\w-]");
+    private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
+    private static final Pattern EDGESDHASHES = Pattern.compile("(^-|-$)");
+
+    private StringUtils() {
+    }
+
+    /**
+     * Génère un slug à partir d'une chaîne de caractères
+     * Un slug est une version URL-friendly d'une chaîne (sans accents, sans espaces, etc.)
+     *
+     * @param input la chaîne d'entrée
+     * @return le slug généré
+     */
+    public static String toSlug(String input) {
+        if (input == null) {
+            return "";
+        }
+
+        String nowhitespace = WHITESPACE.matcher(input).replaceAll("-");
+        String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD);
+        String slug = NONLATIN.matcher(normalized).replaceAll("");
+        slug = EDGESDHASHES.matcher(slug).replaceAll("");
+        return slug.toLowerCase(Locale.ENGLISH);
+    }
+
+    /**
+     * Tronque une chaîne à une longueur maximale, en ajoutant des points de suspension si nécessaire
+     *
+     * @param value la chaîne à tronquer
+     * @param maxLength la longueur maximale souhaitée
+     * @return la chaîne tronquée
+     */
+    public static String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+
+        return value.substring(0, maxLength - 3) + "...";
+    }
+
+    /**
+     * Vérifie si une chaîne est vide ou nulle
+     *
+     * @param str la chaîne à vérifier
+     * @return true si la chaîne est vide ou nulle
+     */
+    public static boolean isEmpty(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
+    /**
+     * Vérifie si une chaîne n'est pas vide
+     *
+     * @param str la chaîne à vérifier
+     * @return true si la chaîne n'est pas vide
+     */
+    public static boolean isNotEmpty(String str) {
+        return !isEmpty(str);
+    }
+
+    /**
+     * Capitalise la première lettre d'une chaîne
+     *
+     * @param str la chaîne d'entrée
+     * @return la chaîne avec la première lettre en majuscule
+     */
+    public static String capitalize(String str) {
+        if (isEmpty(str)) {
+            return str;
+        }
+
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
+    }
+
+    /**
+     * Convertit une chaîne camelCase en format snake_case
+     *
+     * @param str la chaîne en camelCase
+     * @return la chaîne en snake_case
+     */
+    public static String camelToSnakeCase(String str) {
+        if (isEmpty(str)) {
+            return str;
+        }
+
+        return str.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+    }
+}

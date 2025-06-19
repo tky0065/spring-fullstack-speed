@@ -14,9 +14,20 @@ import org.springframework.context.annotation.Bean;
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
 <% } %>
+<% if (additionalFeatures.includes('redis')) { %>
+import org.springframework.cache.annotation.EnableCaching;
+<% } %>
+<% if (additionalFeatures.includes('scheduling')) { %>
+import org.springframework.scheduling.annotation.EnableScheduling;
+<% } %>
+<% if (additionalFeatures.includes('async')) { %>
+import org.springframework.scheduling.annotation.EnableAsync;
+<% } %>
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Optional;
+import java.util.Collection;
 
 @SpringBootApplication
 <% if (additionalFeatures.includes('openapi')) { %>
@@ -27,6 +38,15 @@ import java.util.Optional;
         description = "API documentation for <%= appName %>"
     )
 )
+<% } %>
+<% if (additionalFeatures.includes('redis')) { %>
+@EnableCaching
+<% } %>
+<% if (additionalFeatures.includes('scheduling')) { %>
+@EnableScheduling
+<% } %>
+<% if (additionalFeatures.includes('async')) { %>
+@EnableAsync
 <% } %>
 public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application {
 
@@ -84,13 +104,15 @@ public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([
             log.warn("Impossible de déterminer l'adresse de l'hôte, utilisation de `localhost` par défaut");
         }
 
+        Collection<String> profiles = Arrays.asList(env.getActiveProfiles().length == 0 ? env.getDefaultProfiles() : env.getActiveProfiles());
+
         log.info("""
 
             ----------------------------------------------------------
             Application '{}' est démarrée ! Accès URLs:
             Local:      {}://localhost:{}{}
             Externe:    {}://{}:{}{}
-            Profil(s): {}
+            Profil(s):  {}
             ----------------------------------------------------------""",
             env.getProperty("spring.application.name"),
             protocol,
@@ -100,7 +122,6 @@ public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([
             hostAddress,
             serverPort,
             contextPath,
-            env.getActiveProfiles().length == 0 ? env.getDefaultProfiles() : env.getActiveProfiles()
-        );
+            profiles);
     }
 }
