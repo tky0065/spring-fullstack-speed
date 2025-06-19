@@ -1,61 +1,47 @@
 package <%= packageName %>.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
+<% if (database !== 'MongoDB') { %>
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.validation.constraints.NotBlank;
+<% } else { %>
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.validation.constraints.NotBlank;
+<% } %>
 
 /**
- * Classe d'exemple d'une entité JPA.
- * Cette classe montre la structure typique d'une entité avec validation et annotations JPA.
+ * Exemple de modèle d'entité
  */
+<% if (database !== 'MongoDB') { %>
 @Entity
-@Table(name = "examples")
+<% } else { %>
+@Document
+<% } %>
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Example {
 
     @Id
+<% if (database !== 'MongoDB') { %>
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+<% } %>
+    private <% if (database === 'MongoDB') { %>String<% } else { %>Long<% } %> id;
 
     @NotBlank(message = "Le nom est obligatoire")
-    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 500)
     private String description;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "active")
-    private boolean active = true;
-
-    /**
-     * Méthode exécutée avant la persistance de l'entité
-     * pour initialiser les dates de création et mise à jour.
-     */
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * Méthode exécutée avant la mise à jour de l'entité
-     * pour actualiser la date de mise à jour.
-     */
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    // Constructeur pratique
+    public Example(String name, String description) {
+        this.name = name;
+        this.description = description;
     }
 }

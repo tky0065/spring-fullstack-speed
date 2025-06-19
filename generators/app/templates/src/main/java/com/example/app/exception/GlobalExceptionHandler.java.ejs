@@ -1,5 +1,8 @@
 package <%= packageName %>.exception;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -7,66 +10,100 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
 
-import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Gestionnaire global d'exceptions pour l'application.
- * Permet de traiter les exceptions de manière centralisée et de renvoyer des réponses cohérentes.
+ * Gestionnaire global des exceptions de l'application
+ * Permet une gestion uniforme des erreurs pour tous les contrôleurs
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Structure d'erreur pour les réponses d'API.
-     */
-    public record ApiError(String message, String details, LocalDateTime timestamp, String path) {}
-
-    /**
-     * Gère les exceptions de validation des requêtes.
+     * Gestion des exceptions de validation des données
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiError> handleValidationExceptions(
+            MethodArgumentNotValidException ex, WebRequest request) {
+
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        return errors;
+
+        log.error("Validation error: {}", errors);
+
+        ApiError apiError = new ApiError(
+                HttpStatus.BAD_REQUEST.value(),
+                "Erreur de validation",
+                errors.toString(),
+                LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiError);
     }
 
     /**
-     * Gère les exceptions d'entités non trouvées.
+     * Gestion des exceptions de ressource non trouvée
      */
-    @ExceptionHandler(EntityNotFoundException.class)
+    @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ResponseEntity<ApiError> handleEntityNotFound(EntityNotFoundException ex) {
-        ApiError error = new ApiError(
-            "Resource not found",
-            ex.getMessage(),
-            LocalDateTime.now(),
-            null
-        );
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ApiError> handleResourceNotFound(
+            ResourceNotFoundException ex, WebRequest request) {
+
+        log.error("Resource not found: {}", ex.getMessage());
+
+        ApiError apiError = new ApiError(
+                HttpStatus.NOT_FOUND.value(),
+                "Ressource non trouvée",
+                ex.getMessage(),
+                LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiError);
     }
 
     /**
-     * Gère les exceptions non prévues.
+     * Gestion des autres exceptions non catégorisées
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ResponseEntity<ApiError> handleAllUncaughtException(Exception ex) {
-        ApiError error = new ApiError(
-            "Internal server error",
-            ex.getMessage(),
-            LocalDateTime.now(),
-            null
-        );
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiError> handleAllExceptions(Exception ex, WebRequest request) {
+        log.error("Unexpected error occurred", ex);
+
+        ApiError apiError = new ApiError(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Erreur serveur",
+                "Une erreur inattendue s'est produite",
+                LocalDateTime.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiError);
+    }
+
+    /**
+     * Structure d'une erreur API
+     */
+    @Data
+    @AllArgsConstructor
+    public static class ApiError {
+        private int status;
+        private String error;
+        private String message;
+        private LocalDateTime timestamp;
+    }
+}
+
+/**
+ * Exception pour les ressources non trouvées
+ */
+class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
     }
 }

@@ -91,3 +91,6 @@ build/
 
 # Spring Boot
 spring-boot-*.pid
+
+
+.tmp-test-generation/

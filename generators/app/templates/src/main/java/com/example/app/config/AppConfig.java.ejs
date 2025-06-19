@@ -1,0 +1,63 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+<% if (includeAuth) { %>
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+<% } %>
+<% if (additionalFeatures.includes('redis')) { %>
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
+import java.time.Duration;
+<% } %>
+
+/**
+ * Configuration de base de l'application
+ */
+@Configuration
+public class AppConfig {
+
+    /**
+     * Configuration CORS pour permettre les requêtes cross-origin
+     */
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("<%= process.env.NODE_ENV === 'production' ? 'https://yourdomain.com' : '*' %>")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
+            }
+        };
+    }
+
+<% if (includeAuth) { %>
+    /**
+     * Encodeur de mot de passe pour la sécurité
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+<% } %>
+
+<% if (additionalFeatures.includes('redis')) { %>
+    /**
+     * Configuration du cache Redis
+     */
+    @Bean
+    public RedisCacheConfiguration cacheConfiguration() {
+        return RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(60))
+                .disableCachingNullValues()
+                .serializeValuesWith(SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
+    }
+<% } %>
+}

@@ -2,10 +2,21 @@ package <%= packageName %>;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.core.env.Environment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 <% if (additionalFeatures.includes('openapi')) { %>
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Info;
 <% } %>
+<% if (additionalFeatures.includes('prometheus')) { %>
+import org.springframework.context.annotation.Bean;
+import io.micrometer.core.aop.TimedAspect;
+import io.micrometer.core.instrument.MeterRegistry;
+<% } %>
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Optional;
 
 @SpringBootApplication
 <% if (additionalFeatures.includes('openapi')) { %>
@@ -19,7 +30,77 @@ import io.swagger.v3.oas.annotations.info.Info;
 <% } %>
 public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application {
 
+    private static final Logger log = LoggerFactory.getLogger(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class);
+
+    private final Environment env;
+
+    public <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application(Environment env) {
+        this.env = env;
+    }
+
+    /**
+     * Main method, used to run the application.
+     *
+     * @param args the command line arguments
+     */
     public static void main(String[] args) {
-        SpringApplication.run(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class, args);
+        SpringApplication app = new SpringApplication(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class);
+        Environment env = app.run(args).getEnvironment();
+        logApplicationStartup(env);
+    }
+
+<% if (additionalFeatures.includes('prometheus')) { %>
+    /**
+     * Configuration des aspects pour la métrologie avec Micrometer.
+     *
+     * @param registry Registre de métriques
+     * @return Bean TimedAspect pour mesurer les performances
+     */
+    @Bean
+    public TimedAspect timedAspect(MeterRegistry registry) {
+        return new TimedAspect(registry);
+    }
+<% } %>
+
+    /**
+     * Journalisation du démarrage de l'application avec des informations détaillées.
+     *
+     * @param env Environnement Spring
+     */
+    private static void logApplicationStartup(Environment env) {
+        String protocol = Optional.ofNullable(env.getProperty("server.ssl.key-store"))
+            .map(key -> "https")
+            .orElse("http");
+        String serverPort = env.getProperty("server.port");
+        String contextPath = Optional
+            .ofNullable(env.getProperty("server.servlet.context-path"))
+            .filter(path -> !path.isBlank())
+            .orElse("/");
+        String hostAddress = "localhost";
+
+        try {
+            hostAddress = InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            log.warn("Impossible de déterminer l'adresse de l'hôte, utilisation de `localhost` par défaut");
+        }
+
+        log.info("""
+
+            ----------------------------------------------------------
+            Application '{}' est démarrée ! Accès URLs:
+            Local:      {}://localhost:{}{}
+            Externe:    {}://{}:{}{}
+            Profil(s): {}
+            ----------------------------------------------------------""",
+            env.getProperty("spring.application.name"),
+            protocol,
+            serverPort,
+            contextPath,
+            protocol,
+            hostAddress,
+            serverPort,
+            contextPath,
+            env.getActiveProfiles().length == 0 ? env.getDefaultProfiles() : env.getActiveProfiles()
+        );
     }
 }

@@ -3,6 +3,9 @@ spring.application.name=<%= appName %>
 
 # Configuration du serveur
 server.port=8080
+<% if (additionalFeatures.includes('openapi')) { %>
+server.servlet.context-path=/api
+<% } %>
 
 # Profil actif
 spring.profiles.active=dev
@@ -38,40 +41,89 @@ spring.data.mongodb.database=<%= appName.toLowerCase() %>
 # Hibernate configuration
 spring.jpa.show-sql=true
 spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.format_sql=true
 <% } %>
 
 <% if (additionalFeatures.includes('redis')) { %>
 # Configuration Redis
 spring.redis.host=localhost
 spring.redis.port=6379
+spring.redis.timeout=2000
+spring.cache.type=redis
+spring.cache.redis.time-to-live=3600000
 <% } %>
 
 <% if (includeAuth) { %>
 # JWT Configuration
-app.jwt.secret=<%= Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) %>
-app.jwt.expirationMs=86400000
+app.jwt.secret=<%= generateRandomSecret(64) %>
+app.jwt.expiration-ms=86400000
+app.jwt.header=Authorization
+app.jwt.token-prefix=Bearer
+<% } %>
+
+<% if (additionalFeatures.includes('prometheus')) { %>
+# Prometheus/Actuator Configuration
+management.endpoints.web.exposure.include=health,info,prometheus,metrics
+management.endpoint.health.show-details=always
+management.metrics.export.prometheus.enabled=true
+management.metrics.distribution.percentiles-histogram.http.server.requests=true
+<% } %>
+
+# Logging Configuration
+logging.level.root=INFO
+logging.level.<%= packageName %>=DEBUG
+<% if (database !== 'MongoDB') { %>
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+<% } %>
+
+<% if (frontendFramework !== 'Aucun (API seulement)') { %>
+# Frontend Configuration
+spring.web.resources.static-locations=classpath:/static/
+<% if (frontendFramework === 'Thymeleaf') { %>
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+spring.thymeleaf.mode=HTML
+spring.thymeleaf.encoding=UTF-8
+spring.thymeleaf.cache=false
+<% } else if (frontendFramework === 'JTE') { %>
+gg.jte.developmentMode=true
+gg.jte.templateLocation=src/main/resources/templates
+<% } %>
 <% } %>
 
 <% if (additionalFeatures.includes('openapi')) { %>
-# SpringDoc OpenAPI configuration
-springdoc.api-docs.path=/api-docs
-springdoc.swagger-ui.path=/swagger-ui.html
-springdoc.swagger-ui.enabled=true
+# OpenAPI/Swagger Configuration
+springdoc.api-docs.path=/docs
+springdoc.swagger-ui.path=/swagger-ui
+springdoc.swagger-ui.operationsSorter=method
+springdoc.swagger-ui.tagsSorter=alpha
 <% } %>
 
-<% if (frontendFramework.includes('Inertia')) { %>
-# Inertia.js configuration
-inertia.root-view=app
+<% if (additionalFeatures.includes('elasticsearch')) { %>
+# Elasticsearch Configuration
+spring.elasticsearch.uris=http://localhost:9200
 <% } %>
 
-<% if (frontendFramework === 'Thymeleaf') { %>
-# Thymeleaf configuration
-spring.thymeleaf.cache=false
-spring.thymeleaf.prefix=classpath:/templates/
-spring.thymeleaf.suffix=.html
+<% if (additionalFeatures.includes('kafka')) { %>
+# Kafka Configuration
+spring.kafka.bootstrap-servers=localhost:9092
+spring.kafka.consumer.group-id=<%= appName.toLowerCase() %>-consumer
+spring.kafka.consumer.auto-offset-reset=earliest
 <% } %>
 
-<% if (frontendFramework === 'JTE') { %>
-# JTE configuration
-jte.developmentMode=true
+<% if (additionalFeatures.includes('rabbitmq')) { %>
+# RabbitMQ Configuration
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
 <% } %>
+
+# Autres configurations
+spring.jackson.serialization.WRITE_DATES_AS_TIMESTAMPS=false
+spring.mvc.throw-exception-if-no-handler-found=true
+spring.messages.basename=i18n/messages
+spring.task.execution.pool.core-size=2
+spring.task.execution.pool.max-size=5
+spring.task.execution.pool.queue-capacity=10
