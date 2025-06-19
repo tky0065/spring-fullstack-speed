@@ -48,13 +48,13 @@ import java.util.Collection;
 <% if (additionalFeatures.includes('async')) { %>
 @EnableAsync
 <% } %>
-public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application {
+public class <%= mainClassName %>Application {
 
-    private static final Logger log = LoggerFactory.getLogger(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class);
+    private static final Logger log = LoggerFactory.getLogger(<%= mainClassName %>Application.class);
 
     private final Environment env;
 
-    public <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application(Environment env) {
+    public <%= mainClassName %>Application(Environment env) {
         this.env = env;
     }
 
@@ -64,7 +64,7 @@ public class <%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        SpringApplication app = new SpringApplication(<%= appName.charAt(0).toUpperCase() + appName.slice(1).replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); }) %>Application.class);
+        SpringApplication app = new SpringApplication(<%= mainClassName %>Application.class);
         Environment env = app.run(args).getEnvironment();
         logApplicationStartup(env);
     }

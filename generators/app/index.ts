@@ -115,8 +115,104 @@ export default class AppGenerator extends BaseGenerator {
   }
 
   writing() {
-    this.log("Génération des fichiers...");
-    // Code pour générer les fichiers
+    this.log("Génération des fichiers de l'application...");
+    this.sourceRoot(this.templatePath());
+
+    // Génération des fichiers de base
+    this._generateMavenOrGradle();
+
+    // Génération de la classe Application
+    const appName = this.answers.appName;
+    const packageName = this.answers.packageName;
+    const packagePath = packageName.replace(/\\./g, "/");
+
+    const mainClassName =
+      appName.charAt(0).toUpperCase() +
+      appName.slice(1).replace(/-([a-z])/g, (g: string[]) => g[1].toUpperCase());
+
+    this.fs.copyTpl(
+      this.templatePath("src/main/java/Application.java.ejs"),
+      this.destinationPath(`src/main/java/${packagePath}/${mainClassName}Application.java`),
+      { ...this.answers, mainClassName: mainClassName }
+    );
+
+    // Gén����ration du fichier application.properties
+    this.fs.copyTpl(
+      this.templatePath("src/main/resources/application.properties.ejs"),
+      this.destinationPath("src/main/resources/application.properties"),
+      this.answers
+    );
+
+    // Génération des fichiers de profils
+    this.fs.copyTpl(
+      this.templatePath("src/main/resources/application-dev.properties.ejs"),
+      this.destinationPath("src/main/resources/application-dev.properties"),
+      this.answers
+    );
+    this.fs.copyTpl(
+      this.templatePath("src/main/resources/application-prod.properties.ejs"),
+      this.destinationPath("src/main/resources/application-prod.properties"),
+      this.answers
+    );
+    this.fs.copyTpl(
+      this.templatePath("src/main/resources/application-test.properties.ejs"),
+      this.destinationPath("src/main/resources/application-test.properties"),
+      this.answers
+    );
+
+    // Création des packages de base
+    const srcMainJava = `src/main/java/${packagePath}`;
+    this.fs.write(`${srcMainJava}/controller/.gitkeep`, "");
+    this.fs.write(`${srcMainJava}/service/.gitkeep`, "");
+    this.fs.write(`${srcMainJava}/repository/.gitkeep`, "");
+    this.fs.write(`${srcMainJava}/entity/.gitkeep`, "");
+
+    const srcTestJava = `src/test/java/${packagePath}`;
+    this.fs.write(`${srcTestJava}/.gitkeep`, "");
+
+    // Génération des classes utilitaires
+    this.fs.copyTpl(
+      this.templatePath("src/main/java/utils/StringUtil.java.ejs"),
+      this.destinationPath(`${srcMainJava}/utils/StringUtil.java`),
+      this.answers
+    );
+  }
+
+  _generateMavenOrGradle() {
+    if (this.answers.buildTool === "Maven") {
+      this.fs.copyTpl(
+        this.templatePath("pom.xml.ejs"),
+        this.destinationPath("pom.xml"),
+        this.answers
+      );
+      this.fs.copy(
+        this.templatePath("mvnw"),
+        this.destinationPath("mvnw")
+      );
+      this.fs.copy(
+        this.templatePath("mvnw.cmd"),
+        this.destinationPath("mvnw.cmd")
+      );
+    } else {
+      this.fs.copyTpl(
+        this.templatePath("build.gradle.kts.ejs"),
+        this.destinationPath("build.gradle.kts"),
+        this.answers
+      );
+      this.fs.copyTpl(
+        this.templatePath("settings.gradle.kts.ejs"),
+        this.destinationPath("settings.gradle.kts"),
+        this.answers
+      );
+      this.fs.copy(
+        this.templatePath("gradlew"),
+        this.destinationPath("gradlew")
+      );
+      this.fs.copy(
+        this.templatePath("gradlew.bat"),
+        this.destinationPath("gradlew.bat")
+      );
+    }
   }
 
   install() {
@@ -127,7 +223,7 @@ export default class AppGenerator extends BaseGenerator {
   }
 
   end() {
-    this.log(chalk.green("🚀 Application générée avec succès!"));
+    this.log(chalk.green("�� Application générée avec succès!"));
     this.log(`
 Prochaines étapes:
 1. Accédez à votre application: ${chalk.yellow(`cd ${this.answers.appName}`)}

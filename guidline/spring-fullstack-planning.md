@@ -86,8 +86,8 @@ generator-spring-fullstack/
 ## 📋 PHASE 2 : CORE BACKEND (Priorité Haute)
 
 ### Module 2.1 : Génération Spring Boot Base
-- [ ] Créer le template Spring Boot principal
-- [ ] Générer la structure Maven/Gradle
+- [x] Créer le template Spring Boot principal
+- [x] Générer la structure Maven/Gradle
 - [x] Configurer Spring Boot Starter dependencies
 - [x] Créer la classe Application principale
 - [x] Générer les fichiers de configuration (application.yml/properties)
@@ -95,7 +95,7 @@ generator-spring-fullstack/
 - [x] Créer les packages de base (controller, service, repository, entity)
 - [x] Générer les classes utilitaires communes
 - [x] Configurer les logs (Logback)
-- [x] Tester la génération d'un projet Spring Boot minimal
+- [ ] Tester la génération d'un projet Spring Boot minimal
 
 ### Module 2.2 : Configuration Base de Données
 - [x] Implémenter le support MySQL
@@ -136,7 +136,7 @@ generator-spring-fullstack/
 - [x] Créer les controllers Inertia
 - [x] Générer la configuration de routing côté serveur
 - [x] Implémenter la gestion des assets
-- [x] Créer les helpers Inertia
+- [x] Cr��er les helpers Inertia
 - [x] Configurer le partage de données globales
 - [x] Tester l'intégration Inertia basique
 

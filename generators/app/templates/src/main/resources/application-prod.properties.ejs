@@ -1,0 +1,11 @@
+# Properties for production
+logging.level.root=INFO
+logging.level.<%= packageName %>=INFO
+
+# Disable H2 console in production
+spring.h2.console.enabled=false
+
+# More secure database configuration for production
+# spring.datasource.username=prod_user
+# spring.datasource.password=prod_secret
+
