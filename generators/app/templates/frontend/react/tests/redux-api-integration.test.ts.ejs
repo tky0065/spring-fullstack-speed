@@ -1,0 +1,145 @@
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer, { login, logout, initAuth } from '../src/store/slices/authSlice';
+
+// Mockup des données d'authentification
+const mockAuthResponse = {
+  id: '123',
+  email: 'user@example.com',
+  name: 'Test User',
+  token: 'mock-jwt-token',
+};
+
+// Setup du serveur MSW pour intercepter les requêtes HTTP
+const server = setupServer(
+  // Mock pour POST /api/auth/login
+  rest.post('/api/auth/login', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json(mockAuthResponse)
+    );
+  }),
+
+  // Mock pour POST /api/auth/logout
+  rest.post('/api/auth/logout', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json({ message: 'Successfully logged out' })
+    );
+  })
+);
+
+describe('Redux with OpenAPI Generated Client', () => {
+  // Stocker la valeur originale de localStorage.getItem
+  const originalLocalStorage = global.localStorage;
+
+  // Démarre le serveur avant tous les tests
+  beforeAll(() => {
+    server.listen();
+
+    // Mock localStorage
+    global.localStorage = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(),
+      length: 0
+    };
+  });
+
+  // Réinitialise les handlers et mocks après chaque test
+  afterEach(() => {
+    server.resetHandlers();
+    vi.clearAllMocks();
+  });
+
+  // Restaure l'environnement après tous les tests
+  afterAll(() => {
+    server.close();
+    global.localStorage = originalLocalStorage;
+  });
+
+  // Créer un store Redux de test pour chaque test
+  const createTestStore = () => configureStore({
+    reducer: {
+      auth: authReducer,
+    },
+  });
+
+  it('should successfully login and store token', async () => {
+    // Arrange
+    const store = createTestStore();
+    const credentials = { email: 'user@example.com', password: 'password' };
+
+    // Act
+    await store.dispatch(login(credentials));
+
+    // Assert
+    const state = store.getState().auth;
+    expect(state.status).toBe('succeeded');
+    expect(state.user.email).toBe(mockAuthResponse.email);
+    expect(state.user.token).toBe(mockAuthResponse.token);
+    expect(localStorage.setItem).toHaveBeenCalledWith('auth_token', mockAuthResponse.token);
+  });
+
+  it('should handle login failure', async () => {
+    // Arrange
+    server.use(
+      rest.post('/api/auth/login', (req, res, ctx) => {
+        return res(
+          ctx.status(401),
+          ctx.json({ message: 'Invalid credentials' })
+        );
+      })
+    );
+
+    const store = createTestStore();
+    const credentials = { email: 'invalid@example.com', password: 'wrongpass' };
+
+    // Act
+    await store.dispatch(login(credentials));
+
+    // Assert
+    const state = store.getState().auth;
+    expect(state.status).toBe('failed');
+    expect(state.error).not.toBeNull();
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('should successfully logout and remove token', async () => {
+    // Arrange
+    const store = createTestStore();
+
+    // Simuler un utilisateur connecté d'abord
+    await store.dispatch(login({ email: 'user@example.com', password: 'password' }));
+
+    // Act
+    await store.dispatch(logout());
+
+    // Assert
+    const state = store.getState().auth;
+    expect(state.user.token).toBeNull();
+    expect(localStorage.removeItem).toHaveBeenCalledWith('auth_token');
+  });
+
+  it('should initialize auth state from localStorage', () => {
+    // Arrange
+    const store = createTestStore();
+    const mockToken = 'stored-jwt-token';
+
+    // Simuler un token stocké dans localStorage
+    vi.mocked(localStorage.getItem).mockReturnValueOnce(mockToken);
+
+    // Act
+    store.dispatch(initAuth());
+
+    // Assert
+    const state = store.getState().auth;
+    expect(state.status).toBe('succeeded');
+    expect(state.user.token).toBe(mockToken);
+    expect(localStorage.getItem).toHaveBeenCalledWith('auth_token');
+  });
+});

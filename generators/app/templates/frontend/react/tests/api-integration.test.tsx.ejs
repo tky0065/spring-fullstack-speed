@@ -1,0 +1,108 @@
+import React from 'react';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Provider } from 'react-redux';
+import { store } from '../src/store';
+import { ApiExampleWrapper } from '../src/components/examples/ApiExample';
+
+// Données de test
+const mockUsers = [
+  { id: '1', name: 'User 1', email: 'user1@example.com', username: 'user1' },
+  { id: '2', name: 'User 2', email: 'user2@example.com', username: 'user2' },
+];
+
+// Setup du serveur MSW pour intercepter les requêtes HTTP
+const server = setupServer(
+  // Mock pour GET /api/users
+  rest.get('/api/users', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json(mockUsers)
+    );
+  }),
+
+  // Mock pour POST /api/users
+  rest.post('/api/users', (req, res, ctx) => {
+    const newUser = { id: '3', ...req.body };
+    return res(
+      ctx.status(201),
+      ctx.json(newUser)
+    );
+  })
+);
+
+describe('React Integration with OpenAPI Generated Client', () => {
+  // Démarre le serveur avant tous les tests
+  beforeAll(() => server.listen());
+
+  // Réinitialise les handlers après chaque test
+  afterEach(() => server.resetHandlers());
+
+  // Arrête le serveur après tous les tests
+  afterAll(() => server.close());
+
+  // Setup pour React Query
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  // Helper pour rendre le composant avec tous les providers nécessaires
+  const renderWithProviders = (ui: React.ReactElement) => {
+    return render(
+      <Provider store={store}>
+        <QueryClientProvider client={queryClient}>
+          {ui}
+        </QueryClientProvider>
+      </Provider>
+    );
+  };
+
+  it('should render user list from API', async () => {
+    // Arrange & Act
+    renderWithProviders(<ApiExampleWrapper />);
+
+    // Assert
+    // Vérifier qu'un message de chargement s'affiche initialement
+    expect(screen.getByText(/chargement des utilisateurs/i)).toBeInTheDocument();
+
+    // Attendre que les données soient chargées
+    await waitFor(() => {
+      expect(screen.getByText(/liste des utilisateurs/i)).toBeInTheDocument();
+    });
+
+    // Vérifier que les utilisateurs sont affichés
+    expect(screen.getByText(/user1 - user1@example.com/i)).toBeInTheDocument();
+    expect(screen.getByText(/user2 - user2@example.com/i)).toBeInTheDocument();
+  });
+
+  it('should handle API error correctly', async () => {
+    // Arrange - Configurer le serveur pour renvoyer une erreur
+    server.use(
+      rest.get('/api/users', (req, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({ message: 'Internal server error' })
+        );
+      })
+    );
+
+    // Act
+    renderWithProviders(<ApiExampleWrapper />);
+
+    // Assert
+    // Vérifier qu'un message de chargement s'affiche initialement
+    expect(screen.getByText(/chargement des utilisateurs/i)).toBeInTheDocument();
+
+    // Attendre que l'erreur soit affichée
+    await waitFor(() => {
+      expect(screen.getByText(/erreur lors du chargement des utilisateurs/i)).toBeInTheDocument();
+    });
+  });
+});

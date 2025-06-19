@@ -152,8 +152,7 @@ generator-spring-fullstack/
 - [x] Créer les composants UI réutilisables
 - [x] Implémenter la gestion d'état (Context/Redux)
 - [x] Supprimer tout ce qui concerne Inertia et implémenter openapi generator pour générer les API dans le frontend avec une commande facile à utiliser
-- [ ] Tester l'intégration React avec openapi generator (pas important pour l'instant)
-
+- [x] Tester l'intégration React avec openapi generator
 
 ### Module 3.3 : Templates Vue.js + openapi generator
 - [x] Créer le template Vue.js de base
