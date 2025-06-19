@@ -1,0 +1,78 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+
+<% if (migrations === 'Flyway') { %>
+import org.springframework.boot.autoconfigure.flyway.FlywayProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.flywaydb.core.Flyway;
+import javax.sql.DataSource;
+
+/**
+ * Configuration pour les migrations Flyway.
+ * Cette classe gère l'évolution du schéma de base de données.
+ */
+@Configuration
+@EnableConfigurationProperties(FlywayProperties.class)
+public class DatabaseMigrationConfig {
+
+    /**
+     * Configure Flyway avec la source de données et les propriétés spécifiées.
+     */
+    @Bean
+    public Flyway flyway(DataSource dataSource, FlywayProperties flywayProperties) {
+        Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .locations(flywayProperties.getLocations().toArray(new String[0]))
+                .baselineOnMigrate(flywayProperties.isBaselineOnMigrate())
+                .validateOnMigrate(flywayProperties.isValidateOnMigrate())
+                .cleanDisabled(true) // Désactiver la commande clean pour la sécurité
+                .load();
+
+        // Exécuter les migrations au démarrage de l'application
+        flyway.migrate();
+
+        return flyway;
+    }
+}
+<% } else if (migrations === 'Liquibase') { %>
+import liquibase.integration.spring.SpringLiquibase;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.DependsOn;
+
+import javax.sql.DataSource;
+
+/**
+ * Configuration pour les migrations Liquibase.
+ * Cette classe gère l'évolution du schéma de base de données.
+ */
+@Configuration
+public class DatabaseMigrationConfig {
+
+    /**
+     * Configure Liquibase avec la source de données spécifiée.
+     */
+    @Bean
+    public SpringLiquibase liquibase(DataSource dataSource) {
+        SpringLiquibase liquibase = new SpringLiquibase();
+        liquibase.setDataSource(dataSource);
+        liquibase.setChangeLog("classpath:db/changelog/db.changelog-master.xml");
+        liquibase.setContexts("development,test,production");
+        liquibase.setDropFirst(false); // Ne pas supprimer la base au démarrage
+        liquibase.setShouldRun(true);  // Exécuter les migrations au démarrage
+
+        return liquibase;
+    }
+}
+<% } else { %>
+/**
+ * Aucune configuration de migration automatique n'est activée.
+ * Utilisez les outils de migration manuels ou activez Flyway/Liquibase dans les options.
+ */
+@Configuration
+public class DatabaseMigrationConfig {
+    // Aucune migration automatique configurée
+}
+<% } %>

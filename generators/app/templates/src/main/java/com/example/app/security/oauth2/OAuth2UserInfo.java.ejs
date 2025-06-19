@@ -1,0 +1,40 @@
+package <%= packageName %>.security.oauth2;
+
+import java.util.Map;
+
+/**
+ * Interface définissant les méthodes pour extraire les informations utilisateur
+ * communes à tous les fournisseurs OAuth2.
+ */
+public interface OAuth2UserInfo {
+
+    /**
+     * @return l'ID de l'utilisateur chez le fournisseur OAuth2
+     */
+    String getId();
+
+    /**
+     * @return l'email de l'utilisateur
+     */
+    String getEmail();
+
+    /**
+     * @return le prénom de l'utilisateur
+     */
+    String getFirstName();
+
+    /**
+     * @return le nom de famille de l'utilisateur
+     */
+    String getLastName();
+
+    /**
+     * @return l'URL de l'image de profil de l'utilisateur
+     */
+    String getImageUrl();
+
+    /**
+     * @return tous les attributs bruts fournis par le fournisseur OAuth2
+     */
+    Map<String, Object> getAttributes();
+}

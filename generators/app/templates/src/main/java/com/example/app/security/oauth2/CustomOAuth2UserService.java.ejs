@@ -1,0 +1,147 @@
+package <%= packageName %>.security.oauth2;
+
+import <%= packageName %>.entity.Role;
+import <%= packageName %>.entity.User;
+import <%= packageName %>.repository.RoleRepository;
+import <%= packageName %>.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Service personnalisé pour traiter les informations des utilisateurs OAuth2.
+ * Gère l'inscription et la connexion via les fournisseurs OAuth2 (Google, GitHub, Facebook).
+ */
+@Service
+public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomOAuth2UserService.class);
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+
+    public CustomOAuth2UserService(UserRepository userRepository, RoleRepository roleRepository) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+    }
+
+    @Override
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2User oAuth2User = super.loadUser(userRequest);
+
+        try {
+            return processOAuth2User(userRequest, oAuth2User);
+        } catch (AuthenticationException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            // Lancer une exception qui sera gérée par le mécanisme d'authentification OAuth2
+            logger.error("Exception occurred while processing OAuth2 user", ex);
+            throw new InternalAuthenticationServiceException(ex.getMessage(), ex.getCause());
+        }
+    }
+
+    private OAuth2User processOAuth2User(OAuth2UserRequest oAuth2UserRequest, OAuth2User oAuth2User) {
+        // Extraction des informations utilisateur depuis le fournisseur OAuth2
+        String provider = oAuth2UserRequest.getClientRegistration().getRegistrationId();
+        OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(provider, oAuth2User.getAttributes());
+
+        if (!StringUtils.hasText(userInfo.getEmail())) {
+            throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
+        }
+
+        // Vérifier si l'utilisateur existe déjà
+        Optional<User> userOptional = userRepository.findByEmail(userInfo.getEmail());
+        User user;
+
+        if (userOptional.isPresent()) {
+            user = userOptional.get();
+            // Mettre à jour les informations si l'utilisateur existe déjà
+            user = updateExistingUser(user, userInfo, provider);
+        } else {
+            // Créer un nouvel utilisateur
+            user = registerNewUser(oAuth2UserRequest, userInfo);
+        }
+
+        // Création des attributs pour l'utilisateur OAuth2
+        Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes());
+        attributes.put("id", user.getId());
+        attributes.put("name", user.getUsername());
+        attributes.put("email", user.getEmail());
+
+        // Création des autorités basées sur les rôles de l'utilisateur
+        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
+
+        return new DefaultOAuth2User(
+                authorities,
+                attributes,
+                "email" // L'attribut utilisé comme nom principal
+        );
+    }
+
+    private User registerNewUser(OAuth2UserRequest userRequest, OAuth2UserInfo userInfo) {
+        String provider = userRequest.getClientRegistration().getRegistrationId();
+
+        User user = new User();
+        user.setUsername(generateUsername(userInfo));
+        user.setEmail(userInfo.getEmail());
+        user.setPassword("{oauth2}" + UUID.randomUUID()); // Mot de passe aléatoire pour les utilisateurs OAuth2
+        user.setFirstName(userInfo.getFirstName());
+        user.setLastName(userInfo.getLastName());
+        user.setEnabled(true);
+
+        // Attribution du rôle ROLE_USER par défaut
+        Set<Role> roles = new HashSet<>();
+        Role userRole = roleRepository.findByName("ROLE_USER")
+                .orElseThrow(() -> new RuntimeException("Role utilisateur non trouvé."));
+        roles.add(userRole);
+        user.setRoles(roles);
+
+        return userRepository.save(user);
+    }
+
+    private User updateExistingUser(User user, OAuth2UserInfo userInfo, String provider) {
+        // Mise à jour des informations utilisateur si nécessaire
+        boolean updated = false;
+
+        if (userInfo.getFirstName() != null && !userInfo.getFirstName().equals(user.getFirstName())) {
+            user.setFirstName(userInfo.getFirstName());
+            updated = true;
+        }
+
+        if (userInfo.getLastName() != null && !userInfo.getLastName().equals(user.getLastName())) {
+            user.setLastName(userInfo.getLastName());
+            updated = true;
+        }
+
+        if (updated) {
+            userRepository.save(user);
+        }
+
+        return user;
+    }
+
+    private String generateUsername(OAuth2UserInfo userInfo) {
+        String username = userInfo.getEmail().split("@")[0]; // Utiliser la partie locale de l'email
+
+        // Vérifier si le nom d'utilisateur existe déjà
+        if (userRepository.existsByUsername(username)) {
+            return username + "_" + UUID.randomUUID().toString().substring(0, 8);
+        }
+
+        return username;
+    }
+}

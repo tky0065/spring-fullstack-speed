@@ -101,27 +101,27 @@ generator-spring-fullstack/
 - [x] Implémenter le support MySQL
 - [x] Implémenter le support PostgreSQL
 - [x] Implémenter le support MongoDB
-- [ ] Implémenter le support H2 (développement)
-- [ ] Créer les configurations DataSource
-- [ ] Générer les propriétés de connexion DB
-- [ ] Implémenter JPA/Hibernate configuration
-- [ ] Créer les templates d'entités de base
-- [ ] Générer les repositories Spring Data
-- [ ] Implémenter les migrations Flyway/Liquibase
-- [ ] Configurer les pools de connexions (HikariCP)
+- [x] Implémenter le support H2 (développement)
+- [x] Créer les configurations DataSource
+- [x] Générer les propriétés de connexion DB
+- [x] Implémenter JPA/Hibernate configuration
+- [x] Créer les templates d'entités de base
+- [x] Générer les repositories Spring Data
+- [x] Implémenter les migrations Flyway/Liquibase
+- [x] Configurer les pools de connexions (HikariCP)
 - [ ] Tester chaque configuration de DB
 
 ### Module 2.3 : Système d'Authentification
-- [ ] Implémenter JWT Authentication
-- [ ] Créer les entités User/Role
-- [ ] Générer les controllers d'authentification
-- [ ] Implémenter OAuth2 (Google, GitHub, Facebook)
-- [ ] Créer les services d'authentification
-- [ ] Générer les configurations Spring Security
-- [ ] Implémenter la gestion des sessions
-- [ ] Créer les DTOs d'authentification
-- [ ] Générer les endpoints de login/logout/register
-- [ ] Implémenter la validation des tokens
+- [x] Implémenter JWT Authentication
+- [x] Créer les entités User/Role
+- [x] Générer les controllers d'authentification
+- [x] Implémenter OAuth2 (Google, GitHub, Facebook)
+- [x] Créer les services d'authentification
+- [x] Générer les configurations Spring Security
+- [x] Implémenter la gestion des sessions
+- [x] Créer les DTOs d'authentification
+- [x] Générer les endpoints de login/logout/register
+- [x] Implémenter la validation des tokens
 - [ ] Créer les tests d'authentification
 - [ ] Documenter les APIs d'auth
 

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <changeSet id="0002-initial-data" author="spring-fullstack">
+        <comment>Insertion des données initiales</comment>
+
+        <% if (includeUserAuth) { %>
+        <!-- Insertion des rôles de base -->
+        <insert tableName="roles">
+            <column name="name" value="ROLE_USER"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="name" value="ROLE_ADMIN"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="name" value="ROLE_MODERATOR"/>
+        </insert>
+
+        <!-- Insertion des utilisateurs par défaut -->
+        <!-- Mot de passe: "password" (BCrypt encoded) -->
+        <insert tableName="users">
+            <column name="username" value="admin"/>
+            <column name="password" value="$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG"/>
+            <column name="email" value="admin@example.com"/>
+            <column name="first_name" value="Admin"/>
+            <column name="last_name" value="User"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+        <insert tableName="users">
+            <column name="username" value="user"/>
+            <column name="password" value="$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG"/>
+            <column name="email" value="user@example.com"/>
+            <column name="first_name" value="Regular"/>
+            <column name="last_name" value="User"/>
+            <column name="enabled" valueBoolean="true"/>
+        </insert>
+
+        <!-- Attribution des rôles -->
+        <insert tableName="user_roles">
+            <column name="user_id" value="1"/>
+            <column name="role_id" value="2"/>
+        </insert>
+        <insert tableName="user_roles">
+            <column name="user_id" value="2"/>
+            <column name="role_id" value="1"/>
+        </insert>
+        <% } %>
+
+        <!-- Configurations de base de l'application -->
+        <insert tableName="app_configuration">
+            <column name="config_key" value="app.name"/>
+            <column name="config_value" value="<%= appName %>"/>
+            <column name="description" value="Nom de l'application"/>
+        </insert>
+        <insert tableName="app_configuration">
+            <column name="config_key" value="app.version"/>
+            <column name="config_value" value="1.0.0"/>
+            <column name="description" value="Version actuelle de l'application"/>
+        </insert>
+        <insert tableName="app_configuration">
+            <column name="config_key" value="app.maintenance"/>
+            <column name="config_value" value="false"/>
+            <column name="description" value="Mode maintenance activé/désactivé"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

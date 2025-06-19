@@ -1,0 +1,31 @@
+package <%= packageName %>.security.oauth2;
+
+import java.util.Map;
+
+/**
+ * Factory pour créer l'implémentation appropriée de OAuth2UserInfo
+ * en fonction du fournisseur OAuth2 (Google, GitHub, Facebook).
+ */
+public class OAuth2UserInfoFactory {
+
+    /**
+     * Renvoie l'implémentation appropriée de OAuth2UserInfo en fonction du fournisseur.
+     *
+     * @param registrationId identifiant du fournisseur OAuth2 (google, github, facebook)
+     * @param attributes attributs de l'utilisateur fournis par le fournisseur OAuth2
+     * @return l'implémentation appropriée de OAuth2UserInfo
+     * @throws IllegalArgumentException si le fournisseur n'est pas pris en charge
+     */
+    public static OAuth2UserInfo getOAuth2UserInfo(String registrationId, Map<String, Object> attributes) {
+        switch (registrationId.toLowerCase()) {
+            case "google":
+                return new GoogleOAuth2UserInfo(attributes);
+            case "github":
+                return new GithubOAuth2UserInfo(attributes);
+            case "facebook":
+                return new FacebookOAuth2UserInfo(attributes);
+            default:
+                throw new IllegalArgumentException("Fournisseur OAuth2 non pris en charge: " + registrationId);
+        }
+    }
+}

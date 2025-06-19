@@ -1,0 +1,41 @@
+# Configuration OAuth2 pour <%= appName %>
+# Ces propriétés doivent être ajoutées à application.yml
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Configuration pour Google
+          google:
+            client-id: ${OAUTH2_GOOGLE_CLIENT_ID:google-client-id}
+            client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:google-client-secret}
+            scope:
+              - email
+              - profile
+
+          # Configuration pour GitHub
+          github:
+            client-id: ${OAUTH2_GITHUB_CLIENT_ID:github-client-id}
+            client-secret: ${OAUTH2_GITHUB_CLIENT_SECRET:github-client-secret}
+            scope:
+              - user:email
+              - read:user
+
+          # Configuration pour Facebook
+          facebook:
+            client-id: ${OAUTH2_FACEBOOK_CLIENT_ID:facebook-client-id}
+            client-secret: ${OAUTH2_FACEBOOK_CLIENT_SECRET:facebook-client-secret}
+            scope:
+              - email
+              - public_profile
+
+# Configuration personnalisée
+app:
+  oauth2:
+    # URL de redirection après authentification OAuth2 réussie/échouée
+    redirectUri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth2/redirect}
+    # Liste des origines autorisées pour la redirection
+    authorizedRedirectUris:
+      - http://localhost:3000/oauth2/redirect
+      - http://localhost:8080/oauth2/redirect

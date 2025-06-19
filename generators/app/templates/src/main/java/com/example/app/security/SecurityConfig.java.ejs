@@ -2,6 +2,9 @@ package <%= packageName %>.security;
 
 import <%= packageName %>.security.jwt.JwtAuthenticationFilter;
 import <%= packageName %>.security.jwt.JwtTokenProvider;
+import <%= packageName %>.security.oauth2.CustomOAuth2UserService;
+import <%= packageName %>.security.oauth2.OAuth2AuthenticationFailureHandler;
+import <%= packageName %>.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,7 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Configuration principale de la sécurité Spring Security avec JWT
+ * Configuration principale de la sécurité Spring Security avec JWT et OAuth2
  */
 @Configuration
 @EnableWebSecurity
@@ -31,10 +34,21 @@ public class SecurityConfig {
 
     private final JwtTokenProvider tokenProvider;
     private final AuthEntryPointJwt unauthorizedHandler;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
-    public SecurityConfig(JwtTokenProvider tokenProvider, AuthEntryPointJwt unauthorizedHandler) {
+    public SecurityConfig(
+            JwtTokenProvider tokenProvider,
+            AuthEntryPointJwt unauthorizedHandler,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
+            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler) {
         this.tokenProvider = tokenProvider;
         this.unauthorizedHandler = unauthorizedHandler;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+        this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
     }
 
     @Bean
@@ -53,9 +67,15 @@ public class SecurityConfig {
             .exceptionHandling(handling -> handling
                 .authenticationEntryPoint(unauthorizedHandler)
             )
-            // Utilisation d'une politique sans session car nous utilisons JWT
+            // Configuration de la politique de session
             .sessionManagement(management -> management
+                <% if (oauth2Enabled) { %>
+                // Utilisation d'une politique de session STATELESS pour JWT mais capable de supporter OAuth2
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                <% } else { %>
+                // Utilisation d'une politique sans session car nous utilisons JWT
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                <% } %>
             )
             // Configuration des autorisations d'accès aux endpoints
             .authorizeHttpRequests(auth -> auth
@@ -69,9 +89,30 @@ public class SecurityConfig {
                 // Ressources statiques pour les templates
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 <% } %>
+                <% if (oauth2Enabled) { %>
+                // Endpoints OAuth2
+                .requestMatchers("/oauth2/**").permitAll()
+                <% } %>
                 // Toutes les autres requêtes nécessitent une authentification
                 .anyRequest().authenticated()
             );
+
+        <% if (oauth2Enabled) { %>
+        // Configuration OAuth2
+        http.oauth2Login(oauth2 -> oauth2
+            .authorizationEndpoint(endpoint -> endpoint
+                .baseUri("/oauth2/authorize")
+            )
+            .redirectionEndpoint(endpoint -> endpoint
+                .baseUri("/oauth2/callback/*")
+            )
+            .userInfoEndpoint(endpoint -> endpoint
+                .userService(customOAuth2UserService)
+            )
+            .successHandler(oAuth2AuthenticationSuccessHandler)
+            .failureHandler(oAuth2AuthenticationFailureHandler)
+        );
+        <% } %>
 
         // Ajout du filtre JWT avant le filtre d'authentification standard
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
