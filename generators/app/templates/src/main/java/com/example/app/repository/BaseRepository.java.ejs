@@ -1,0 +1,20 @@
+package <%= packageName %>.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.repository.NoRepositoryBean;
+
+import java.io.Serializable;
+
+/**
+ * Repository de base pour toutes les entités.
+ * Étend JpaRepository pour fournir les opérations CRUD standard et JpaSpecificationExecutor
+ * pour la recherche avec des spécifications.
+ *
+ * @param <T> Type de l'entité
+ * @param <ID> Type de l'identifiant de l'entité
+ */
+@NoRepositoryBean
+public interface BaseRepository<T, ID extends Serializable> extends JpaRepository<T, ID>, JpaSpecificationExecutor<T> {
+    // Méthodes communes à tous les repositories
+}

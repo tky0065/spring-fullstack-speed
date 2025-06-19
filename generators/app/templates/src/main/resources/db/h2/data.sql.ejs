@@ -1,0 +1,25 @@
+-- H2 Data Initialization Script
+-- Ce fichier est utilisé pour insérer des données initiales dans la base H2
+
+<% if (includeUserAuth) { %>
+-- Données initiales pour l'authentification
+INSERT INTO roles (name) VALUES
+('ROLE_USER'),
+('ROLE_ADMIN'),
+('ROLE_MODERATOR');
+
+-- Mot de passe par défaut: "password" (BCrypt encoded)
+INSERT INTO users (username, password, email, first_name, last_name) VALUES
+('admin', '$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG', 'admin@example.com', 'Admin', 'User'),
+('user', '$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG', 'user@example.com', 'Regular', 'User');
+
+INSERT INTO user_roles (user_id, role_id) VALUES
+(1, 2), -- admin has ROLE_ADMIN
+(2, 1); -- user has ROLE_USER
+<% } %>
+
+-- Données de configuration initiales
+INSERT INTO app_configuration (config_key, config_value, description) VALUES
+('app.name', '<%= appName %>', 'Nom de l''application'),
+('app.version', '1.0.0', 'Version actuelle de l''application'),
+('app.maintenance', 'false', 'Mode maintenance activé/désactivé');

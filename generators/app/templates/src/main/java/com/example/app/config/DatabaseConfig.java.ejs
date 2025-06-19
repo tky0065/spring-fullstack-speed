@@ -1,0 +1,98 @@
+package <%= packageName %>.config;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import javax.sql.DataSource;
+import java.util.Properties;
+
+/**
+ * Configuration centrale pour JPA/Hibernate et pools de connexions HikariCP.
+ * Cette configuration s'applique à toutes les sources de données sauf indiqué autrement.
+ */
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "<%= packageName %>.repository")
+public class DatabaseConfig {
+
+    private final Environment env;
+
+    public DatabaseConfig(Environment env) {
+        this.env = env;
+    }
+
+    @Primary
+    @Bean
+    public DataSource dataSource() {
+        HikariConfig config = new HikariConfig();
+
+        // Configuration de base de la source de données
+        config.setDriverClassName(env.getProperty("spring.datasource.driver-class-name"));
+        config.setJdbcUrl(env.getProperty("spring.datasource.url"));
+        config.setUsername(env.getProperty("spring.datasource.username"));
+        config.setPassword(env.getProperty("spring.datasource.password"));
+
+        // Configuration du pool de connexions HikariCP
+        config.setMaximumPoolSize(env.getProperty("spring.datasource.hikari.maximum-pool-size", Integer.class, 10));
+        config.setMinimumIdle(env.getProperty("spring.datasource.hikari.minimum-idle", Integer.class, 5));
+        config.setIdleTimeout(env.getProperty("spring.datasource.hikari.idle-timeout", Long.class, 30000L));
+        config.setPoolName("MainHikariPool");
+        config.setConnectionTimeout(env.getProperty("spring.datasource.hikari.connection-timeout", Long.class, 30000L));
+        config.setMaxLifetime(env.getProperty("spring.datasource.hikari.max-lifetime", Long.class, 1800000L));
+
+        <% if (dbType === 'mysql') { %>
+        // Configurations spécifiques à MySQL
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        config.addDataSourceProperty("useServerPrepStmts", "true");
+        <% } %>
+
+        return new HikariDataSource(config);
+    }
+
+    @Bean
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource());
+        em.setPackagesToScan("<%= packageName %>.entity");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+        em.setJpaProperties(hibernateProperties());
+
+        return em;
+    }
+
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        JpaTransactionManager transactionManager = new JpaTransactionManager();
+        transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        return transactionManager;
+    }
+
+    private Properties hibernateProperties() {
+        Properties properties = new Properties();
+        properties.put("hibernate.dialect", env.getProperty("spring.jpa.properties.hibernate.dialect"));
+        properties.put("hibernate.show_sql", env.getProperty("spring.jpa.show-sql", "false"));
+        properties.put("hibernate.format_sql", env.getProperty("spring.jpa.properties.hibernate.format_sql", "false"));
+        properties.put("hibernate.hbm2ddl.auto", env.getProperty("spring.jpa.hibernate.ddl-auto", "none"));
+
+        <% if (dbType === 'postgresql') { %>
+        // Configurations spécifiques à PostgreSQL
+        properties.put("hibernate.jdbc.lob.non_contextual_creation", "true");
+        <% } %>
+
+        return properties;
+    }
+}

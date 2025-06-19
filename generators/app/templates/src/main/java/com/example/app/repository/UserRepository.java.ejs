@@ -1,0 +1,41 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.entity.User;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Repository pour l'entité User
+ */
+@Repository
+public interface UserRepository extends BaseRepository<User, Long> {
+
+    /**
+     * Recherche un utilisateur par son nom d'utilisateur
+     * @param username Nom d'utilisateur
+     * @return L'utilisateur s'il existe
+     */
+    Optional<User> findByUsername(String username);
+
+    /**
+     * Recherche un utilisateur par son email
+     * @param email Email de l'utilisateur
+     * @return L'utilisateur s'il existe
+     */
+    Optional<User> findByEmail(String email);
+
+    /**
+     * Vérifie si un utilisateur avec ce nom d'utilisateur existe
+     * @param username Nom d'utilisateur
+     * @return true si l'utilisateur existe, false sinon
+     */
+    boolean existsByUsername(String username);
+
+    /**
+     * Vérifie si un utilisateur avec cet email existe
+     * @param email Email de l'utilisateur
+     * @return true si l'utilisateur existe, false sinon
+     */
+    boolean existsByEmail(String email);
+}

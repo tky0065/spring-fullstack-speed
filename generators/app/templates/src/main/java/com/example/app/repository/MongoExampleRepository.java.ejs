@@ -1,0 +1,52 @@
+package <%= packageName %>.repository;
+
+<% if (database === 'MongoDB') { %>
+import <%= packageName %>.entity.Example;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository pour l'entité Example utilisant MongoDB.
+ * Spring Data MongoDB fournit automatiquement les implémentations des méthodes.
+ */
+@Repository
+public interface ExampleRepository extends MongoRepository<Example, String> {
+
+    /**
+     * Trouve un exemple par son nom
+     * @param name le nom à rechercher
+     * @return l'exemple trouvé, ou empty si aucun n'existe
+     */
+    Optional<Example> findByName(String name);
+
+    /**
+     * Trouve tous les exemples actifs
+     * @return liste des exemples actifs
+     */
+    List<Example> findByActiveTrue();
+
+    /**
+     * Trouve tous les exemples dont le nom contient la chaîne spécifiée (insensible à la casse)
+     * Utilise l'opérateur $regex de MongoDB
+     *
+     * @param namePart partie du nom à rechercher
+     * @return liste des exemples correspondants
+     */
+    @Query("{ 'name': { $regex: ?0, $options: 'i' } }")
+    List<Example> findByNameContainingIgnoreCase(String namePart);
+
+    /**
+     * Compte le nombre d'exemples dans une certaine période de temps
+     *
+     * @param start date de début
+     * @param end date de fin
+     * @return nombre d'exemples créés dans cette période
+     */
+    @Query("{ 'createdAt': { $gte: ?0, $lte: ?1 } }")
+    long countByCreatedAtBetween(java.time.Instant start, java.time.Instant end);
+}
+<% } %>

@@ -99,262 +99,127 @@ gg:
     encoding: UTF-8
     cache-duration: 3600
 
-# Configuration du serveur
-server:
-  port: 8080
-<% if (additionalFeatures.includes('openapi')) { %>
-  servlet:
-    context-path: /api
-<% } else { %>
-  servlet:
-    context-path: /
-<% } %>
-  compression:
-    enabled: true
-    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
-    min-response-size: 1024
-
-# Configuration du logging
-logging:
-  level:
-    root: INFO
-    <%= packageName %>: DEBUG
-    org.springframework.web: INFO
-<% if (database !== 'MongoDB') { %>
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-<% } %>
-  file:
-    name: logs/<%= appName %>.log
-  logback:
-    rollingpolicy:
-      max-file-size: 10MB
-      max-history: 7
-
-<% if (includeAuth) { %>
-# Configuration JWT
-app:
-  security:
-    jwt:
-      secret: <%= generateRandomSecret(64) %>
-      expiration-ms: 86400000  # 24 heures en millisecondes
-      token-prefix: Bearer
-      header: Authorization
-<% } %>
-
-<% if (additionalFeatures.includes('prometheus')) { %>
-# Configuration Actuator/Prometheus
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,metrics
-  endpoint:
-    health:
-      show-details: always
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    distribution:
-      percentiles-histogram:
-        http.server.requests: true
-<% } %>
-
-<% if (additionalFeatures.includes('openapi')) { %>
-# Configuration OpenAPI/Swagger
-springdoc:
-  api-docs:
-    path: /docs
-  swagger-ui:
-    path: /swagger-ui
-    operations-sorter: method
-    tags-sorter: alpha
-    try-it-out-enabled: true
-  show-actuator: true
-<% } %>
-
-# Configuration spécifique à l'application
-app:
-  name: <%= appName %>
-  description: Application générée avec Spring-Fullstack-Speed
-
+# Configurations spécifiques aux profils
 ---
-# Profil: dev (développement)
 spring:
   config:
     activate:
       on-profile: dev
-<% if (database === 'MySQL') { %>
+<% if (database === 'H2') { %>
   datasource:
-    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase().replace(/-/g, '_') %>_dev?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-    username: root
-    password:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-<% } else if (database === 'PostgreSQL') { %>
-  datasource:
-    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase().replace(/-/g, '_') %>_dev
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      schema: public
-      connection-init-sql: SET search_path TO public
-<% } else if (database === 'H2') { %>
-  datasource:
-    url: jdbc:h2:mem:<%= appName %>;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:devdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password:
   h2:
     console:
       enabled: true
       path: /h2-console
-<% } else if (database === 'MongoDB') { %>
-  data:
-    mongodb:
-      database: <%= appName %>_dev
-      # Options de développement
-      auto-index-creation: true
+      settings:
+        trace: false
+        web-allow-others: false
+<% } else if (database === 'MySQL') { %>
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase() %>_dev?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
+<% } else if (database === 'PostgreSQL') { %>
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase() %>_dev
+    username: postgres
+    password: postgres
 <% } %>
-<% if (database !== 'MongoDB') { %>
-  jpa:
-    hibernate:
-      ddl-auto: update
+
+<% if (migrations === 'Flyway') { %>
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+<% } else if (migrations === 'Liquibase') { %>
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
 <% } %>
-logging:
-  level:
-    <%= packageName %>: DEBUG
 
 ---
-# Profil: test
 spring:
   config:
     activate:
       on-profile: test
-<% if (database === 'MySQL') { %>
+<% if (database === 'H2') { %>
   datasource:
-    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase().replace(/-/g, '_') %>_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-    username: root
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
     password:
+<% } else if (database === 'MySQL') { %>
+  datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/<%= appName.toLowerCase() %>_test?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: root
 <% } else if (database === 'PostgreSQL') { %>
   datasource:
-    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase().replace(/-/g, '_') %>_test
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/<%= appName.toLowerCase() %>_test
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
-<% } else if (database === 'H2') { %>
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-<% } else if (database === 'MongoDB') { %>
-  data:
-    mongodb:
-      database: <%= appName %>_test
-      auto-index-creation: true
 <% } %>
-<% if (database !== 'MongoDB') { %>
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-<% } %>
-logging:
-  level:
-    root: WARN
 
 ---
-# Profil: prod (production)
 spring:
   config:
     activate:
       on-profile: prod
+  jpa:
+    show-sql: false
 <% if (database === 'MySQL') { %>
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:<%= appName.toLowerCase().replace(/-/g, '_') %>}?useSSL=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:<%= appName.toLowerCase() %>}?useSSL=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    # Configuration HikariCP optimisée pour production
-    hikari:
-      minimum-idle: 10
-      maximum-pool-size: 50
-      idle-timeout: 30000
-      max-lifetime: 1800000
-      connection-timeout: 20000
-      validation-timeout: 5000
-      leak-detection-threshold: 60000
 <% } else if (database === 'PostgreSQL') { %>
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:<%= appName.toLowerCase().replace(/-/g, '_') %>}?ssl=true
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:<%= appName.toLowerCase() %>}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-    # Configuration HikariCP optimisée pour production
-    hikari:
-      minimum-idle: 10
-      maximum-pool-size: 50
-      idle-timeout: 30000
-      max-lifetime: 1800000
-      connection-timeout: 20000
-      schema: public
-      data-source-properties:
-        ApplicationName: <%= appName %> (Production)
-        reWriteBatchedInserts: true
-<% } else if (database === 'H2') { %>
-  datasource:
-    url: jdbc:h2:file:./data/<%= appName %>_prod;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:}
-  h2:
-    console:
-      enabled: false
-<% } else if (database === 'MongoDB') { %>
-  data:
-    mongodb:
-      host: ${DB_HOST:localhost}
-      port: ${DB_PORT:27017}
-      database: ${DB_NAME:<%= appName %>}
-      username: ${DB_USERNAME:}
-      password: ${DB_PASSWORD:}
-      authentication-database: ${DB_AUTH_SOURCE:admin}
-      # Options de production
-      auto-index-creation: false  # Désactivé en prod pour éviter les performances dégradées
-      uuid-representation: standard
-      field-naming-strategy: org.springframework.data.mapping.model.SnakeCaseFieldNamingStrategy
 <% } %>
-<% if (database !== 'MongoDB') { %>
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: false
-    properties:
-      hibernate:
-        jdbc:
-          batch_size: 50
-<% if (database === 'MySQL') { %>
-        # Cache de second niveau pour MySQL en production
-        cache:
-          use_second_level_cache: true
-          use_query_cache: true
-          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
-<% } else if (database === 'PostgreSQL') { %>
-        # Cache de second niveau pour PostgreSQL en production
-        cache:
-          use_second_level_cache: true
-          use_query_cache: true
-          region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
-        generate_statistics: true
+
+<% if (migrations === 'Flyway') { %>
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+<% } else if (migrations === 'Liquibase') { %>
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
 <% } %>
-<% } %>
-<% if (frontendFramework === 'Thymeleaf') { %>
-  thymeleaf:
-    cache: true
-<% } %>
+
+# Configuration serveur
 server:
+  port: ${SERVER_PORT:8080}
   compression:
     enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+    min-response-size: 1024
+  servlet:
+    context-path: /
+    session:
+      cookie:
+        http-only: true
+        secure: true
+
+# Logging configuration
 logging:
   level:
-    root: WARN
-    <%= packageName %>: INFO
+    root: INFO
+    <%= packageName %>: DEBUG
+    org.hibernate.SQL: INFO
+    org.springframework.web: INFO
   file:
-    name: /var/log/<%= appName %>/<%= appName %>.log
+    name: ${LOG_PATH:/tmp}/logs/<%= appName %>.log

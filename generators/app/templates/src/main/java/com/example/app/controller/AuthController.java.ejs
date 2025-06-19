@@ -1,0 +1,107 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.entity.Role;
+import <%= packageName %>.entity.User;
+import <%= packageName %>.repository.RoleRepository;
+import <%= packageName %>.repository.UserRepository;
+import <%= packageName %>.security.jwt.JwtTokenProvider;
+import <%= packageName %>.dto.AuthenticationRequest;
+import <%= packageName %>.dto.AuthenticationResponse;
+import <%= packageName %>.dto.RegisterRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Contrôleur pour gérer l'authentification et l'enregistrement des utilisateurs
+ */
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    private final AuthenticationManager authenticationManager;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider tokenProvider;
+
+    public AuthController(
+            AuthenticationManager authenticationManager,
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider tokenProvider) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.tokenProvider = tokenProvider;
+    }
+
+    /**
+     * Endpoint pour l'authentification des utilisateurs
+     */
+    @PostMapping("/login")
+    public ResponseEntity<AuthenticationResponse> authenticateUser(
+            @Valid @RequestBody AuthenticationRequest loginRequest) {
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getUsername(),
+                        loginRequest.getPassword()
+                )
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = tokenProvider.createToken(authentication, loginRequest.isRememberMe());
+
+        return ResponseEntity.ok(new AuthenticationResponse(jwt));
+    }
+
+    /**
+     * Endpoint pour l'enregistrement de nouveaux utilisateurs
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
+        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Erreur: Ce nom d'utilisateur est déjà pris!");
+        }
+
+        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Erreur: Cet email est déjà utilisé!");
+        }
+
+        // Création du compte utilisateur
+        User user = new User();
+        user.setUsername(signUpRequest.getUsername());
+        user.setEmail(signUpRequest.getEmail());
+        user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
+        user.setFirstName(signUpRequest.getFirstName());
+        user.setLastName(signUpRequest.getLastName());
+
+        // Par défaut, attribuer le rôle "ROLE_USER"
+        Set<Role> roles = new HashSet<>();
+        Role userRole = roleRepository.findByName("ROLE_USER")
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR, "Erreur: Rôle utilisateur non trouvé."));
+        roles.add(userRole);
+        user.setRoles(roles);
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok().body(Map.of("message", "Utilisateur enregistré avec succès!"));
+    }
+}

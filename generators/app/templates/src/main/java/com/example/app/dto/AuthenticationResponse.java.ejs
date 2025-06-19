@@ -1,0 +1,14 @@
+package <%= packageName %>.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+/**
+ * DTO pour la réponse après authentification réussie
+ */
+@Data
+@AllArgsConstructor
+public class AuthenticationResponse {
+
+    private String token;
+}

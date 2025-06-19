@@ -1,0 +1,27 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.entity.Role;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Repository pour l'entité Role
+ */
+@Repository
+public interface RoleRepository extends BaseRepository<Role, Long> {
+
+    /**
+     * Recherche un rôle par son nom
+     * @param name Nom du rôle
+     * @return Le rôle s'il existe
+     */
+    Optional<Role> findByName(String name);
+
+    /**
+     * Vérifie si un rôle avec ce nom existe
+     * @param name Nom du rôle
+     * @return true si le rôle existe, false sinon
+     */
+    boolean existsByName(String name);
+}
