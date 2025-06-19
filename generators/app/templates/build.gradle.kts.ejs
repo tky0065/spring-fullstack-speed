@@ -1,0 +1,190 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+    java
+    id("org.springframework.boot") version "3.2.0"
+    id("io.spring.dependency-management") version "1.1.4"
+<% if (additionalFeatures.includes('docker')) { %>
+    id("com.google.cloud.tools.jib") version "3.4.0"
+<% } %>
+<% if (additionalFeatures.includes('tests')) { %>
+    id("jacoco")
+<% } %>
+<% if (frontendFramework.includes('React') || frontendFramework.includes('Vue')) { %>
+    id("com.github.node-gradle.node") version "7.0.1"
+<% } %>
+}
+
+group = "<%= packageName %>"
+version = "0.0.1-SNAPSHOT"
+java.sourceCompatibility = JavaVersion.VERSION_17
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot Starters
+    implementation("org.springframework.boot:spring-boot-starter-web")
+<% if (database !== 'MongoDB') { %>
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+<% } %>
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // Database connectors
+<% if (database === 'MySQL') { %>
+    runtimeOnly("com.mysql:mysql-connector-j")
+<% } else if (database === 'PostgreSQL') { %>
+    runtimeOnly("org.postgresql:postgresql")
+<% } else if (database === 'MongoDB') { %>
+    implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+<% } else if (database === 'H2') { %>
+    runtimeOnly("com.h2database:h2")
+<% } %>
+
+<% if (includeAuth) { %>
+    // Security
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    testImplementation("org.springframework.security:spring-security-test")
+<% } %>
+
+<% if (frontendFramework === 'Thymeleaf') { %>
+    // Thymeleaf
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+<% if (includeAuth) { %>
+    implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity6")
+<% } %>
+<% } else if (frontendFramework === 'JTE') { %>
+    // JTE Template Engine
+    implementation("gg.jte:jte-spring-boot-starter-3:3.1.9")
+<% } %>
+
+<% if (additionalFeatures.includes('openapi')) { %>
+    // OpenAPI/Swagger
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
+<% } %>
+
+<% if (additionalFeatures.includes('redis')) { %>
+    // Redis Cache
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+<% } %>
+
+<% if (additionalFeatures.includes('websocket')) { %>
+    // WebSocket
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+<% } %>
+
+<% if (additionalFeatures.includes('elasticsearch')) { %>
+    // Elasticsearch
+    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+<% } %>
+
+<% if (additionalFeatures.includes('prometheus')) { %>
+    // Micrometer & Prometheus
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("io.micrometer:micrometer-core")
+<% } %>
+
+<% if (additionalFeatures.includes('kafka')) { %>
+    // Kafka
+    implementation("org.springframework.kafka:spring-kafka")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
+<% } %>
+
+<% if (additionalFeatures.includes('rabbitmq')) { %>
+    // RabbitMQ
+    implementation("org.springframework.boot:spring-boot-starter-amqp")
+    testImplementation("org.springframework.amqp:spring-rabbit-test")
+<% } %>
+
+<% if (frontendFramework.includes('Inertia')) { %>
+    // Inertia.js
+    implementation("dev.inertia4j:inertia-spring-boot-starter:1.0.5")
+<% } %>
+
+    // Dev Tools & Utils
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+
+    // Test Dependencies
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+<% if (additionalFeatures.includes('tests')) { %>
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.mockito:mockito-junit-jupiter")
+<% } %>
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+    testLogging {
+        events = setOf(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED)
+    }
+}
+
+<% if (additionalFeatures.includes('tests')) { %>
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+<% } %>
+
+<% if (additionalFeatures.includes('docker')) { %>
+jib {
+    to {
+        image = "<%= appName.toLowerCase() %>:${project.version}"
+    }
+    container {
+        ports = listOf("8080")
+    }
+}
+<% } %>
+
+<% if (frontendFramework.includes('React') || frontendFramework.includes('Vue')) { %>
+// Frontend configuration
+node {
+    version.set("20.10.0")
+    npmVersion.set("10.2.3")
+    nodeProjectDir.set(file("${project.projectDir}/frontend"))
+    download.set(true)
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("installFrontend") {
+    description = "Install frontend dependencies"
+    workingDir.set(file("${project.projectDir}/frontend"))
+    args.set(listOf("install"))
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("buildFrontend") {
+    description = "Build frontend"
+    workingDir.set(file("${project.projectDir}/frontend"))
+    args.set(listOf("run", "build"))
+    dependsOn("installFrontend")
+}
+
+tasks.named("processResources") {
+    dependsOn("buildFrontend")
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDir("frontend/dist")
+        }
+    }
+}
+<% } %>
+
+tasks.bootJar {
+    archiveBaseName.set("<%= appName %>")
+    archiveVersion.set("${project.version}")
+}
