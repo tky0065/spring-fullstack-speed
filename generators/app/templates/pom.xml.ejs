@@ -13,7 +13,7 @@
     <groupId><%= packageName %></groupId>
     <artifactId><%= appName %></artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name><%= appName %></name>
+    <n><%= appName %></n>
     <description><%= appName %> - Generated with Spring-Fullstack-Speed</description>
 
     <properties>
@@ -22,9 +22,7 @@
         <node.version>v20.10.0</node.version>
         <npm.version>10.2.3</npm.version>
 <% } %>
-<% if (additionalFeatures.includes('openapi')) { %>
         <springdoc.version>2.3.0</springdoc.version>
-<% } %>
 <% if (additionalFeatures.includes('elasticsearch')) { %>
         <elasticsearch.version>8.12.0</elasticsearch.version>
 <% } %>
@@ -43,11 +41,11 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Inertia.js for Spring Boot -->
+        <!-- OpenAPI Documentation -->
         <dependency>
-            <groupId>dev.inertia</groupId>
-            <artifactId>inertia-spring-boot-starter</artifactId>
-            <version>0.5.1</version>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
 
 <% if (database !== 'MongoDB') { %>
@@ -137,15 +135,6 @@
         </dependency>
 <% } %>
 
-<% if (additionalFeatures.includes('openapi')) { %>
-        <!-- OpenAPI/Swagger -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc.version}</version>
-        </dependency>
-<% } %>
-
 <% if (additionalFeatures.includes('redis')) { %>
         <!-- Redis Cache -->
         <dependency>
@@ -203,15 +192,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
-        </dependency>
-<% } %>
-
-<% if (frontendFramework.includes('Inertia')) { %>
-        <!-- Inertia.js -->
-        <dependency>
-            <groupId>io.github.inertia4j</groupId>
-            <artifactId>inertia4j-spring</artifactId>
-            <version>1.0.4</version>
         </dependency>
 <% } %>
 

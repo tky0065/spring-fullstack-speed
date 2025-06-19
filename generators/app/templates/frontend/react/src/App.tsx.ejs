@@ -1,37 +1,50 @@
+import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { createInertiaApp } from '@inertiajs/react';
-import { RoutingProvider } from './utils/routing';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/main.css';
 
+// Import des pages
+import Home from './pages/Home';
+import About from './pages/About';
+import NotFound from './pages/NotFound';
+
+// Import des pages d'authentification
+import Login from './pages/Auth/Login';
+import Register from './pages/Auth/Register';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
+
 /**
- * Initialisation de l'application Inertia avec React
+ * Composant principal de l'application
  */
-createInertiaApp({
-  /**
-   * Fonction pour résoudre les pages à partir de leurs noms
-   * @param name - Nom de la page à charger
-   */
-  resolve: async (name: string) => {
-    // Importation dynamique des pages basée sur leur nom
-    const pages = import.meta.glob('./pages/**/*.tsx');
-    const page = pages[`./pages/${name}.tsx`];
+const App: React.FC = () => {
+  return (
+    <Router>
+      <Routes>
+        {/* Routes publiques */}
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
 
-    if (!page) {
-      throw new Error(`Page not found: ${name}`);
-    }
+        {/* Routes d'authentification */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-    return (await page()).default;
-  },
+        {/* Route 404 */}
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
+      </Routes>
+    </Router>
+  );
+};
 
-  /**
-   * Configure le rendu de l'application avec le RoutingProvider
-   * @param param0 - Propriétés pour le rendu
-   */
-  setup({ el, App, props }) {
-    createRoot(el).render(
-      <RoutingProvider>
-        <App {...props} />
-      </RoutingProvider>
-    );
-  },
-});
+/**
+ * Point d'entrée de l'application
+ */
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
+
+export default App;

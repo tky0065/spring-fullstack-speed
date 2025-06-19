@@ -1,13 +1,16 @@
-import React from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet';
 import MainLayout from '../layouts/MainLayout';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 
+// Import du service API qui utilise les clients générés par OpenAPI Generator
+import { getHomeData } from '../services/apiService';
+
 /**
- * Interface des props de la page d'accueil
+ * Interface pour les données de la page d'accueil
  */
-interface HomeProps {
+interface HomeData {
   appName: string;
   welcomeMessage: string;
   features: Array<{
@@ -19,41 +22,113 @@ interface HomeProps {
 /**
  * Page d'accueil de l'application
  */
-export default function Home({ appName, welcomeMessage, features }: HomeProps) {
+export default function Home() {
+  // État pour stocker les données récupérées de l'API
+  const [data, setData] = useState<HomeData>({
+    appName: '<%= appName %>',
+    welcomeMessage: 'Bienvenue sur notre application',
+    features: [
+      {
+        title: 'API Auto-générées',
+        description: 'Les clients API sont générés automatiquement à partir des spécifications OpenAPI du backend.'
+      },
+      {
+        title: 'TypeScript',
+        description: 'Bénéficiez d\'un typage fort pour une meilleure maintenabilité et moins d\'erreurs.'
+      },
+      {
+        title: 'Spring Boot',
+        description: 'Backend robuste avec Spring Boot pour des APIs RESTful, une sécurité performante et une excellente évolutivité.'
+      }
+    ]
+  });
+
+  // État pour gérer le chargement
+  const [loading, setLoading] = useState(false);
+  // État pour gérer les erreurs
+  const [error, setError] = useState<string | null>(null);
+
+  // Récupération des données depuis l'API lors du chargement de la page
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const response = await getHomeData();
+        if (response) {
+          setData(response);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des données:', err);
+        setError('Impossible de charger les données. Veuillez réessayer plus tard.');
+        // En cas d'erreur, on garde les données par défaut
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
-    <MainLayout title="Accueil">
+    <MainLayout>
+      <Helmet>
+        <title>Accueil | {data.appName}</title>
+      </Helmet>
+
       <div className="py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              {welcomeMessage}
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600">
-              Bienvenue sur {appName}, une application générée avec Spring-Fullstack-Speed
-            </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Button primary href="/getting-started">
-                Commencer
-              </Button>
-              <Button href="/docs">
-                Documentation
-              </Button>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-600"></div>
             </div>
-          </div>
-
-          <div className="mt-20">
-            <h2 className="text-2xl font-bold text-center mb-12">
-              Fonctionnalités principales
-            </h2>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {features.map((feature, index) => (
-                <Card key={index} title={feature.title}>
-                  {feature.description}
-                </Card>
-              ))}
+          ) : error ? (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="text-center">
+                <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                  {data.welcomeMessage}
+                </h1>
+                <p className="mt-6 text-lg leading-8 text-gray-600">
+                  Bienvenue sur {data.appName}, une application générée avec Spring-Fullstack-Speed
+                </p>
+                <div className="mt-10 flex items-center justify-center gap-x-6">
+                  <Button primary href="/getting-started">
+                    Commencer
+                  </Button>
+                  <Button href="/docs">
+                    Documentation
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-20">
+                <h2 className="text-2xl font-bold text-center mb-12">
+                  Fonctionnalités principales
+                </h2>
+
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                  {data.features.map((feature, index) => (
+                    <Card key={index} title={feature.title}>
+                      {feature.description}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </MainLayout>

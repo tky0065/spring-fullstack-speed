@@ -1,38 +1,8 @@
 <template>
-  <component :is="page" />
+  <router-view />
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps } from 'vue';
-
-/**
- * Interface des props pour l'application
- */
-interface AppProps {
-  initialPage: {
-    component: string;
-    props: Record<string, any>;
-    url: string;
-    version: string;
-  };
-}
-
-// Déclarer les props
-const props = defineProps<AppProps>();
-
-// Définir la page actuelle
-const page = computed(() => {
-  return resolveComponent(props.initialPage.component);
-});
-
-/**
- * Résoudre dynamiquement un composant par son nom
- */
-function resolveComponent(name: string) {
-  // La logique de chargement dynamique des composants sera implémentée ici
-  // Pour le moment, nous allons simplement retourner un composant de base
-  return {
-    template: `<div>Component ${name} (À implémenter)</div>`
-  };
-}
+// Aucune logique spécifique nécessaire pour le composant racine avec Vue Router
+// Le système de routage est entièrement géré par vue-router
 </script>

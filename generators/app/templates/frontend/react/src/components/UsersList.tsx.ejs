@@ -1,0 +1,68 @@
+import { useState, useEffect } from 'react';
+import ApiService from '../services/ApiService';
+import { User } from '../api'; // Type généré automatiquement par OpenAPI Generator
+
+/**
+ * Exemple de composant React qui utilise les API générées
+ * pour récupérer et afficher une liste d'utilisateurs
+ */
+const UsersList = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Récupérer les utilisateurs au chargement du composant
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        // Utilisation de l'API générée via notre service
+        const api = ApiService.getApi();
+        const response = await api.getAllUsers();
+        setUsers(response.data);
+        setError(null);
+      } catch (err: any) {
+        // Gestion des erreurs avec notre utilitaire
+        setError(ApiService.handleError(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  return (
+    <div className="users-list">
+      <h2>Liste des utilisateurs</h2>
+
+      {loading && <p>Chargement en cours...</p>}
+
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()}>Réessayer</button>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {users.length === 0 ? (
+            <p>Aucun utilisateur trouvé</p>
+          ) : (
+            <ul className="users-grid">
+              {users.map((user) => (
+                <li key={user.id} className="user-card">
+                  <h3>{user.firstName} {user.lastName}</h3>
+                  <p>{user.email}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default UsersList;
