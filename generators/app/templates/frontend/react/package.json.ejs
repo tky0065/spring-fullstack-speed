@@ -1,0 +1,28 @@
+{
+  "name": "<%= appName %>-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint src --ext .js,.jsx",
+    "format": "prettier --write 'src/**/*.{js,jsx,css}'"
+  },
+  "dependencies": {
+    "@inertiajs/react": "^1.0.14",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0",
+    "classnames": "^2.3.2"<% if (additionalFeatures.includes('websocket')) { %>,
+    "socket.io-client": "^4.7.2"<% } %>
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.1.0",
+    "vite": "^5.0.0"
+  }
+}
+

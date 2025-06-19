@@ -11,7 +11,7 @@ environnement de développement : on est sur windows 11
 - Consulte le fichier [spring-fullstack-planning.md](spring-fullstack-planning.md) qui contient le planning détaillé avec toutes les tâches
 - Identifie la prochaine tâche non terminée (marquée avec `[ ]`)
 - Travaille UNIQUEMENT sur UNE tâche à la fois
-- Une fois la tâche terminée, marque-la comme complétée avec `[x]` dans le fichier `ffff.md`
+- Une fois la tâche terminée et les tests tu doit executer voir si les tests passe sinon corriger, marque-la comme complétée avec `[x]` dans le fichier `ffff.md`
 
 ### 2. QUALITÉ DU CODE
 - **ZÉRO ERREUR** : Assure-toi que le code généré compile et fonctionne sans erreur

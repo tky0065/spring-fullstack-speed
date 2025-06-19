@@ -73,9 +73,9 @@ generator-spring-fullstack/
 
 ### Module 1.2 : Architecture des Templates
 - [x] Définir la structure des templates Spring Boot
-- [ ] Créer la hiérarchie des dossiers templates
-- [ ] Mettre en place le système de templating EJS
-- [ ] Définir les variables de configuration globales
+- [x] Créer la hiérarchie des dossiers templates
+- [x] Mettre en place le système de templating EJS
+- [x] Définir les variables de configuration globales
 - [x] Créer les templates de base (pom.xml, application.yml)
 - [ ] Implémenter le système de conditionnement de code
 - [ ] Créer les utilitaires de génération de fichiers

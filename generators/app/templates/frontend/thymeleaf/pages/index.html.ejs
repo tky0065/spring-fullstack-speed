@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layouts/default}">
+<head>
+    <title>Accueil</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="row mt-5">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Bienvenue sur <%= appName %></h3>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="card-title">Application générée avec Spring-Fullstack-Speed</h4>
+                        <p class="card-text">
+                            Cette application a été générée automatiquement avec Spring-Fullstack-Speed.
+                            Vous pouvez maintenant commencer à développer votre application en personnalisant
+                            ce template.
+                        </p>
+                        <hr>
+                        <h5>Prochaines étapes</h5>
+                        <ul>
+                            <li>Modifier cette page en éditant <code>src/main/resources/templates/index.html</code></li>
+                            <li>Créer des entités et des repositories avec <code>sfs entity</code></li>
+                            <li>Générer des opérations CRUD avec <code>sfs crud</code></li>
+                            <li>Générer des DTOs avec <code>sfs dtos</code></li>
+                        </ul>
+                        <div class="mt-4">
+                            <a href="#" class="btn btn-primary">Explorer la documentation</a>
+                        </div>
+                    </div>
+                    <div class="card-footer text-muted">
+                        <i class="bi bi-clock"></i> Généré le [[${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}]]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

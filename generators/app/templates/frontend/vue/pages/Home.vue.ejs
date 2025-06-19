@@ -1,0 +1,46 @@
+<template>
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h1 class="text-3xl font-bold text-gray-800 mb-4">
+        Bienvenue sur {{ appName }} !
+      </h1>
+      <p class="text-gray-600 mb-4">
+        Cette application a été générée avec Spring-Fullstack-Speed.
+      </p>
+      <div class="mt-6">
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">
+          Prochaines étapes
+        </h2>
+        <ul class="list-disc pl-5 space-y-2 text-gray-600">
+          <li>Modifier cette page dans <code>frontend/src/pages/Home.vue</code></li>
+          <li>Créer de nouvelles pages dans le dossier <code>pages</code></li>
+          <li>Personnaliser les styles dans <code>styles</code></li>
+          <li>Configurer l'authentification</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { Head } from '@inertiajs/vue3';
+
+// Propriétés reçues du serveur
+defineProps({
+  appName: {
+    type: String,
+    required: true
+  }
+});
+</script>
+
+<Head title="Accueil" />
+
+<style scoped>
+code {
+  background-color: #f1f1f1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+</style>

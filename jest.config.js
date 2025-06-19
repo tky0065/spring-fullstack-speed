@@ -1,5 +1,6 @@
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
@@ -23,5 +24,8 @@ export default {
     '**/?(*.)+(spec|test).ts',
   ],
   verbose: true,
+  transformIgnorePatterns: [
+    'node_modules/(?!(chalk|strip-ansi|ansi-regex|ansi-styles)/)',
+  ],
 }
 
