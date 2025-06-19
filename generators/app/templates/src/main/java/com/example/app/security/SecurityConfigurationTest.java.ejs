@@ -1,0 +1,118 @@
+package com.example.app.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * Tests pour valider la configuration de sécurité
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+public class SecurityConfigurationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void publicEndpointsShouldBeAccessible() throws Exception {
+        mockMvc.perform(get("/api/v1/public/info"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/auth/login"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void protectedEndpointsShouldRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/user/profile"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/admin/dashboard"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = {"USER"})
+    public void userShouldAccessUserEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/user/profile"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = {"USER"})
+    public void userShouldNotAccessAdminEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/dashboard"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    public void adminShouldAccessAdminEndpoints() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/dashboard"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void csrfProtectionShouldBeEnabledForMutations() throws Exception {
+        // Sans token CSRF, les mutations devraient être rejetées
+        mockMvc.perform(post("/api/v1/user/profile")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Test\"}"))
+                .andExpect(status().isForbidden());
+
+        // Avec token CSRF, les mutations devraient être acceptées (si authentifiées)
+        mockMvc.perform(post("/api/v1/user/profile")
+                .with(SecurityMockMvcRequestPostProcessors.csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Test\"}"))
+                .andExpect(status().isUnauthorized()); // Toujours unauthorized car pas authentifié
+    }
+
+    @Test
+    @WithMockUser(username = "user", roles = {"USER"})
+    public void csrfProtectionShouldWorkWithAuth() throws Exception {
+        // Sans token CSRF, les mutations devraient être rejetées même si authentifiées
+        mockMvc.perform(post("/api/v1/user/profile")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Test\"}"))
+                .andExpect(status().isForbidden());
+
+        // Avec token CSRF et authentification, les mutations devraient être acceptées
+        mockMvc.perform(post("/api/v1/user/profile")
+                .with(SecurityMockMvcRequestPostProcessors.csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Test\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void apiEndpointsShouldHaveSecurityHeaders() throws Exception {
+        mockMvc.perform(get("/api/v1/public/info"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    assert result.getResponse().getHeader("X-Content-Type-Options") != null;
+                    assert result.getResponse().getHeader("X-Content-Type-Options").equals("nosniff");
+
+                    assert result.getResponse().getHeader("X-Frame-Options") != null;
+                    assert result.getResponse().getHeader("X-Frame-Options").equals("DENY");
+
+                    assert result.getResponse().getHeader("X-XSS-Protection") != null;
+                    assert result.getResponse().getHeader("X-XSS-Protection").equals("1; mode=block");
+
+                    assert result.getResponse().getHeader("Content-Security-Policy") != null;
+                });
+    }
+}

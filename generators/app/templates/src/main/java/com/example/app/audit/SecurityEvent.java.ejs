@@ -1,0 +1,158 @@
+package com.example.app.audit;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.SqlTypes;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Entité pour stocker les événements d'audit de sécurité
+ * Capture les actions importantes liées à la sécurité dans l'application
+ */
+@Entity
+@Table(name = "security_event")
+public class SecurityEvent {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String principal;
+
+    @Column(nullable = false)
+    private String type;
+
+    @Column(name = "event_time", nullable = false)
+    private Instant timestamp;
+
+    @Column(length = 1024)
+    private String description;
+
+    @Column(nullable = false, length = 100)
+    private String outcome;
+
+    @Column(name = "source_ip", length = 50)
+    private String sourceIp;
+
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
+
+    @Column(name = "request_uri", length = 1024)
+    private String requestUri;
+
+    @Column(name = "http_method", length = 10)
+    private String httpMethod;
+
+    @JdbcType(SqlTypes.JSON)
+    @Column(columnDefinition = "json")
+    private Map<String, Object> metadata = new HashMap<>();
+
+    // Constructeur par défaut
+    public SecurityEvent() {
+        this.timestamp = Instant.now();
+    }
+
+    // Constructeur avec les champs principaux
+    public SecurityEvent(String principal, String type, String outcome) {
+        this();
+        this.principal = principal;
+        this.type = type;
+        this.outcome = outcome;
+    }
+
+    // Getters et setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getPrincipal() {
+        return principal;
+    }
+
+    public void setPrincipal(String principal) {
+        this.principal = principal;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(String outcome) {
+        this.outcome = outcome;
+    }
+
+    public String getSourceIp() {
+        return sourceIp;
+    }
+
+    public void setSourceIp(String sourceIp) {
+        this.sourceIp = sourceIp;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
+    public String getRequestUri() {
+        return requestUri;
+    }
+
+    public void setRequestUri(String requestUri) {
+        this.requestUri = requestUri;
+    }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
+    }
+
+    public void addMetadata(String key, Object value) {
+        this.metadata.put(key, value);
+    }
+}

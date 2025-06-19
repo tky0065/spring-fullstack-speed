@@ -1,0 +1,146 @@
+package com.example.app.controller;
+
+import com.example.app.security.annotation.AdminOnly;
+import com.example.app.security.password.PasswordValidator;
+import com.example.app.security.session.SessionManager;
+import com.example.app.security.session.UserSession;
+import com.example.app.security.twofa.TwoFactorAuthService;
+import com.example.app.security.twofa.TwoFactorAuthService.TwoFactorRegistrationDTO;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Contrôleur REST pour gérer les fonctionnalités de sécurité
+ * Expose des endpoints pour la gestion des sessions, 2FA et autres paramètres de sécurité
+ */
+@RestController
+@RequestMapping("/api/v1/security")
+public class SecurityController {
+
+    private final SessionManager sessionManager;
+    private final TwoFactorAuthService twoFactorAuthService;
+    private final PasswordValidator passwordValidator;
+
+    public SecurityController(
+            SessionManager sessionManager,
+            TwoFactorAuthService twoFactorAuthService,
+            PasswordValidator passwordValidator) {
+        this.sessionManager = sessionManager;
+        this.twoFactorAuthService = twoFactorAuthService;
+        this.passwordValidator = passwordValidator;
+    }
+
+    /**
+     * Récupère les sessions actives de l'utilisateur courant
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<List<UserSession>> getUserSessions(Authentication authentication) {
+        String username = authentication.getName();
+        List<UserSession> sessions = sessionManager.getActiveSessions(username);
+        return ResponseEntity.ok(sessions);
+    }
+
+    /**
+     * Termine une session spécifique
+     */
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> invalidateSession(
+            @PathVariable String sessionId,
+            Authentication authentication) {
+        String username = authentication.getName();
+        boolean result = sessionManager.invalidateSession(username, sessionId);
+
+        if (result) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Termine toutes les sessions de l'utilisateur sauf la session courante
+     */
+    @DeleteMapping("/sessions")
+    public ResponseEntity<Void> invalidateAllSessions(
+            @RequestParam(required = false) String currentSessionId,
+            Authentication authentication) {
+        String username = authentication.getName();
+
+        // Conserver la session courante
+        List<UserSession> sessions = sessionManager.getActiveSessions(username);
+        sessions.stream()
+                .filter(session -> !session.getSessionId().equals(currentSessionId))
+                .forEach(session -> sessionManager.invalidateSession(username, session.getSessionId()));
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Démarre le processus d'inscription 2FA
+     */
+    @PostMapping("/2fa/setup")
+    public ResponseEntity<TwoFactorRegistrationDTO> setupTwoFactor(
+            @RequestParam Long userId,
+            Authentication authentication) {
+        TwoFactorRegistrationDTO registrationInfo = twoFactorAuthService.startRegistration(userId);
+        return ResponseEntity.ok(registrationInfo);
+    }
+
+    /**
+     * Vérifie et active le 2FA après l'inscription
+     */
+    @PostMapping("/2fa/verify")
+    public ResponseEntity<List<String>> verifyAndEnable(
+            @RequestParam Long userId,
+            @RequestParam String code,
+            Authentication authentication) {
+        List<String> backupCodes = twoFactorAuthService.verifyAndEnable(userId, code);
+        return ResponseEntity.ok(backupCodes);
+    }
+
+    /**
+     * Désactive le 2FA pour un utilisateur
+     */
+    @DeleteMapping("/2fa")
+    public ResponseEntity<Void> disableTwoFactor(
+            @RequestParam Long userId,
+            Authentication authentication) {
+        twoFactorAuthService.disable(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Vérifie si un mot de passe respecte les politiques de sécurité
+     */
+    @PostMapping("/password/validate")
+    public ResponseEntity<Map<String, Object>> validatePassword(
+            @RequestBody Map<String, String> request) {
+        String password = request.get("password");
+        PasswordValidator.PasswordValidationResult result =
+                passwordValidator.validate(password);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", result.isValid());
+        response.put("messages", result.getMessages());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Affiche les statistiques de sécurité globales (réservé aux administrateurs)
+     */
+    @GetMapping("/stats")
+    @AdminOnly
+    public ResponseEntity<Map<String, Object>> getSecurityStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalActiveSessions", sessionManager.getTotalActiveSessions());
+        // Autres statistiques...
+
+        return ResponseEntity.ok(stats);
+    }
+}

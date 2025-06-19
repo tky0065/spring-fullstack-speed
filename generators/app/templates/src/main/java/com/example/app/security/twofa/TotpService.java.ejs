@@ -1,0 +1,125 @@
+package com.example.app.security.twofa;
+
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.apache.commons.codec.binary.Base32;
+import org.springframework.stereotype.Service;
+
+/**
+ * Service pour générer et valider les codes TOTP (Time-based One-Time Password)
+ * Utilisé pour l'authentification à deux facteurs (2FA)
+ */
+@Service
+public class TotpService {
+
+    private static final int SECRET_SIZE = 20;  // Taille en octets
+    private static final int CODE_DIGITS = 6;   // Nombre de chiffres dans le code
+    private static final int INTERVAL = 30;     // Intervalle de validité en secondes
+    private static final String CRYPTO_ALGORITHM = "HmacSHA1";
+
+    /**
+     * Génère une nouvelle clé secrète pour TOTP
+     * @return une clé encodée en Base32
+     */
+    public String generateSecret() {
+        // Générer une clé aléatoire de SECRET_SIZE octets
+        byte[] buffer = new byte[SECRET_SIZE];
+        new java.security.SecureRandom().nextBytes(buffer);
+
+        // Encoder en Base32 pour faciliter la saisie manuelle si nécessaire
+        Base32 codec = new Base32();
+        return codec.encodeToString(buffer);
+    }
+
+    /**
+     * Génère une URL pour QR Code à scanner avec une application d'authentification
+     * @param issuer l'émetteur du code (nom de votre application)
+     * @param accountName nom du compte utilisateur (typiquement email ou nom d'utilisateur)
+     * @param secret la clé secrète générée
+     * @return l'URL pour générer un QR code
+     */
+    public String getQrCodeUrl(String issuer, String accountName, String secret) {
+        String encodedIssuer = java.net.URLEncoder.encode(issuer, java.nio.charset.StandardCharsets.UTF_8);
+        String encodedAccount = java.net.URLEncoder.encode(accountName, java.nio.charset.StandardCharsets.UTF_8);
+
+        return String.format(
+            "otpauth://totp/%s:%s?secret=%s&issuer=%s",
+            encodedIssuer,
+            encodedAccount,
+            secret,
+            encodedIssuer
+        );
+    }
+
+    /**
+     * Valide un code TOTP fourni par l'utilisateur
+     * @param secret la clé secrète de l'utilisateur
+     * @param code le code à 6 chiffres fourni
+     * @return true si le code est valide, false sinon
+     */
+    public boolean validateCode(String secret, String code) {
+        if (code == null || code.length() != CODE_DIGITS) {
+            return false;
+        }
+
+        // Décoder la clé secrète
+        Base32 codec = new Base32();
+        byte[] decodedKey = codec.decode(secret);
+
+        // Vérifier le code pour l'intervalle de temps actuel et le précédent
+        // pour tenir compte des délais de saisie
+        long currentInterval = Instant.now().getEpochSecond() / INTERVAL;
+
+        return validateCodeForInterval(decodedKey, code, currentInterval) ||
+               validateCodeForInterval(decodedKey, code, currentInterval - 1);
+    }
+
+    /**
+     * Valide le code pour un intervalle de temps spécifique
+     */
+    private boolean validateCodeForInterval(byte[] key, String code, long interval) {
+        try {
+            // Convertir l'intervalle en tableau d'octets
+            byte[] data = new byte[8];
+            long value = interval;
+            for (int i = 7; i >= 0; i--) {
+                data[i] = (byte) (value & 0xFF);
+                value >>= 8;
+            }
+
+            // Calculer le HMAC-SHA1
+            SecretKeySpec signKey = new SecretKeySpec(key, CRYPTO_ALGORITHM);
+            Mac mac = Mac.getInstance(CRYPTO_ALGORITHM);
+            mac.init(signKey);
+            byte[] hash = mac.doFinal(data);
+
+            // Prendre le dernier octet du hash pour calculer l'offset
+            int offset = hash[hash.length - 1] & 0xF;
+
+            // Calculer la valeur tronquée à partir de l'offset
+            long truncatedHash = 0;
+            for (int i = 0; i < 4; ++i) {
+                truncatedHash <<= 8;
+                truncatedHash |= (hash[offset + i] & 0xFF);
+            }
+
+            // Masquer le bit de signe et réduire à CODE_DIGITS chiffres
+            truncatedHash &= 0x7FFFFFFF;
+            truncatedHash %= Math.pow(10, CODE_DIGITS);
+
+            // Convertir en chaîne de caractères avec zéros de début si nécessaire
+            String truncatedHashStr = String.format("%0" + CODE_DIGITS + "d", truncatedHash);
+
+            // Comparer avec le code fourni
+            return truncatedHashStr.equals(code);
+
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException("Erreur lors de la validation du code TOTP", e);
+        }
+    }
+}

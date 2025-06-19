@@ -1,0 +1,28 @@
+package com.example.app.security.twofa;
+
+import com.example.app.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Repository pour les opérations de persistance liées à l'authentification à deux facteurs
+ */
+@Repository
+public interface TwoFactorAuthRepository extends JpaRepository<TwoFactorAuth, Long> {
+
+    /**
+     * Trouve la configuration 2FA pour un utilisateur spécifique
+     * @param user l'utilisateur
+     * @return la configuration 2FA si elle existe
+     */
+    Optional<TwoFactorAuth> findByUser(User user);
+
+    /**
+     * Vérifie si un utilisateur a activé l'authentification à deux facteurs
+     * @param userId l'ID de l'utilisateur
+     * @return true si l'utilisateur a activé et vérifié le 2FA
+     */
+    boolean existsByUserIdAndEnabledTrueAndVerifiedTrue(Long userId);
+}

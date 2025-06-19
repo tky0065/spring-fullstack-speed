@@ -1,0 +1,126 @@
+# Configuration SSL/TLS pour Spring Boot
+
+Ce guide vous explique comment configurer HTTPS/SSL pour votre application Spring Boot générée.
+
+## 1. Générer un certificat auto-signé pour le développement
+
+Pour les environnements de développement, vous pouvez utiliser un certificat auto-signé :
+
+```bash
+keytool -genkeypair -alias springboot -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore springboot.p12 -validity 3650
+```
+
+Suivez les instructions pour renseigner les informations demandées.
+
+## 2. Configuration SSL dans application.yml
+
+Ajoutez les propriétés suivantes à votre fichier `application.yml` :
+
+```yaml
+server:
+  port: 8443
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore/springboot.p12
+    key-store-password: votre_mot_de_passe
+    key-alias: springboot
+```
+
+## 3. Redirection HTTP vers HTTPS
+
+Pour rediriger automatiquement HTTP vers HTTPS :
+
+```java
+@Configuration
+public class HttpToHttpsRedirectConfig {
+
+    @Bean
+    public ServletWebServerFactory servletContainer() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory() {
+            @Override
+            protected void postProcessContext(Context context) {
+                SecurityConstraint securityConstraint = new SecurityConstraint();
+                securityConstraint.setUserConstraint("CONFIDENTIAL");
+                SecurityCollection collection = new SecurityCollection();
+                collection.addPattern("/*");
+                securityConstraint.addCollection(collection);
+                context.addConstraint(securityConstraint);
+            }
+        };
+        tomcat.addAdditionalTomcatConnectors(redirectConnector());
+        return tomcat;
+    }
+
+    private Connector redirectConnector() {
+        Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+        connector.setScheme("http");
+        connector.setPort(8080);
+        connector.setSecure(false);
+        connector.setRedirectPort(8443);
+        return connector;
+    }
+}
+```
+
+## 4. Configuration SSL pour l'environnement de production
+
+Pour la production, utilisez un certificat valide obtenu auprès d'une autorité de certification (CA) reconnue :
+
+1. Placez votre certificat dans le dossier `src/main/resources/keystore/`
+2. Mettez à jour les propriétés SSL dans le profil de production :
+
+```yaml
+# application-prod.yml
+server:
+  port: 443
+  ssl:
+    key-store-type: PKCS12
+    key-store: classpath:keystore/production.p12
+    key-store-password: ${SSL_KEY_PASSWORD}
+    key-alias: production
+```
+
+## 5. Configuration SSL avec Let's Encrypt
+
+Pour utiliser Let's Encrypt (certificats gratuits) :
+
+1. Installez Certbot sur votre serveur
+2. Obtenez un certificat : `certbot certonly --standalone -d exemple.com`
+3. Convertissez le certificat au format PKCS12 :
+   ```bash
+   openssl pkcs12 -export -in /etc/letsencrypt/live/exemple.com/fullchain.pem \
+       -inkey /etc/letsencrypt/live/exemple.com/privkey.pem \
+       -out keystore.p12 -name springboot
+   ```
+
+## 6. Bonnes pratiques SSL
+
+- N'exposez pas les mots de passe de certificats dans le code source
+- Utilisez des variables d'environnement ou des coffres-forts pour les secrets
+- Activez uniquement les protocoles TLS sécurisés (TLS 1.2+)
+- Configurez les suites de chiffrement sécurisées
+- Configurez HSTS (HTTP Strict Transport Security)
+
+## 7. Tester la configuration SSL
+
+Testez votre configuration avec :
+- https://www.ssllabs.com/ssltest/
+- https://cipherlist.eu/
+
+## 8. Activation de HSTS
+
+Pour renforcer la sécurité, ajoutez l'en-tête HSTS :
+
+```java
+@Configuration
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .headers()
+                .httpStrictTransportSecurity()
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000); // 1 an
+    }
+}
+```

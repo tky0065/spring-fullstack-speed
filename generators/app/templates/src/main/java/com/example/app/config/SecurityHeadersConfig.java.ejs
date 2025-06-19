@@ -1,0 +1,80 @@
+package com.example.app.config;
+
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/**
+ * Configuration des en-têtes de sécurité HTTP et des politiques CSP
+ */
+@Configuration
+public class SecurityHeadersConfig {
+
+    /**
+     * Filtre qui ajoute des en-têtes de sécurité à chaque réponse HTTP
+     */
+    @Bean
+    public FilterRegistrationBean<Filter> securityHeadersFilter() {
+        FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                           FilterChain filterChain) throws ServletException, IOException {
+
+                // Content-Security-Policy
+                response.setHeader("Content-Security-Policy",
+                    "default-src 'self'; " +
+                    "img-src 'self' data: https://secure.gravatar.com; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+                    "font-src 'self' https://fonts.gstatic.com data:; " +
+                    "connect-src 'self'; " +
+                    "frame-src 'self'; " +
+                    "object-src 'none'; " +
+                    "base-uri 'self'; " +
+                    "form-action 'self'");
+
+                // X-Content-Type-Options
+                response.setHeader("X-Content-Type-Options", "nosniff");
+
+                // X-Frame-Options
+                response.setHeader("X-Frame-Options", "DENY");
+
+                // X-XSS-Protection
+                response.setHeader("X-XSS-Protection", "1; mode=block");
+
+                // Referrer-Policy
+                response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+
+                // Feature-Policy
+                response.setHeader("Permissions-Policy",
+                    "geolocation=(self), " +
+                    "camera=(), " +
+                    "microphone=()");
+
+                // Cache-Control
+                if (!request.getRequestURI().contains("/static/")) {
+                    response.setHeader("Cache-Control", "no-store, max-age=0, no-cache, must-revalidate, proxy-revalidate");
+                    response.setHeader("Pragma", "no-cache");
+                    response.setHeader("Expires", "0");
+                }
+
+                filterChain.doFilter(request, response);
+            }
+        });
+
+        // Appliquer ce filtre à toutes les requêtes
+        registrationBean.addUrlPatterns("/*");
+        registrationBean.setOrder(1);
+
+        return registrationBean;
+    }
+}

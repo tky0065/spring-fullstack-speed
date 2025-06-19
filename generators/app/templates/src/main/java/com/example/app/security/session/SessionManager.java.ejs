@@ -1,0 +1,193 @@
+package com.example.app.security.session;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Gestionnaire avancé de sessions pour Spring Security
+ * Permet de suivre, limiter et contrôler les sessions utilisateur
+ */
+@Component
+public class SessionManager {
+
+    // Map qui stocke les sessions actives par utilisateur
+    private final Map<String, Set<UserSession>> userSessions = new ConcurrentHashMap<>();
+
+    // Configuration
+    @Value("${security.session.max-concurrent-sessions:3}")
+    private int maxConcurrentSessions;
+
+    @Value("${security.session.expire-inactive-after-minutes:30}")
+    private int expireInactiveAfterMinutes;
+
+    /**
+     * Enregistre une nouvelle session utilisateur
+     * @param username nom d'utilisateur
+     * @param sessionId identifiant de session
+     * @param ipAddress adresse IP
+     * @param userAgent agent utilisateur
+     */
+    public void registerSession(String username, String sessionId, String ipAddress, String userAgent) {
+        UserSession session = new UserSession(
+                sessionId,
+                ipAddress,
+                userAgent,
+                Instant.now(),
+                Instant.now()
+        );
+
+        userSessions.computeIfAbsent(username, k -> Collections.synchronizedSet(new HashSet<>()))
+                    .add(session);
+
+        // Vérifier si l'utilisateur a dépassé le nombre maximal de sessions
+        enforceMaxSessionsLimit(username);
+    }
+
+    /**
+     * Met à jour l'horodatage d'activité d'une session
+     * @param sessionId identifiant de session
+     */
+    public void updateSessionActivity(String sessionId) {
+        String username = getCurrentUsername();
+        if (username != null && userSessions.containsKey(username)) {
+            userSessions.get(username).stream()
+                    .filter(session -> session.getSessionId().equals(sessionId))
+                    .findFirst()
+                    .ifPresent(session -> session.setLastActiveTime(Instant.now()));
+        }
+    }
+
+    /**
+     * Invalide une session spécifique
+     * @param username nom d'utilisateur
+     * @param sessionId identifiant de session
+     * @return true si la session a été trouvée et invalidée
+     */
+    public boolean invalidateSession(String username, String sessionId) {
+        if (userSessions.containsKey(username)) {
+            return userSessions.get(username).removeIf(session ->
+                    session.getSessionId().equals(sessionId));
+        }
+        return false;
+    }
+
+    /**
+     * Invalide toutes les sessions d'un utilisateur
+     * @param username nom d'utilisateur
+     */
+    public void invalidateAllSessions(String username) {
+        userSessions.remove(username);
+    }
+
+    /**
+     * Nettoie les sessions inactives
+     * Peut être exécuté périodiquement par un planificateur
+     */
+    public void cleanupInactiveSessions() {
+        Instant cutoffTime = Instant.now().minusSeconds(expireInactiveAfterMinutes * 60L);
+
+        userSessions.forEach((username, sessions) -> {
+            sessions.removeIf(session -> session.getLastActiveTime().isBefore(cutoffTime));
+
+            if (sessions.isEmpty()) {
+                userSessions.remove(username);
+            }
+        });
+    }
+
+    /**
+     * Liste les sessions actives d'un utilisateur
+     * @param username nom d'utilisateur
+     * @return liste des sessions actives
+     */
+    public List<UserSession> getActiveSessions(String username) {
+        if (!userSessions.containsKey(username)) {
+            return Collections.emptyList();
+        }
+
+        return new ArrayList<>(userSessions.get(username));
+    }
+
+    /**
+     * Vérifie si une session est active pour un utilisateur
+     * @param username nom d'utilisateur
+     * @param sessionId identifiant de session
+     * @return true si la session est active
+     */
+    public boolean isSessionActive(String username, String sessionId) {
+        if (!userSessions.containsKey(username)) {
+            return false;
+        }
+
+        return userSessions.get(username).stream()
+                .anyMatch(session -> session.getSessionId().equals(sessionId));
+    }
+
+    /**
+     * Nombre total de sessions actives dans le système
+     * @return nombre de sessions
+     */
+    public int getTotalActiveSessions() {
+        return userSessions.values().stream()
+                .mapToInt(Set::size)
+                .sum();
+    }
+
+    /**
+     * Applique la limitation du nombre maximal de sessions par utilisateur
+     * Supprime les sessions les plus anciennes si la limite est dépassée
+     * @param username nom d'utilisateur
+     */
+    private void enforceMaxSessionsLimit(String username) {
+        Set<UserSession> sessions = userSessions.get(username);
+        if (sessions.size() > maxConcurrentSessions) {
+            // Trier les sessions par date de création (les plus anciennes d'abord)
+            List<UserSession> sortedSessions = new ArrayList<>(sessions);
+            sortedSessions.sort(Comparator.comparing(UserSession::getCreationTime));
+
+            // Supprimer les plus anciennes sessions pour respecter la limite
+            int excessSessions = sessions.size() - maxConcurrentSessions;
+            for (int i = 0; i < excessSessions; i++) {
+                sessions.remove(sortedSessions.get(i));
+            }
+        }
+    }
+
+    /**
+     * Récupère l'utilisateur actuellement authentifié
+     * @return le nom d'utilisateur ou null
+     */
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName();
+        }
+        return null;
+    }
+
+    /**
+     * Récupère la session HTTP actuelle
+     * @return la session ou null si non disponible
+     */
+    private Optional<HttpSession> getCurrentSession() {
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            return Optional.ofNullable(request.getSession(false));
+        }
+
+        return Optional.empty();
+    }
+}

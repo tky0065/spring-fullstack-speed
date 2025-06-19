@@ -1,0 +1,220 @@
+package com.example.app.security.twofa;
+
+import com.example.app.entity.User;
+import com.example.app.service.UserService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Service pour gérer l'authentification à deux facteurs (2FA)
+ */
+@Service
+public class TwoFactorAuthService {
+
+    private final TwoFactorAuthRepository twoFactorAuthRepository;
+    private final TotpService totpService;
+    private final UserService userService;
+    private static final int NUMBER_OF_BACKUP_CODES = 8;
+    private static final int BACKUP_CODE_LENGTH = 8;
+
+    private static final String APPLICATION_NAME = "<%= appName %>";
+
+    public TwoFactorAuthService(
+            TwoFactorAuthRepository twoFactorAuthRepository,
+            TotpService totpService,
+            UserService userService) {
+        this.twoFactorAuthRepository = twoFactorAuthRepository;
+        this.totpService = totpService;
+        this.userService = userService;
+    }
+
+    /**
+     * Commence le processus d'inscription 2FA pour un utilisateur
+     * @param userId l'ID de l'utilisateur
+     * @return les informations d'inscription (secret et QR code URL)
+     */
+    @Transactional
+    public TwoFactorRegistrationDTO startRegistration(Long userId) {
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
+
+        // Vérifier si l'utilisateur a déjà configuré le 2FA
+        Optional<TwoFactorAuth> existingAuth = twoFactorAuthRepository.findByUser(user);
+        if (existingAuth.isPresent() && existingAuth.get().isVerified() && existingAuth.get().isEnabled()) {
+            throw new IllegalStateException("L'authentification à deux facteurs est déjà activée");
+        }
+
+        // Générer un nouveau secret
+        String secret = totpService.generateSecret();
+
+        // Créer ou mettre à jour l'entité TwoFactorAuth
+        TwoFactorAuth twoFactorAuth;
+        if (existingAuth.isPresent()) {
+            twoFactorAuth = existingAuth.get();
+            twoFactorAuth.setSecret(secret);
+            twoFactorAuth.setVerified(false);
+            twoFactorAuth.setEnabled(false);
+        } else {
+            twoFactorAuth = new TwoFactorAuth(user, secret);
+        }
+
+        twoFactorAuthRepository.save(twoFactorAuth);
+
+        // Générer l'URL pour le QR code
+        String qrCodeUrl = totpService.getQrCodeUrl(
+                APPLICATION_NAME,
+                user.getUsername(),
+                secret
+        );
+
+        return new TwoFactorRegistrationDTO(secret, qrCodeUrl);
+    }
+
+    /**
+     * Vérifie le code fourni par l'utilisateur pour confirmer l'inscription 2FA
+     * @param userId l'ID de l'utilisateur
+     * @param code le code à vérifier
+     * @return les codes de secours générés si la vérification est réussie
+     */
+    @Transactional
+    public List<String> verifyAndEnable(Long userId, String code) {
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
+
+        TwoFactorAuth twoFactorAuth = twoFactorAuthRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalStateException("Configuration 2FA non trouvée"));
+
+        // Vérifier le code
+        if (!totpService.validateCode(twoFactorAuth.getSecret(), code)) {
+            throw new IllegalArgumentException("Code invalide");
+        }
+
+        // Générer des codes de secours
+        List<String> backupCodes = generateBackupCodes();
+
+        // Activer et marquer comme vérifié
+        twoFactorAuth.setVerified(true);
+        twoFactorAuth.setEnabled(true);
+        twoFactorAuth.setBackupCodes(String.join(",", backupCodes));
+        twoFactorAuth.setLastUsed(Instant.now());
+
+        twoFactorAuthRepository.save(twoFactorAuth);
+
+        return backupCodes;
+    }
+
+    /**
+     * Vérifie un code 2FA lors de la connexion
+     * @param userId l'ID de l'utilisateur
+     * @param code le code à vérifier (TOTP ou code de secours)
+     * @return true si le code est valide
+     */
+    @Transactional
+    public boolean validateCode(Long userId, String code) {
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
+
+        TwoFactorAuth twoFactorAuth = twoFactorAuthRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalStateException("Configuration 2FA non trouvée"));
+
+        if (!twoFactorAuth.isEnabled() || !twoFactorAuth.isVerified()) {
+            throw new IllegalStateException("L'authentification à deux facteurs n'est pas activée");
+        }
+
+        // Vérifier si c'est un code TOTP valide
+        boolean isValid = totpService.validateCode(twoFactorAuth.getSecret(), code);
+
+        // Si ce n'est pas un code TOTP, vérifier les codes de secours
+        if (!isValid && twoFactorAuth.getBackupCodes() != null) {
+            List<String> backupCodes = List.of(twoFactorAuth.getBackupCodes().split(","));
+            if (backupCodes.contains(code)) {
+                isValid = true;
+
+                // Supprimer le code de secours utilisé
+                List<String> updatedCodes = backupCodes.stream()
+                        .filter(c -> !c.equals(code))
+                        .collect(Collectors.toList());
+
+                twoFactorAuth.setBackupCodes(String.join(",", updatedCodes));
+            }
+        }
+
+        if (isValid) {
+            twoFactorAuth.setLastUsed(Instant.now());
+            twoFactorAuthRepository.save(twoFactorAuth);
+        }
+
+        return isValid;
+    }
+
+    /**
+     * Désactive l'authentification à deux facteurs pour un utilisateur
+     * @param userId l'ID de l'utilisateur
+     */
+    @Transactional
+    public void disable(Long userId) {
+        User user = userService.getUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Utilisateur non trouvé"));
+
+        twoFactorAuthRepository.findByUser(user).ifPresent(twoFactorAuth -> {
+            twoFactorAuth.setEnabled(false);
+            twoFactorAuthRepository.save(twoFactorAuth);
+        });
+    }
+
+    /**
+     * Vérifie si un utilisateur a activé l'authentification à deux facteurs
+     * @param userId l'ID de l'utilisateur
+     * @return true si l'authentification à deux facteurs est activée
+     */
+    public boolean isEnabled(Long userId) {
+        return twoFactorAuthRepository.existsByUserIdAndEnabledTrueAndVerifiedTrue(userId);
+    }
+
+    /**
+     * Génère des codes de secours aléatoires pour l'utilisateur
+     * @return liste des codes de secours
+     */
+    private List<String> generateBackupCodes() {
+        SecureRandom random = new SecureRandom();
+        List<String> codes = new ArrayList<>(NUMBER_OF_BACKUP_CODES);
+
+        for (int i = 0; i < NUMBER_OF_BACKUP_CODES; i++) {
+            StringBuilder code = new StringBuilder();
+            for (int j = 0; j < BACKUP_CODE_LENGTH; j++) {
+                code.append(random.nextInt(10)); // Chiffres de 0 à 9
+            }
+            codes.add(code.toString());
+        }
+
+        return codes;
+    }
+
+    /**
+     * DTO pour les informations d'inscription 2FA
+     */
+    public static class TwoFactorRegistrationDTO {
+        private final String secret;
+        private final String qrCodeUrl;
+
+        public TwoFactorRegistrationDTO(String secret, String qrCodeUrl) {
+            this.secret = secret;
+            this.qrCodeUrl = qrCodeUrl;
+        }
+
+        public String getSecret() {
+            return secret;
+        }
+
+        public String getQrCodeUrl() {
+            return qrCodeUrl;
+        }
+    }
+}

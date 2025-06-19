@@ -174,12 +174,12 @@ generator-spring-fullstack/
 - [x] Configurer Angular CLI integration
 - [x] Générer les services Angular
 - [x] Implémenter Angular Guards
-- [ ] Créer les templates Thymeleaf
-- [ ] Configurer Spring MVC pour Thymeleaf
-- [ ] Implémenter JTE templates
-- [ ] Créer les fragments Thymeleaf/JTE
-- [ ] Générer les pages d'authentification
-- [ ] Configurer les assets statiques
+- [x] Créer les templates Thymeleaf
+- [x] Configurer Spring MVC pour Thymeleaf
+- [x] Implémenter JTE templates
+- [x] Créer les fragments Thymeleaf/JTE
+- [x] Générer les pages d'authentification
+- [x] Configurer les assets statiques
 - [ ] Tester chaque intégration frontend
 
 ---
@@ -187,32 +187,32 @@ generator-spring-fullstack/
 ## 📋 PHASE 4 : FONCTIONNALITÉS AVANCÉES (Priorité Moyenne)
 
 ### Module 4.1 : API & Documentation
-- [ ] Intégrer OpenAPI 3.0/Swagger
-- [ ] Générer la documentation API automatique
-- [ ] Créer les annotations Swagger
-- [ ] Implémenter les DTOs avec validation
-- [ ] Générer les controllers REST
-- [ ] Créer les endpoints CRUD automatiques
-- [ ] Implémenter la pagination Spring Data
-- [ ] Configurer CORS
+- [x] Intégrer OpenAPI 3.0/Swagger
+- [x] Générer la documentation API automatique
+- [x] Créer les annotations Swagger
+- [x] Implémenter les DTOs avec validation
+- [x] Générer les controllers REST
+- [x] Créer les endpoints CRUD automatiques
+- [x] Implémenter la pagination Spring Data
+- [x] Configurer CORS
 - [ ] Créer les tests d'intégration API
 - [ ] Générer Postman Collections
 - [ ] Implémenter API versioning
-- [ ] Configurer rate limiting
+- [x] Configurer rate limiting
 
 ### Module 4.2 : Sécurité Avancée
-- [ ] Implémenter HTTPS/SSL configuration
-- [ ] Configurer CSP headers
-- [ ] Implémenter CSRF protection
-- [ ] Créer les annotations de sécurité
-- [ ] Générer les configurations Spring Security avancées
-- [ ] Implémenter l'audit trail
-- [ ] Configurer les logs de sécurité
-- [ ] Créer les tests de sécurité
-- [ ] Implémenter 2FA
-- [ ] Configurer password policies
-- [ ] Implémenter session management
-- [ ] Créer les endpoints de sécurité
+- [x] Implémenter HTTPS/SSL configuration
+- [x] Configurer CSP headers
+- [x] Implémenter CSRF protection
+- [x] Créer les annotations de sécurité
+- [x] Générer les configurations Spring Security avancées
+- [x] Implémenter l'audit trail
+- [x] Configurer les logs de sécurité
+- [x] Créer les tests de sécurité
+- [x] Implémenter 2FA
+- [x] Configurer password policies
+- [x] Implémenter session management
+- [x] Créer les endpoints de sécurité
 
 ### Module 4.3 : Cache & Performance
 - [ ] Intégrer Redis pour cache

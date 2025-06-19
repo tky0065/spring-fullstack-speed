@@ -1,0 +1,150 @@
+package com.example.app.service;
+
+import com.example.app.audit.SecurityEvent;
+import com.example.app.repository.SecurityEventRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Service pour enregistrer les événements de sécurité
+ * Facilite la journalisation des événements importants liés à la sécurité
+ */
+@Service
+public class SecurityAuditService {
+
+    private final SecurityEventRepository securityEventRepository;
+
+    public SecurityAuditService(SecurityEventRepository securityEventRepository) {
+        this.securityEventRepository = securityEventRepository;
+    }
+
+    /**
+     * Enregistre un événement de sécurité simple
+     * @param type Le type d'événement (LOGIN, LOGOUT, ACCESS_DENIED, etc.)
+     * @param outcome Le résultat (SUCCESS, FAILURE, etc.)
+     * @param description Description de l'événement
+     */
+    public void logEvent(String type, String outcome, String description) {
+        SecurityEvent event = createBaseEvent(type, outcome);
+        event.setDescription(description);
+        saveEvent(event);
+    }
+
+    /**
+     * Enregistre un événement de sécurité avec des métadonnées supplémentaires
+     * @param type Le type d'événement
+     * @param outcome Le résultat
+     * @param description Description de l'événement
+     * @param metadata Données supplémentaires à enregistrer
+     */
+    public void logEvent(String type, String outcome, String description, Map<String, Object> metadata) {
+        SecurityEvent event = createBaseEvent(type, outcome);
+        event.setDescription(description);
+
+        if (metadata != null) {
+            event.setMetadata(metadata);
+        }
+
+        saveEvent(event);
+    }
+
+    /**
+     * Enregistre une tentative d'authentification
+     * @param username Nom d'utilisateur utilisé
+     * @param success Si l'authentification a réussi
+     */
+    public void logAuthentication(String username, boolean success) {
+        SecurityEvent event = createBaseEvent("AUTHENTICATION", success ? "SUCCESS" : "FAILURE");
+        event.setPrincipal(username);
+        event.setDescription("Tentative d'authentification pour l'utilisateur: " + username);
+        saveEvent(event);
+    }
+
+    /**
+     * Enregistre un accès refusé à une ressource
+     * @param resource La ressource à laquelle l'accès a été refusé
+     */
+    public void logAccessDenied(String resource) {
+        SecurityEvent event = createBaseEvent("ACCESS_DENIED", "FAILURE");
+        event.setDescription("Accès refusé à la ressource: " + resource);
+        saveEvent(event);
+    }
+
+    /**
+     * Crée un événement de base avec les informations de la requête HTTP actuelle
+     * @param type Le type d'événement
+     * @param outcome Le résultat
+     * @return Un événement de sécurité pré-rempli
+     */
+    private SecurityEvent createBaseEvent(String type, String outcome) {
+        String principal = getCurrentUsername();
+        SecurityEvent event = new SecurityEvent(principal, type, outcome);
+
+        // Obtenir les détails de la requête HTTP si disponible
+        getCurrentRequest().ifPresent(request -> {
+            event.setSourceIp(getClientIp(request));
+            event.setUserAgent(request.getHeader("User-Agent"));
+            event.setRequestUri(request.getRequestURI());
+            event.setHttpMethod(request.getMethod());
+        });
+
+        return event;
+    }
+
+    /**
+     * Sauvegarde l'événement dans la base de données
+     */
+    private void saveEvent(SecurityEvent event) {
+        securityEventRepository.save(event);
+    }
+
+    /**
+     * Obtient le nom d'utilisateur actuel depuis le contexte de sécurité
+     * @return Le nom d'utilisateur ou "anonymousUser" si non authentifié
+     */
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            return "anonymousUser";
+        }
+
+        return authentication.getName();
+    }
+
+    /**
+     * Obtient la requête HTTP actuelle depuis le contexte
+     * @return La requête HTTP ou vide si non disponible
+     */
+    private Optional<HttpServletRequest> getCurrentRequest() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+
+        if (attributes != null) {
+            return Optional.of(attributes.getRequest());
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Extrait l'adresse IP client de la requête HTTP
+     * Prend en compte les en-têtes de proxy
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String forwardedIp = request.getHeader("X-Forwarded-For");
+
+        if (forwardedIp != null && !forwardedIp.isEmpty()) {
+            // En cas de multiples proxies, la première IP est celle du client
+            return forwardedIp.split(",")[0].trim();
+        }
+
+        return request.getRemoteAddr();
+    }
+}

@@ -1,0 +1,68 @@
+package com.example.app.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
+
+/**
+ * Configuration de la protection CSRF pour l'application
+ */
+@Configuration
+@EnableWebSecurity
+public class CsrfSecurityConfig {
+
+    /**
+     * Configure la chaîne de filtres de sécurité avec la protection CSRF
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector introspector) throws Exception {
+        MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(introspector);
+
+        http
+            // Configuration de la protection CSRF avec stockage des tokens dans des cookies
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+            )
+            // Exclure les endpoints API qui sont protégés par d'autres moyens (comme JWT)
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(mvcMatcherBuilder.pattern("/api/v1/auth/**"))
+                .ignoringRequestMatchers(mvcMatcherBuilder.pattern("/api/v1/public/**"))
+            )
+            // Désactiver CSRF pour les endpoints H2 console en développement uniquement
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(mvcMatcherBuilder.pattern("/h2-console/**"))
+            );
+
+        return http.build();
+    }
+
+    /**
+     * Configuration supplémentaire pour la sécurité CSRF
+     * qui peut être combinée avec la configuration principale
+     */
+    @Bean
+    public CsrfSecurityCustomizer csrfSecurityCustomizer() {
+        return new CsrfSecurityCustomizer();
+    }
+
+    /**
+     * Classe utilitaire pour personnaliser davantage la configuration CSRF
+     */
+    public static class CsrfSecurityCustomizer {
+
+        /**
+         * Personnalise la configuration CSRF pour des cas spécifiques
+         */
+        public void customize(HttpSecurity http) throws Exception {
+            // Personnalisations supplémentaires si nécessaire
+        }
+    }
+}

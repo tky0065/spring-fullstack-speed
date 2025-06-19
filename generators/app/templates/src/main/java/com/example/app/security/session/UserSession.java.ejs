@@ -1,0 +1,122 @@
+package com.example.app.security.session;
+
+import java.time.Instant;
+import java.util.Objects;
+
+/**
+ * Classe représentant une session utilisateur active
+ * Stocke les métadonnées et informations d'activité de la session
+ */
+public class UserSession {
+
+    private final String sessionId;
+    private final String ipAddress;
+    private final String userAgent;
+    private final Instant creationTime;
+    private Instant lastActiveTime;
+
+    /**
+     * Crée une nouvelle instance de session utilisateur
+     * @param sessionId identifiant unique de la session
+     * @param ipAddress adresse IP de l'utilisateur
+     * @param userAgent agent utilisateur (navigateur) utilisé
+     * @param creationTime horodatage de création de la session
+     * @param lastActiveTime horodatage de dernière activité
+     */
+    public UserSession(String sessionId, String ipAddress, String userAgent,
+                      Instant creationTime, Instant lastActiveTime) {
+        this.sessionId = sessionId;
+        this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
+        this.creationTime = creationTime;
+        this.lastActiveTime = lastActiveTime;
+    }
+
+    /**
+     * Obtient l'identifiant de la session
+     * @return identifiant de session
+     */
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    /**
+     * Obtient l'adresse IP associée à cette session
+     * @return adresse IP
+     */
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    /**
+     * Obtient l'agent utilisateur (navigateur) associé à cette session
+     * @return agent utilisateur
+     */
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    /**
+     * Obtient l'horodatage de création de la session
+     * @return horodatage de création
+     */
+    public Instant getCreationTime() {
+        return creationTime;
+    }
+
+    /**
+     * Obtient l'horodatage de dernière activité de la session
+     * @return horodatage de dernière activité
+     */
+    public Instant getLastActiveTime() {
+        return lastActiveTime;
+    }
+
+    /**
+     * Met à jour l'horodatage de dernière activité
+     * @param lastActiveTime nouvel horodatage
+     */
+    public void setLastActiveTime(Instant lastActiveTime) {
+        this.lastActiveTime = lastActiveTime;
+    }
+
+    /**
+     * Retourne la durée d'inactivité en minutes
+     * @return minutes d'inactivité
+     */
+    public long getInactiveMinutes() {
+        return (Instant.now().getEpochSecond() - lastActiveTime.getEpochSecond()) / 60;
+    }
+
+    /**
+     * Vérifie si cette session est éventuellement la même qu'une autre basée sur l'ID
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UserSession that = (UserSession) o;
+        return Objects.equals(sessionId, that.sessionId);
+    }
+
+    /**
+     * Calcule le code de hachage basé sur l'ID de session
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(sessionId);
+    }
+
+    /**
+     * Représentation textuelle de la session pour le débogage
+     */
+    @Override
+    public String toString() {
+        return "UserSession{" +
+                "sessionId='" + sessionId + '\'' +
+                ", ipAddress='" + ipAddress + '\'' +
+                ", creationTime=" + creationTime +
+                ", lastActiveTime=" + lastActiveTime +
+                '}';
+    }
+}

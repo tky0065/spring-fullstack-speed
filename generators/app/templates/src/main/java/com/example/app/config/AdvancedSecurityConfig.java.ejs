@@ -1,0 +1,183 @@
+package com.example.app.config;
+
+import com.example.app.security.jwt.JwtAuthenticationFilter;
+import com.example.app.security.handler.CustomAccessDeniedHandler;
+import com.example.app.security.handler.CustomAuthenticationEntryPoint;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Configuration avancée de Spring Security pour l'application
+ */
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(
+    securedEnabled = true,
+    jsr250Enabled = true,
+    prePostEnabled = true
+)
+public class AdvancedSecurityConfig {
+
+    private final Environment environment;
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final UserDetailsService userDetailsService;
+    private final CustomAuthenticationEntryPoint authEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
+
+    public AdvancedSecurityConfig(
+            Environment environment,
+            JwtAuthenticationFilter jwtAuthFilter,
+            UserDetailsService userDetailsService,
+            CustomAuthenticationEntryPoint authEntryPoint,
+            CustomAccessDeniedHandler accessDeniedHandler
+    ) {
+        this.environment = environment;
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.userDetailsService = userDetailsService;
+        this.authEntryPoint = authEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
+    }
+
+    /**
+     * Configuration de la chaîne de filtres de sécurité
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            HandlerMappingIntrospector introspector
+    ) throws Exception {
+        MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(introspector);
+
+        // Liste des endpoints publics
+        String[] publicEndpoints = {
+            "/api/v1/auth/**",
+            "/api/v1/public/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/actuator/health",
+            "/error"
+        };
+
+        // Configuration spécifique pour le profil de développement
+        if (environment.acceptsProfiles(Profiles.of("dev", "test"))) {
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(mvcMatcherBuilder.pattern("/h2-console/**")).permitAll()
+            );
+            http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
+        }
+
+        http
+            // Configuration CORS
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+            // Configuration CSRF avec exclusions pour les API REST
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .ignoringRequestMatchers(
+                    Arrays.stream(publicEndpoints)
+                        .map(mvcMatcherBuilder::pattern)
+                        .toArray(MvcRequestMatcher[]::new)
+                )
+            )
+
+            // Configuration des autorisations d'accès
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    Arrays.stream(publicEndpoints)
+                        .map(mvcMatcherBuilder::pattern)
+                        .toArray(MvcRequestMatcher[]::new)
+                ).permitAll()
+                .requestMatchers(mvcMatcherBuilder.pattern("/api/v1/admin/**")).hasRole("ADMIN")
+                .requestMatchers(mvcMatcherBuilder.pattern("/api/v1/user/**")).hasRole("USER")
+                .anyRequest().authenticated()
+            )
+
+            // Configuration du gestionnaire d'erreurs d'authentification
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
+
+            // Configuration de la gestion des sessions
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
+            // Ajouter le filtre JWT pour l'authentification basée sur les tokens
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    /**
+     * Configuration du fournisseur d'authentification
+     */
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    /**
+     * Configuration de l'encodeur de mot de passe
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    /**
+     * Configuration du gestionnaire d'authentification
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    /**
+     * Configuration CORS
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}
