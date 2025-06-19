@@ -1,0 +1,85 @@
+package com.example.app.controller;
+
+import com.example.app.dto.UserDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Exemple de contrôleur avec pagination pour démonstration
+ */
+@RestController
+@RequestMapping("/api/v1/paginated-users")
+@Tag(name = "Paginated User Management", description = "API pour la gestion des utilisateurs avec pagination")
+public class PaginatedUserController {
+
+    @Operation(summary = "Récupérer une page d'utilisateurs",
+               description = "Récupère une page d'utilisateurs avec options de tri et de filtrage")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Page d'utilisateurs récupérée avec succès",
+                         content = @Content(schema = @Schema(implementation = PageUserDto.class))),
+            @ApiResponse(responseCode = "401", description = "Non authentifié"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    @GetMapping
+    public ResponseEntity<Page<UserDto>> getPaginatedUsers(
+            @Parameter(description = "Informations de pagination (page, size, sort)")
+            @PageableDefault(size = 20, sort = "username") Pageable pageable,
+
+            @Parameter(description = "Filtrer par nom d'utilisateur (optionnel)")
+            @RequestParam(required = false) String username,
+
+            @Parameter(description = "Filtrer par rôle (optionnel)")
+            @RequestParam(required = false) String role) {
+
+        // Code d'implémentation à remplacer
+        // Ici, nous simulons une page de résultats
+        List<UserDto> userList = new ArrayList<>();
+        // Ajouter quelques utilisateurs fictifs pour l'exemple
+        userList.add(new UserDto(1L, "johndoe", "john@example.com", "John", "Doe", "USER"));
+        userList.add(new UserDto(2L, "janedoe", "jane@example.com", "Jane", "Doe", "ADMIN"));
+
+        Page<UserDto> userPage = new PageImpl<>(userList, pageable, 100);
+        return ResponseEntity.ok(userPage);
+    }
+
+    /**
+     * Classe interne pour la documentation Swagger de la page
+     */
+    @Schema(description = "Page d'utilisateurs")
+    private static class PageUserDto {
+        @Schema(description = "Contenu de la page")
+        private List<UserDto> content;
+
+        @Schema(description = "Numéro de la page actuelle")
+        private int number;
+
+        @Schema(description = "Taille de la page")
+        private int size;
+
+        @Schema(description = "Nombre total d'éléments")
+        private long totalElements;
+
+        @Schema(description = "Nombre total de pages")
+        private int totalPages;
+
+        @Schema(description = "Est-ce la première page?")
+        private boolean first;
+
+        @Schema(description = "Est-ce la dernière page?")
+        private boolean last;
+    }
+}

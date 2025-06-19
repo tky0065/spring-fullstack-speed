@@ -1,0 +1,51 @@
+package com.example.app.config;
+
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Configuration du Rate Limiting pour l'API
+ */
+@Configuration
+public class RateLimitConfig {
+
+    /**
+     * Cache qui stocke les buckets de rate limiting pour chaque IP
+     */
+    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+
+    /**
+     * Crée ou récupère un bucket pour une IP donnée
+     * @param ipAddress l'adresse IP du client
+     * @return un bucket configuré avec la limite de requêtes
+     */
+    public Bucket resolveBucket(String ipAddress) {
+        return buckets.computeIfAbsent(ipAddress, this::createNewBucket);
+    }
+
+    /**
+     * Crée un nouveau bucket avec les limites de requêtes définies
+     * @param ipAddress l'adresse IP du client (non utilisée directement, mais utile pour les logs)
+     * @return un nouveau bucket configuré
+     */
+    private Bucket createNewBucket(String ipAddress) {
+        // Configuration des limites de requêtes
+        Bandwidth limit = Bandwidth.classic(100, Refill.greedy(100, Duration.ofMinutes(1)));
+
+        // Pour les endpoints publics, une limite plus restrictive
+        Bandwidth publicLimit = Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1)));
+
+        // Création du bucket avec les deux limites
+        return Bucket.builder()
+                .addLimit(limit)          // Limite générale pour toutes les requêtes
+                .addLimit(publicLimit)     // Limite plus restrictive pour les endpoints publics
+                .build();
+    }
+}

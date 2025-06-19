@@ -1,0 +1,11 @@
+import { createPinia } from 'pinia';
+
+// Création de l'instance Pinia
+const pinia = createPinia();
+
+// Export pour être utilisé dans main.ts
+export default pinia;
+
+// Export de tous les stores pour faciliter l'accès
+export * from './authStore';
+export * from './userStore';

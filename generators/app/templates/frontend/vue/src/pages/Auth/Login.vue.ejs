@@ -88,7 +88,8 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores';
 import MainLayout from '../../layouts/MainLayout.vue';
 import Button from '../../components/ui/Button.vue';
 import InputField from '../../components/ui/InputField.vue';
@@ -104,45 +105,57 @@ interface LoginForm {
   rememberMe: boolean;
 }
 
-// État du formulaire
+/**
+ * État du formulaire
+ */
 const form = reactive<LoginForm>({
   email: '',
   password: '',
-  rememberMe: false
+  rememberMe: false,
 });
 
-// États pour la gestion de l'UI
-const showPassword = ref(false);
-const processing = ref(false);
+// État d'erreur et de traitement
 const errors = reactive<Record<string, string>>({});
 const errorMessage = ref<string | null>(null);
+const processing = ref<boolean>(false);
+const showPassword = ref<boolean>(false);
+
+// Initialiser les stores nécessaires
+const authStore = useAuthStore();
+const router = useRouter();
 
 /**
  * Gestionnaire de soumission du formulaire
  */
-const handleSubmit = () => {
+const handleSubmit = async () => {
   processing.value = true;
 
   // Réinitialiser les erreurs
   Object.keys(errors).forEach(key => delete errors[key]);
   errorMessage.value = null;
 
-  // Envoyer la requête avec Inertia.js
-  router.post('/login', form, {
-    onSuccess: () => {
-      // La redirection sera gérée par le backend
-    },
-    onError: (err) => {
-      // Copier les erreurs
-      Object.assign(errors, err);
+  try {
+    // Utiliser le store d'authentification au lieu d'Inertia
+    await authStore.login({
+      email: form.email,
+      password: form.password
+    });
 
-      // Afficher un message d'erreur général s'il y en a un
-      if (err.message) {
-        errorMessage.value = err.message;
-      }
+    // Si la connexion réussit, rediriger vers la page d'accueil ou la page demandée
+    const redirectTo = router.currentRoute.value.query.redirect as string || '/';
+    router.push(redirectTo);
 
-      processing.value = false;
+  } catch (err: any) {
+    // Gérer les erreurs
+    if (err.response?.data?.errors) {
+      // Copier les erreurs de validation spécifiques aux champs
+      Object.assign(errors, err.response.data.errors);
     }
-  });
+
+    // Afficher un message d'erreur général
+    errorMessage.value = err.message || 'Échec de la connexion. Veuillez vérifier vos informations.';
+
+    processing.value = false;
+  }
 };
 </script>

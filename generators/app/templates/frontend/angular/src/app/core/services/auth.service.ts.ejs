@@ -1,0 +1,139 @@
+import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { jwtDecode } from 'jwt-decode';
+
+interface User {
+  id: number;
+  username: string;
+  roles: string[];
+}
+
+interface AuthResponse {
+  token: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  // Utilisation de l'API Signal pour l'état d'authentification
+  private readonly userSignal = signal<User | null>(null);
+  private readonly authTokenSignal = signal<string | null>(null);
+  private readonly loadingSignal = signal<boolean>(false);
+
+  // Exposer des signaux en lecture seule
+  readonly user = this.userSignal.asReadonly();
+  readonly isAuthenticated = this.userSignal.asReadonly();
+  readonly loading = this.loadingSignal.asReadonly();
+
+  // Store JWT token in localStorage key
+  private readonly TOKEN_KEY = 'auth_token';
+
+  constructor(
+    private readonly http: HttpClient,
+    private readonly router: Router
+  ) {
+    // Initialiser l'état d'authentification à partir du localStorage au démarrage
+    this.initAuthFromStorage();
+  }
+
+  /**
+   * Connexion d'un utilisateur
+   */
+  login(username: string, password: string) {
+    this.loadingSignal.set(true);
+
+    return this.http.post<AuthResponse>('/api/auth/login', { username, password })
+      .subscribe({
+        next: (response) => {
+          this.handleAuthSuccess(response.token);
+          this.router.navigate(['/']);
+        },
+        error: (error) => {
+          console.error('Erreur de connexion:', error);
+          this.loadingSignal.set(false);
+        },
+        complete: () => {
+          this.loadingSignal.set(false);
+        }
+      });
+  }
+
+  /**
+   * Déconnexion de l'utilisateur
+   */
+  logout() {
+    // Supprimer le token du localStorage
+    localStorage.removeItem(this.TOKEN_KEY);
+
+    // Réinitialiser les signaux
+    this.userSignal.set(null);
+    this.authTokenSignal.set(null);
+
+    // Rediriger vers la page de connexion
+    this.router.navigate(['/login']);
+  }
+
+  /**
+   * Vérifier si l'utilisateur a un rôle spécifique
+   */
+  hasRole(role: string): boolean {
+    const currentUser = this.userSignal();
+    return currentUser !== null && currentUser.roles.includes(role);
+  }
+
+  /**
+   * Récupérer le token JWT pour les requêtes HTTP
+   */
+  getToken(): string | null {
+    return this.authTokenSignal();
+  }
+
+  /**
+   * Traiter la réponse d'authentification réussie
+   */
+  private handleAuthSuccess(token: string) {
+    // Stocker le token dans le localStorage
+    localStorage.setItem(this.TOKEN_KEY, token);
+
+    // Décoder le token JWT
+    const decodedToken = jwtDecode<any>(token);
+
+    // Créer l'objet utilisateur à partir des informations du token
+    const user: User = {
+      id: decodedToken.id,
+      username: decodedToken.sub,
+      roles: decodedToken.roles
+    };
+
+    // Mettre à jour les signaux
+    this.userSignal.set(user);
+    this.authTokenSignal.set(token);
+  }
+
+  /**
+   * Initialiser l'état d'authentification à partir du localStorage
+   */
+  private initAuthFromStorage() {
+    const token = localStorage.getItem(this.TOKEN_KEY);
+
+    if (token) {
+      try {
+        // Vérifier si le token n'est pas expiré
+        const decodedToken = jwtDecode<any>(token);
+        const isExpired = decodedToken.exp * 1000 < Date.now();
+
+        if (!isExpired) {
+          this.handleAuthSuccess(token);
+        } else {
+          // Token expiré, supprimer du localStorage
+          localStorage.removeItem(this.TOKEN_KEY);
+        }
+      } catch (error) {
+        // Token invalide, supprimer du localStorage
+        localStorage.removeItem(this.TOKEN_KEY);
+      }
+    }
+  }
+}

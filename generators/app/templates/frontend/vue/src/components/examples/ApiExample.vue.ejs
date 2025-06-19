@@ -1,0 +1,206 @@
+<template>
+  <div class="api-example">
+    <h2>Exemple d'utilisation des API générées avec Vue</h2>
+
+    <section>
+      <h3>Liste des utilisateurs</h3>
+      <div v-if="isLoading">Chargement des utilisateurs...</div>
+      <div v-else-if="error">
+        Erreur lors du chargement des utilisateurs: {{ error }}
+      </div>
+      <div v-else-if="users.length > 0">
+        <ul>
+          <li v-for="user in users" :key="user.id">
+            {{ user.username }} - {{ user.email }}
+          </li>
+        </ul>
+        <button @click="addUser" class="btn-primary">
+          Ajouter un utilisateur
+        </button>
+      </div>
+      <div v-else>
+        <p>Aucun utilisateur trouvé</p>
+        <button @click="fetchUsers" class="btn-primary">
+          Charger les utilisateurs
+        </button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Utilisation du store Pinia</h3>
+      <div class="auth-status">
+        <p>
+          Statut d'authentification:
+          <strong>{{ isAuthenticated ? 'Connecté' : 'Déconnecté' }}</strong>
+        </p>
+
+        <div v-if="isAuthenticated">
+          <p>Utilisateur: {{ userName }} ({{ userEmail }})</p>
+          <button @click="handleLogout" class="btn-secondary">
+            Se déconnecter
+          </button>
+        </div>
+        <div v-else>
+          <button @click="handleLogin" class="btn-primary">
+            Se connecter (démo)
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useQuery, useMutation } from '@tanstack/vue-query';
+import { UserApi } from '@api/api'; // API générée par OpenAPI Generator
+import { initApi } from '@/services/apiConfig';
+import { useAuthStore, useUserStore } from '@/stores';
+
+// Accès aux stores Pinia
+const authStore = useAuthStore();
+const userStore = useUserStore();
+
+// Initialisation de l'API utilisateur
+const userApi = initApi(UserApi);
+
+// État local
+const error = ref<string | null>(null);
+
+// Requête pour récupérer les utilisateurs avec Vue Query
+const { data: users, isLoading, refetch: fetchUsers } = useQuery({
+  queryKey: ['users'],
+  queryFn: async () => {
+    try {
+      const response = await userApi.getAllUsers();
+      return response.data || [];
+    } catch (err: any) {
+      error.value = err.message || 'Une erreur est survenue';
+      return [];
+    }
+  },
+  // Ne pas exécuter automatiquement au chargement du composant
+  enabled: false
+});
+
+// Mutation pour ajouter un utilisateur
+const addUserMutation = useMutation({
+  mutationFn: async (newUser: any) => {
+    const response = await userApi.createUser(newUser);
+    return response.data;
+  },
+  onSuccess: () => {
+    // Invalider la requête pour rafraîchir la liste
+    fetchUsers();
+  },
+  onError: (err: any) => {
+    error.value = err.message || 'Erreur lors de la création de l\'utilisateur';
+  }
+});
+
+// Fonction pour ajouter un utilisateur de démo
+const addUser = () => {
+  addUserMutation.mutate({
+    username: `user_${Math.floor(Math.random() * 1000)}`,
+    email: `user${Math.floor(Math.random() * 1000)}@example.com`,
+    password: 'password123'
+  });
+};
+
+// Fonction pour simuler une connexion
+const handleLogin = async () => {
+  try {
+    // Simulation de connexion avec des données d'exemple
+    await authStore.login({
+      email: 'demo@example.com',
+      password: 'password123'
+    });
+    // Charger les informations utilisateur après connexion
+    if (authStore.isAuthenticated) {
+      await userStore.fetchCurrentUser();
+    }
+  } catch (err: any) {
+    console.error('Erreur de connexion:', err);
+  }
+};
+
+// Fonction pour se déconnecter
+const handleLogout = async () => {
+  await authStore.logout();
+};
+
+// Getters provenant des stores Pinia
+const isAuthenticated = authStore.isAuthenticated;
+const userName = userStore.getCurrentUser?.name;
+const userEmail = authStore.userEmail;
+
+// Charger les données au montage du composant si l'utilisateur est authentifié
+onMounted(() => {
+  authStore.initAuth();
+
+  if (authStore.isAuthenticated) {
+    userStore.fetchCurrentUser();
+    fetchUsers();
+  }
+});
+</script>
+
+<style scoped>
+.api-example {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+
+h2 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+h3 {
+  color: #555;
+  margin-bottom: 15px;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.btn-primary {
+  background-color: #4caf50;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #f44336;
+  color: white;
+}
+
+.auth-status {
+  margin-top: 15px;
+}
+
+.auth-status p {
+  margin-bottom: 10px;
+}
+</style>

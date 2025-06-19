@@ -1,0 +1,30 @@
+import { inject } from '@angular/core';
+import { Router, CanActivateFn } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+/**
+ * Crée un garde de route pour vérifier si l'utilisateur possède un rôle spécifique
+ * @param requiredRole Le rôle nécessaire pour accéder à la route
+ */
+export function roleGuard(requiredRole: string): CanActivateFn {
+  return (route, state) => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+
+    // Vérifier d'abord si l'utilisateur est connecté
+    const user = authService.user();
+    if (!user) {
+      return router.createUrlTree(['/login'], {
+        queryParams: { returnUrl: state.url }
+      });
+    }
+
+    // Vérifier ensuite si l'utilisateur a le rôle requis
+    if (authService.hasRole(requiredRole)) {
+      return true;
+    }
+
+    // Si l'utilisateur n'a pas le rôle requis, rediriger vers une page d'accès refusé
+    return router.createUrlTree(['/access-denied']);
+  };
+}

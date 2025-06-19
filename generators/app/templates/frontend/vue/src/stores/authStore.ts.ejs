@@ -1,0 +1,136 @@
+import { defineStore } from 'pinia';
+import ApiService from '@/services/ApiService';
+
+// Types pour l'authentification
+interface User {
+  id: string | null;
+  email: string | null;
+  name: string | null;
+  token: string | null;
+}
+
+interface AuthState {
+  user: User;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  error: string | null;
+}
+
+// Interfaces pour les données d'entrée
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterData extends LoginCredentials {
+  name: string;
+}
+
+// Définition du store d'authentification avec Pinia
+export const useAuthStore = defineStore('auth', {
+  // État initial
+  state: (): AuthState => ({
+    user: {
+      id: null,
+      email: null,
+      name: null,
+      token: null
+    },
+    status: 'idle',
+    error: null
+  }),
+
+  // Getters (équivalent aux sélecteurs Redux)
+  getters: {
+    isAuthenticated: (state) => !!state.user.token,
+    authStatus: (state) => state.status,
+    userEmail: (state) => state.user.email,
+    userName: (state) => state.user.name,
+    hasError: (state) => state.error !== null
+  },
+
+  // Actions (équivalent aux thunks Redux)
+  actions: {
+    /**
+     * Initialise l'état d'authentification depuis le stockage local
+     */
+    initAuth() {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        this.user.token = token;
+        this.status = 'success';
+      }
+    },
+
+    /**
+     * Efface l'erreur actuelle
+     */
+    clearError() {
+      this.error = null;
+    },
+
+    /**
+     * Traite la connexion d'un utilisateur
+     */
+    async login(credentials: LoginCredentials) {
+      try {
+        this.status = 'loading';
+        this.error = null;
+
+        const response = await ApiService.post<User>('/auth/login', credentials);
+
+        // Stocke le token dans le localStorage pour la persistance
+        if (response.token) {
+          localStorage.setItem('auth_token', response.token);
+        }
+
+        this.user = response;
+        this.status = 'success';
+        return response;
+      } catch (error: any) {
+        this.status = 'error';
+        this.error = error.response?.data?.message || 'Échec de la connexion';
+        throw error;
+      }
+    },
+
+    /**
+     * Traite l'inscription d'un nouvel utilisateur
+     */
+    async register(userData: RegisterData) {
+      try {
+        this.status = 'loading';
+        this.error = null;
+
+        const response = await ApiService.post<any>('/auth/register', userData);
+        this.status = 'success';
+        return response;
+      } catch (error: any) {
+        this.status = 'error';
+        this.error = error.response?.data?.message || 'Échec de l\'inscription';
+        throw error;
+      }
+    },
+
+    /**
+     * Traite la déconnexion de l'utilisateur
+     */
+    async logout() {
+      try {
+        // Suppression du token du localStorage
+        localStorage.removeItem('auth_token');
+
+        // Appel à l'API pour la déconnexion (optionnel selon l'implémentation backend)
+        await ApiService.post('/auth/logout');
+
+        // Réinitialisation de l'état
+        this.$reset();
+
+        return true;
+      } catch (error) {
+        // Même en cas d'erreur, on réinitialise l'état côté client
+        this.$reset();
+        return false;
+      }
+    }
+  }
+});

@@ -1,0 +1,44 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css'
+})
+export class LoginComponent {
+  protected loginForm: FormGroup;
+  protected submitted = false;
+  protected loginError = false;
+
+  constructor(
+    private readonly formBuilder: FormBuilder,
+    private readonly router: Router
+  ) {
+    this.loginForm = this.formBuilder.group({
+      username: ['', [Validators.required]],
+      password: ['', [Validators.required]]
+    });
+  }
+
+  protected onSubmit(): void {
+    this.submitted = true;
+    this.loginError = false;
+
+    if (this.loginForm.invalid) {
+      return;
+    }
+
+    // Ici, vous intégrerez l'appel à votre service d'authentification
+    // Pour l'exemple, nous simulons simplement une connexion réussie
+    console.log('Tentative de connexion avec:', this.loginForm.value);
+    setTimeout(() => {
+      // Redirection vers la page d'accueil après connexion réussie
+      this.router.navigate(['/']);
+    }, 1000);
+  }
+}

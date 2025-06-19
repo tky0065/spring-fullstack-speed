@@ -1,6 +1,8 @@
 import { createApp } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import { VueQueryPlugin } from '@tanstack/vue-query';
 import App from './App.vue';
+import pinia from './stores';
 import './assets/main.css';
 
 // Import des pages
@@ -40,8 +42,46 @@ const router = createRouter({
 });
 
 /**
+ * Protection des routes qui nécessitent une authentification
+ */
+router.beforeEach((to, from, next) => {
+  // Récupérer le token du localStorage
+  const token = localStorage.getItem('auth_token');
+
+  // Routes qui nécessitent une authentification
+  const requiresAuth = to.meta.requiresAuth;
+
+  if (requiresAuth && !token) {
+    // Rediriger vers la page de connexion si l'utilisateur n'est pas authentifié
+    next({ name: 'login', query: { redirect: to.fullPath } });
+  } else {
+    // Sinon, continuer normalement
+    next();
+  }
+});
+
+/**
  * Création et montage de l'application Vue
  */
 const app = createApp(App);
+
+// Configuration de Vue Query
+const vueQueryPluginOptions = {
+  queryClientConfig: {
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: 1,
+        staleTime: 30000,
+      },
+    },
+  },
+};
+
+// Utilisation des plugins
+app.use(pinia);
 app.use(router);
+app.use(VueQueryPlugin, vueQueryPluginOptions);
+
+// Montage de l'application
 app.mount('#app');

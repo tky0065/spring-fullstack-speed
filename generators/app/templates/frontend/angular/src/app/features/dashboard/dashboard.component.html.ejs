@@ -1,0 +1,48 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <h2>{{ welcomeMessage }}</h2>
+    <div class="date-display">{{ currentDate | date:'longDate' }}</div>
+  </header>
+
+  <div class="stats-grid">
+    @for (stat of stats; track stat.label) {
+      <div class="stat-card">
+        <div class="stat-icon" [attr.data-icon]="stat.icon"></div>
+        <div class="stat-info">
+          <div class="stat-value">{{ stat.value }}</div>
+          <div class="stat-label">{{ stat.label }}</div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="dashboard-content">
+    <div class="dashboard-panel">
+      <h3>Actions rapides</h3>
+      <div class="quick-actions">
+        <button class="action-button">Nouveau projet</button>
+        <button class="action-button">Ajouter une tâche</button>
+        <button class="action-button">Programmer une réunion</button>
+        <button class="action-button">Envoyer un message</button>
+      </div>
+    </div>
+
+    <div class="dashboard-panel">
+      <h3>Activités récentes</h3>
+      <div class="activity-list">
+        @for (activity of recentActivities; track activity.text) {
+          <div class="activity-item" [attr.data-type]="activity.type">
+            <div class="activity-content">
+              <span class="activity-text">{{ activity.text }}</span>
+              <span class="activity-time">{{ activity.time }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-footer">
+    <p>Consultez la <a routerLink="/documentation">documentation</a> pour plus d'informations</p>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
+
+/**
+ * Intercepteur pour gérer les erreurs HTTP de manière globale
+ */
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
+
+  return next(req).pipe(
+    catchError(error => {
+      if ([401, 403].includes(error.status)) {
+        // Auto déconnexion si 401 Unauthorized ou 403 Forbidden
+        localStorage.removeItem('auth_token');
+        router.navigate(['/login']);
+      }
+
+      const errorMessage = error.error?.message || error.statusText;
+      console.error('API Error:', errorMessage);
+
+      return throwError(() => error);
+    })
+  );
+};

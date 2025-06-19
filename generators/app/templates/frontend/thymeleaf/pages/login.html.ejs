@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(
+        title='Connexion - <%= appName %>',
+        content=~{::content},
+        styles=~{::custom-styles},
+        scripts=~{::custom-scripts}
+      )}">
+<head>
+    <title>Connexion</title>
+    <!-- Custom styles spécifiques à cette page -->
+    <custom-styles>
+        <style>
+            .login-container {
+                max-width: 450px;
+                margin: 2rem auto;
+            }
+
+            .login-card {
+                border-radius: 0.5rem;
+                box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+                padding: 2rem;
+                background-color: #fff;
+            }
+
+            .login-title {
+                text-align: center;
+                margin-bottom: 1.5rem;
+                color: #3f51b5;
+            }
+
+            .form-floating {
+                margin-bottom: 1rem;
+            }
+
+            .login-footer {
+                text-align: center;
+                margin-top: 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .login-footer a {
+                color: #3f51b5;
+            }
+
+            .oauth-buttons {
+                margin-top: 1.5rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .btn-google {
+                background-color: #DB4437;
+                color: white;
+            }
+
+            .btn-github {
+                background-color: #24292e;
+                color: white;
+            }
+
+            .btn-facebook {
+                background-color: #4267B2;
+                color: white;
+            }
+
+            .divider {
+                display: flex;
+                align-items: center;
+                text-align: center;
+                margin: 1.5rem 0;
+            }
+
+            .divider::before,
+            .divider::after {
+                content: '';
+                flex: 1;
+                border-bottom: 1px solid #dee2e6;
+            }
+
+            .divider-text {
+                padding: 0 1rem;
+                color: #6c757d;
+            }
+        </style>
+    </custom-styles>
+</head>
+<body>
+    <content>
+        <div class="login-container">
+            <div class="login-card">
+                <h2 class="login-title">Connexion</h2>
+
+                <!-- Afficher les messages d'erreur -->
+                <div th:if="${param.error}" class="alert alert-danger" role="alert">
+                    Identifiants incorrects. Veuillez réessayer.
+                </div>
+
+                <div th:if="${param.logout}" class="alert alert-success" role="alert">
+                    Vous avez été déconnecté avec succès.
+                </div>
+
+                <!-- Formulaire de connexion standard -->
+                <form th:action="@{/login}" method="post">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Nom d'utilisateur" required>
+                        <label for="username">Nom d'utilisateur</label>
+                    </div>
+
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Mot de passe" required>
+                        <label for="password">Mot de passe</label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="remember-me" name="remember-me">
+                        <label class="form-check-label" for="remember-me">
+                            Se souvenir de moi
+                        </label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary" type="submit">Se connecter</button>
+                    </div>
+                </form>
+
+                <!-- Divider -->
+                <div class="divider">
+                    <span class="divider-text">OU</span>
+                </div>
+
+                <!-- Boutons OAuth -->
+                <div class="oauth-buttons">
+                    <a href="/oauth2/authorization/google" class="btn btn-google">
+                        <i class="bi bi-google"></i> Connexion avec Google
+                    </a>
+                    <a href="/oauth2/authorization/github" class="btn btn-github">
+                        <i class="bi bi-github"></i> Connexion avec GitHub
+                    </a>
+                    <a href="/oauth2/authorization/facebook" class="btn btn-facebook">
+                        <i class="bi bi-facebook"></i> Connexion avec Facebook
+                    </a>
+                </div>
+
+                <!-- Login Footer -->
+                <div class="login-footer">
+                    <p>Vous n'avez pas de compte ? <a th:href="@{/register}">S'inscrire</a></p>
+                    <p><a th:href="@{/forgot-password}">Mot de passe oublié ?</a></p>
+                </div>
+            </div>
+        </div>
+    </content>
+
+    <!-- Scripts spécifiques à cette page -->
+    <custom-scripts>
+        <script>
+            // JavaScript spécifique à la page de connexion
+            document.addEventListener('DOMContentLoaded', function() {
+                // Mettre le focus sur le champ username
+                document.getElementById('username').focus();
+            });
+        </script>
+    </custom-scripts>
+</body>
+</html>
+

@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Script de génération d'API Angular à partir d'OpenAPI
+echo "Démarrage de la génération du client API Angular..."
+
+# Vérifier si le serveur Spring Boot est en cours d'exécution
+echo "Vérification de la disponibilité de l'API Spring Boot..."
+curl -s http://localhost:8080/v3/api-docs > /dev/null
+
+if [ $? -ne 0 ]; then
+  echo "ERREUR: Impossible d'accéder aux spécifications OpenAPI."
+  echo "Assurez-vous que votre serveur Spring Boot est en cours d'exécution et que le point d'accès /v3/api-docs est disponible."
+  exit 1
+fi
+
+# Vérifier si ng-openapi-gen est installé
+if ! [ -x "$(command -v ng-openapi-gen)" ]; then
+  echo "Installation de ng-openapi-gen..."
+  npm install -g ng-openapi-gen
+fi
+
+# Créer le fichier de configuration si nécessaire
+if [ ! -f "ng-openapi-gen.json" ]; then
+  echo "Création du fichier de configuration ng-openapi-gen.json..."
+  cat > ng-openapi-gen.json << EOF
+{
+  "input": "http://localhost:8080/v3/api-docs",
+  "output": "src/app/api",
+  "ignoreUnusedModels": false,
+  "minParamsForContainer": 2,
+  "defaultTag": "Api",
+  "servicePrefix": "",
+  "serviceSuffix": "Service",
+  "modelPrefix": "",
+  "modelSuffix": "",
+  "skipJsonSuffix": true
+}
+EOF
+fi
+
+# Générer le code du client API
+echo "Génération du code client Angular..."
+ng-openapi-gen
+
+# Vérifier si la génération a réussi
+if [ $? -eq 0 ]; then
+  echo "✅ Génération du client API terminée avec succès!"
+  echo "Les fichiers ont été générés dans src/app/api/"
+  echo "Utilisez les services générés dans vos composants Angular."
+else
+  echo "❌ La génération du client API a échoué. Vérifiez les erreurs ci-dessus."
+  exit 1
+fi

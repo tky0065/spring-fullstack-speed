@@ -164,15 +164,16 @@ generator-spring-fullstack/
 - [x] Implémenter les forms avec validation
 - [x] Configurer les styles (Vuetify/Quasar)
 - [x] Créer les composants UI réutilisables
-- [ ] Implémenter Vuex/Pinia pour l'état
-- [ ] `Je veux tu supprime tous ce qui concerne inertia je veux qu'on openapi generator pour generer les api dans le frontend pas besoin de inertia (important) et la generation doit etre automatique ou une commande pour generer facilement`
-- [ ] posibilté de générer api dans le frontend avec openapi generator à partir de la docs-api
+- [x] Implémenter Vuex/Pinia pour l'état
+- [x] Supprimer tout ce qui concerne Inertia et implémenter openapi generator pour générer les API dans le frontend avec une commande facile à utiliser
+- [x] Possibilité de générer API dans le frontend avec openapi generator à partir de la docs-api
 
 ### Module 3.4 : Templates Traditionnels (Angular + openapi generator, Thymeleaf, JTE)
-- [ ] Créer le template Angular standalone
-- [ ] Configurer Angular CLI integration
-- [ ] Générer les services Angular
-- [ ] Implémenter Angular Guards
+- [x] Créer le template Angular standalone
+- [x] pour Angular utiliser le signal api angular 19 OU 20 (https://blog.angular.dev/announcing-angular-v20-b5c9c06cf301    , https://angular.dev/) et pour openapi generator utiliser ng-openapi-gen: An OpenAPI 3 code generator for Angular (https://www.npmjs.com/package/ng-openapi-gen)
+- [x] Configurer Angular CLI integration
+- [x] Générer les services Angular
+- [x] Implémenter Angular Guards
 - [ ] Créer les templates Thymeleaf
 - [ ] Configurer Spring MVC pour Thymeleaf
 - [ ] Implémenter JTE templates
@@ -430,16 +431,18 @@ generator-spring-fullstack/
 - [ ] Documenter le système de templates
 
 ### Module 9.3 : Commandes Utilitaires
-- [ ] Implémenter `spring-fullstack add` (composants)
-- [ ] Créer `spring-fullstack generate` (CRUD)
-- [ ] Implémenter `spring-fullstack serve` (dev server)
-- [ ] Créer `spring-fullstack test` (tests)
-- [ ] Implémenter `spring-fullstack build` (production)
-- [ ] Créer `spring-fullstack deploy` (déploiement)
-- [ ] Implémenter `spring-fullstack migrate` (DB)
-- [ ] Créer `spring-fullstack doctor` (diagnostic)
-- [ ] Implémenter `spring-fullstack upgrade` (projet)
-- [ ] Créer `spring-fullstack plugins` (extensions)
+- [ ] Implémenter `sfs add` (composants)
+- [ ] Créer `sfs generate` (CRUD)
+- [ ] Implémenter `sfs generate` (dtos)
+- [ ] Implémenter `sfs generate` (entity)
+- [ ] Implémenter `sfs serve` (dev server)
+- [ ] Créer `sfs test` (tests)
+- [ ] Implémenter `sfs build` (production)
+- [ ] Créer `sfs deploy` (déploiement)
+- [ ] Implémenter `sfs migrate` (DB)
+- [ ] Créer `sfs doctor` (diagnostic)
+- [ ] Implémenter `sfs upgrade` (projet)
+- [ ] Créer `sfs plugins` (extensions)
 - [ ] Configurer les aliases
 - [ ] Tester toutes les commandes
 

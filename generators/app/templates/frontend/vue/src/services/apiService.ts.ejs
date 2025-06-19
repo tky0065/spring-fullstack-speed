@@ -1,112 +1,113 @@
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
 /**
- * Service d'API qui utilise les clients générés par OpenAPI Generator pour Vue.js
+ * Configuration de base pour les API générées par OpenAPI Generator
  */
-
-import { Configuration, DefaultApi } from '../api';
-
-// Configuration par défaut pour l'API
-const defaultConfig = new Configuration({
-  basePath: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
-  middleware: [
-    {
-      // Middleware pour ajouter le token JWT à chaque requête
-      pre: async (context: { init: RequestInit }) => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          context.init.headers = {
-            ...context.init.headers,
-            Authorization: `Bearer ${token}`,
-          };
-        }
-        return context;
-      },
+export const apiConfig = {
+  basePath: '',
+  baseOptions: {
+    headers: {
+      'Content-Type': 'application/json',
     },
-  ],
-});
-
-// Instance d'API par défaut
-const api = new DefaultApi(defaultConfig);
+  },
+};
 
 /**
- * Service d'API centralisé
- *
- * Utilisez cette classe pour accéder aux endpoints d'API
- * générés automatiquement par OpenAPI Generator.
+ * Service API central pour gérer les instances Axios et les requêtes
  */
-export class ApiService {
-  /**
-   * Récupère l'instance d'API avec la configuration spécifiée
-   *
-   * @param config Configuration personnalisée (optionnelle)
-   * @returns Instance de l'API
-   */
-  static getApi(config?: Configuration): DefaultApi {
-    if (config) {
-      return new DefaultApi(config);
-    }
-    return api;
-  }
+class ApiService {
+  private axiosInstance: AxiosInstance;
 
-  /**
-   * Crée une nouvelle configuration
-   *
-   * @param baseUrl URL de base de l'API
-   * @param addAuthHeader Ajouter automatiquement le header d'authentification
-   * @returns Nouvelle configuration
-   */
-  static createConfig(baseUrl?: string, addAuthHeader = true): Configuration {
-    const config = new Configuration({
-      basePath: baseUrl || defaultConfig.basePath,
+  constructor() {
+    // Création de l'instance Axios avec la configuration par défaut
+    this.axiosInstance = axios.create({
+      baseURL: '/api', // Base URL pour toutes les requêtes API
+      timeout: 30000, // 30 secondes de timeout par défaut
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     });
 
-    if (addAuthHeader) {
-      // Ajouter le middleware pour l'authentification
-      config.middleware = [...(defaultConfig.middleware || [])];
-    }
+    // Intercepteur de requêtes pour ajouter des headers d'authentification, etc.
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        // Récupérer le token depuis le localStorage
+        const token = localStorage.getItem('auth_token');
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
 
-    return config;
+    // Intercepteur de réponses pour gérer les erreurs globales
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        // Gestion des erreurs globales (401, 403, 500, etc.)
+        if (error.response?.status === 401) {
+          // Non authentifié - redirection vers la page de login
+          window.location.href = '/login';
+        } else if (error.response?.status === 403) {
+          // Non autorisé - redirection vers la page d'accès refusé
+          window.location.href = '/forbidden';
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   /**
-   * Handler d'erreur générique pour les erreurs d'API
-   *
-   * @param error Erreur à traiter
-   * @returns Message d'erreur formaté
+   * Retourne l'instance Axios configurée
    */
-  static handleError(error: any): string {
-    console.error('API Error:', error);
+  getAxiosInstance(): AxiosInstance {
+    return this.axiosInstance;
+  }
 
-    if (error.response) {
-      // La requête a été faite et le serveur a répondu avec un code d'erreur
-      const status = error.response.status;
+  /**
+   * Effectue une requête GET
+   * @param url URL de l'endpoint
+   * @param config Configuration optionnelle Axios
+   */
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.axiosInstance.get<T>(url, config);
+    return response.data;
+  }
 
-      switch (status) {
-        case 401:
-          // Non autorisé - déconnecter l'utilisateur
-          localStorage.removeItem('auth_token');
-          window.location.href = '/login';
-          return 'Session expirée. Veuillez vous reconnecter.';
+  /**
+   * Effectue une requête POST
+   * @param url URL de l'endpoint
+   * @param data Données à envoyer
+   * @param config Configuration optionnelle Axios
+   */
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.axiosInstance.post<T>(url, data, config);
+    return response.data;
+  }
 
-        case 403:
-          return 'Vous n\'avez pas les droits nécessaires pour effectuer cette action.';
+  /**
+   * Effectue une requête PUT
+   * @param url URL de l'endpoint
+   * @param data Données à envoyer
+   * @param config Configuration optionnelle Axios
+   */
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.axiosInstance.put<T>(url, data, config);
+    return response.data;
+  }
 
-        case 404:
-          return 'La ressource demandée n\'existe pas.';
-
-        case 422:
-          return 'Les données fournies ne sont pas valides.';
-
-        default:
-          return `Erreur de serveur (${status}). Veuillez réessayer plus tard.`;
-      }
-    } else if (error.request) {
-      // La requête a été faite mais aucune réponse n'a été reçue
-      return 'Impossible de contacter le serveur. Vérifiez votre connexion internet.';
-    } else {
-      // Une erreur s'est produite lors de la configuration de la requête
-      return 'Une erreur est survenue. Veuillez réessayer.';
-    }
+  /**
+   * Effectue une requête DELETE
+   * @param url URL de l'endpoint
+   * @param config Configuration optionnelle Axios
+   */
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.axiosInstance.delete<T>(url, config);
+    return response.data;
   }
 }
 
-export default ApiService;
+// Export d'une instance singleton
+export default new ApiService();

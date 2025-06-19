@@ -1,0 +1,116 @@
+# Génération d'API Angular avec ng-openapi-gen
+
+Ce guide vous explique comment générer automatiquement un client Angular à partir de la documentation OpenAPI de votre API Spring Boot.
+
+## Prérequis
+
+- Une API Spring Boot documentée avec OpenAPI 3
+- Node.js et npm installés
+
+## Installation
+
+Nous utilisons [ng-openapi-gen](https://www.npmjs.com/package/ng-openapi-gen) pour générer le code client Angular à partir de la spécification OpenAPI.
+
+```bash
+# Installez ng-openapi-gen globalement
+npm install -g ng-openapi-gen
+
+# Ou en tant que dépendance de développement dans votre projet
+npm install --save-dev ng-openapi-gen
+```
+
+## Configuration
+
+Créez un fichier `ng-openapi-gen.json` à la racine de votre projet Angular :
+
+```json
+{
+  "input": "http://localhost:8080/v3/api-docs",
+  "output": "src/app/api",
+  "ignoreUnusedModels": false,
+  "minParamsForContainer": 2,
+  "defaultTag": "Api",
+  "servicePrefix": "",
+  "serviceSuffix": "Service",
+  "modelPrefix": "",
+  "modelSuffix": "",
+  "skipJsonSuffix": true,
+  "mustacheHelpers": null
+}
+```
+
+Vous pouvez personnaliser cette configuration selon vos besoins :
+- `input`: URL ou chemin vers le fichier de spécification OpenAPI
+- `output`: Répertoire où le code généré sera placé
+- `serviceSuffix`: Suffixe appliqué aux noms des services générés
+
+## Génération du code
+
+Pour générer le code client Angular, exécutez :
+
+```bash
+ng-openapi-gen
+```
+
+Ou ajoutez un script npm dans votre fichier package.json :
+
+```json
+"scripts": {
+  "generate-api": "ng-openapi-gen"
+}
+```
+
+## Utilisation des services générés
+
+Une fois le code généré, vous pouvez importer et injecter les services dans vos composants :
+
+```typescript
+import { Component } from '@angular/core';
+import { UserService } from '../api/services/user.service';
+import { User } from '../api/models/user';
+
+@Component({
+  selector: 'app-user-list',
+  templateUrl: './user-list.component.html'
+})
+export class UserListComponent {
+  users: User[] = [];
+
+  constructor(private userService: UserService) {
+    this.loadUsers();
+  }
+
+  loadUsers(): void {
+    this.userService.getAllUsers().subscribe(
+      users => this.users = users,
+      error => console.error('Erreur lors du chargement des utilisateurs', error)
+    );
+  }
+}
+```
+
+## Garder le code à jour
+
+Lorsque votre API change, régénérez simplement le code client :
+
+```bash
+npm run generate-api
+```
+
+## Astuce : Génération automatique pendant le développement
+
+Vous pouvez ajouter un script pour générer le code client à chaque démarrage de votre application Angular :
+
+```json
+"scripts": {
+  "start": "npm run generate-api && ng serve",
+  "generate-api": "ng-openapi-gen"
+}
+```
+
+## Remarques importantes
+
+- Les services générés utilisent HttpClient pour les appels API
+- Tous les services sont fournis au niveau root (providedIn: 'root')
+- Les modèles TypeScript générés reflètent exactement les schémas de l'API
+- Les réponses sont typées pour améliorer l'autocomplétion et le typage fort

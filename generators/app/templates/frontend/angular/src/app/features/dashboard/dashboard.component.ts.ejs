@@ -1,0 +1,32 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+@Component({
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.css'
+})
+export class DashboardComponent implements OnInit {
+  protected readonly welcomeMessage = 'Bienvenue sur votre tableau de bord';
+  protected readonly currentDate = new Date();
+  protected readonly stats = [
+    { label: 'Utilisateurs', value: 254, icon: 'users' },
+    { label: 'Projets', value: 12, icon: 'projects' },
+    { label: 'Tâches', value: 154, icon: 'tasks' },
+    { label: 'Messages', value: 37, icon: 'messages' }
+  ];
+  protected readonly recentActivities = [
+    { text: 'Nouveau projet créé', time: '15 min', type: 'project' },
+    { text: 'Tâche complétée', time: '2h', type: 'task' },
+    { text: 'Réunion planifiée', time: '5h', type: 'meeting' },
+    { text: 'Message reçu de l\'équipe', time: '1j', type: 'message' }
+  ];
+
+  ngOnInit(): void {
+    // Initialisation des données - Ici vous pourriez faire un appel API
+    console.log('Initialisation du tableau de bord');
+  }
+}

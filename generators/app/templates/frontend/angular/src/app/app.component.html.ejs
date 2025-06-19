@@ -1,0 +1,18 @@
+<div class="app-container">
+  <header>
+    <h1><%= appName %></h1>
+    <nav>
+      <a routerLink="/">Accueil</a>
+      <a routerLink="/about">À propos</a>
+      <a routerLink="/login">Connexion</a>
+    </nav>
+  </header>
+
+  <main>
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer>
+    <p>&copy; {{ currentYear }} <%= appName %> - Propulsé par Spring Boot et Angular</p>
+  </footer>
+</div>

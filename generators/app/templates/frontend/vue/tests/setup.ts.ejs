@@ -1,0 +1,22 @@
+import { afterEach, expect } from 'vitest';
+import { config } from '@vue/test-utils';
+import { createPinia } from 'pinia';
+
+// Configurer Vue Test Utils
+config.global.plugins = [createPinia()];
+
+// Effacer tous les espions et mocks après chaque test
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+// Mocks pour les fonctionnalités du navigateur
+Object.defineProperty(window, 'localStorage', {
+  value: {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn()
+  },
+  writable: true
+});

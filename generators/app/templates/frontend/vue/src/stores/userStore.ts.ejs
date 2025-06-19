@@ -1,0 +1,135 @@
+import { defineStore } from 'pinia';
+import ApiService from '@/services/ApiService';
+import { initApi } from '@/services/apiConfig';
+import { UserApi } from '@api/api'; // Sera généré par OpenAPI Generator
+
+// Type pour représenter un utilisateur
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  avatar?: string;
+  bio?: string;
+}
+
+// Interface pour l'état du store
+interface UserState {
+  currentUser: User | null;
+  users: User[];
+  status: 'idle' | 'loading' | 'success' | 'error';
+  error: string | null;
+}
+
+// Définition du store utilisateurs avec Pinia
+export const useUserStore = defineStore('user', {
+  // État initial
+  state: (): UserState => ({
+    currentUser: null,
+    users: [],
+    status: 'idle',
+    error: null
+  }),
+
+  // Getters
+  getters: {
+    // Obtenir l'utilisateur actuel
+    getCurrentUser: (state) => state.currentUser,
+
+    // Obtenir tous les utilisateurs
+    getAllUsers: (state) => state.users,
+
+    // Vérifier si les utilisateurs sont en cours de chargement
+    isLoading: (state) => state.status === 'loading',
+
+    // Vérifier s'il y a une erreur
+    hasError: (state) => state.error !== null
+  },
+
+  // Actions
+  actions: {
+    /**
+     * Récupère le profil de l'utilisateur actuel
+     */
+    async fetchCurrentUser() {
+      try {
+        this.status = 'loading';
+        this.error = null;
+
+        // Utilisation de l'API générée par OpenAPI Generator
+        const userApi = initApi(UserApi);
+        const response = await userApi.getCurrentUser();
+
+        this.currentUser = response.data;
+        this.status = 'success';
+        return this.currentUser;
+      } catch (error: any) {
+        this.status = 'error';
+        this.error = error.response?.data?.message || 'Impossible de récupérer les données utilisateur';
+        throw error;
+      }
+    },
+
+    /**
+     * Récupère tous les utilisateurs
+     */
+    async fetchAllUsers() {
+      try {
+        this.status = 'loading';
+        this.error = null;
+
+        // Utilisation de l'API générée par OpenAPI Generator
+        const userApi = initApi(UserApi);
+        const response = await userApi.getAllUsers();
+
+        this.users = response.data;
+        this.status = 'success';
+        return this.users;
+      } catch (error: any) {
+        this.status = 'error';
+        this.error = error.response?.data?.message || 'Impossible de récupérer les utilisateurs';
+        throw error;
+      }
+    },
+
+    /**
+     * Met à jour le profil de l'utilisateur
+     */
+    async updateUserProfile(userData: Partial<User>) {
+      try {
+        this.status = 'loading';
+        this.error = null;
+
+        // Utilisation de l'API générée par OpenAPI Generator
+        const userApi = initApi(UserApi);
+        const response = await userApi.updateUser(userData.id as string, userData);
+
+        // Mettre à jour l'utilisateur actuel si c'est le même
+        if (this.currentUser && this.currentUser.id === response.data.id) {
+          this.currentUser = response.data;
+        }
+
+        // Mettre à jour l'utilisateur dans la liste si présent
+        const index = this.users.findIndex(user => user.id === response.data.id);
+        if (index !== -1) {
+          this.users[index] = response.data;
+        }
+
+        this.status = 'success';
+        return response.data;
+      } catch (error: any) {
+        this.status = 'error';
+        this.error = error.response?.data?.message || 'Impossible de mettre à jour le profil';
+        throw error;
+      }
+    },
+
+    /**
+     * Réinitialise l'état du store
+     */
+    resetState() {
+      this.$reset();
+    }
+  }
+});

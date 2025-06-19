@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+/**
+ * Script de génération automatique des clients API TypeScript pour Angular
+ * Ce script utilise ng-openapi-gen pour générer des clients Angular typés
+ */
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Analyser les arguments de la ligne de commande
+const args = process.argv.slice(2);
+const options = {
+  url: 'http://localhost:8080/v3/api-docs',
+  output: './src/app/api',
+  help: false,
+  skipValidation: false
+};
+
+// Traitement des arguments
+args.forEach(arg => {
+  if (arg === '--help' || arg === '-h') {
+    options.help = true;
+  } else if (arg === '--skip-validation') {
+    options.skipValidation = true;
+  } else if (arg.startsWith('--url=')) {
+    options.url = arg.split('=')[1];
+  } else if (arg.startsWith('--output=')) {
+    options.output = arg.split('=')[1];
+  }
+});
+
+// Afficher l'aide si demandé
+if (options.help) {
+  console.log('🚀 Générateur de clients API Angular à partir de la documentation OpenAPI');
+  console.log('');
+  console.log('Usage:');
+  console.log('  npm run api                     - Génère les clients API avec les paramètres par défaut');
+  console.log('  npm run api -- --url=<URL>      - Utilise une URL spécifique pour la documentation OpenAPI');
+  console.log('  npm run api -- --output=<PATH>  - Spécifie un dossier de sortie personnalisé');
+  console.log('  npm run api -- --skip-validation - Saute la validation du serveur');
+  console.log('  npm run api -- --help           - Affiche cette aide');
+  console.log('');
+  process.exit(0);
+}
+
+// Fonction principale
+async function generateApi() {
+  console.log('🚀 Génération des clients API Angular 20 depuis la documentation OpenAPI...');
+
+  try {
+    // Vérifier si le serveur est accessible (sauf si --skip-validation est utilisé)
+    if (!options.skipValidation) {
+      console.log(`Vérification de la disponibilité du serveur à ${options.url}...`);
+      try {
+        execSync(`curl -s -o /dev/null -w "%{http_code}" ${options.url}`);
+        console.log('✅ Serveur accessible, documentation OpenAPI disponible');
+      } catch (error) {
+        console.log('❌ Serveur non accessible ou documentation OpenAPI non disponible');
+        console.log('⚠️ Assurez-vous que votre serveur Spring Boot est démarré et que SpringDoc est configuré');
+        console.log('💡 Vous pouvez utiliser --skip-validation pour ignorer cette vérification');
+        process.exit(1);
+      }
+    }
+
+    // Créer le dossier de sortie s'il n'existe pas
+    const outputDir = path.resolve(process.cwd(), options.output);
+    if (!fs.existsSync(outputDir)) {
+      console.log(`Création du dossier de sortie: ${outputDir}`);
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Exécuter la commande ng-openapi-gen
+    console.log(`Génération des clients API Angular 20 avec ng-openapi-gen...`);
+
+    const command = `npx ng-openapi-gen --input ${options.url} --output ${options.output}`;
+    execSync(command, { stdio: 'inherit' });
+
+    console.log('');
+    console.log('✅ Génération des clients API terminée avec succès!');
+    console.log(`Les clients API ont été générés dans le dossier ${options.output}`);
+    console.log('💡 Exemple d\'utilisation avec Angular 20:');
+    console.log('');
+    console.log(`// Injecter le service généré`);
+    console.log(`import { ApiService } from '${options.output.startsWith('./') ? options.output : './' + options.output}';`);
+    console.log('');
+    console.log(`// Dans un composant`);
+    console.log(`@Component({...})`);
+    console.log(`export class MyComponent {`);
+    console.log(`  // Injection avec le nouveau signal API d'Angular 20`);
+    console.log(`  users = signal<User[]>([]);`);
+    console.log(`  loading = signal(false);`);
+    console.log(`  error = signal<string | null>(null);`);
+    console.log('');
+    console.log(`  constructor(private userService: UserService) {}`);
+    console.log('');
+    console.log(`  loadUsers() {`);
+    console.log(`    this.loading.set(true);`);
+    console.log(`    this.userService.getUsers().subscribe({`);
+    console.log(`      next: (data) => {`);
+    console.log(`        this.users.set(data);`);
+    console.log(`        this.loading.set(false);`);
+    console.log(`      },`);
+    console.log(`      error: (err) => {`);
+    console.log(`        this.error.set(err.message);`);
+    console.log(`        this.loading.set(false);`);
+    console.log(`      }`);
+    console.log(`    });`);
+    console.log(`  }`);
+    console.log(`}`);
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la génération des clients API:');
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
+// Exécuter la fonction principale
+generateApi();

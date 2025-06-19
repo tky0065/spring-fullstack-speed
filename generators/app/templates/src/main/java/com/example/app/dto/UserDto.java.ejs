@@ -1,0 +1,97 @@
+package com.example.app.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/**
+ * DTO pour les opérations utilisateur
+ */
+@Schema(description = "Représentation d'un utilisateur pour les opérations d'API")
+public class UserDto {
+
+    @Schema(description = "Identifiant unique de l'utilisateur", example = "1")
+    private Long id;
+
+    @Schema(description = "Nom d'utilisateur", example = "johndoe", required = true)
+    @NotBlank(message = "Le nom d'utilisateur est obligatoire")
+    @Size(min = 3, max = 50, message = "Le nom d'utilisateur doit contenir entre 3 et 50 caractères")
+    private String username;
+
+    @Schema(description = "Adresse email de l'utilisateur", example = "john.doe@example.com", required = true)
+    @NotBlank(message = "L'email est obligatoire")
+    @Email(message = "L'email doit être valide")
+    private String email;
+
+    @Schema(description = "Prénom de l'utilisateur", example = "John")
+    private String firstName;
+
+    @Schema(description = "Nom de famille de l'utilisateur", example = "Doe")
+    private String lastName;
+
+    @Schema(description = "Rôle de l'utilisateur dans le système", example = "USER", allowableValues = {"USER", "ADMIN", "MANAGER"})
+    private String role;
+
+    // Constructeurs
+    public UserDto() {
+    }
+
+    public UserDto(Long id, String username, String email, String firstName, String lastName, String role) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.role = role;
+    }
+
+    // Getters et Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+}

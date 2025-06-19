@@ -1,0 +1,156 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
+import { createRouter, createWebHistory } from 'vue-router';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+import { VueQueryPlugin } from '@tanstack/vue-query';
+import ApiExample from '@/components/examples/ApiExample.vue';
+import { useAuthStore, useUserStore } from '@/stores';
+
+// Mock des données
+const mockUsers = [
+  { id: '1', username: 'user1', email: 'user1@example.com' },
+  { id: '2', username: 'user2', email: 'user2@example.com' },
+];
+
+// Setup du serveur MSW
+const server = setupServer(
+  // Mock pour GET /api/users
+  rest.get('/api/users', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json(mockUsers)
+    );
+  }),
+
+  // Mock pour POST /api/users
+  rest.post('/api/users', (req, res, ctx) => {
+    const newUser = { id: '3', ...req.body };
+    return res(
+      ctx.status(201),
+      ctx.json(newUser)
+    );
+  })
+);
+
+// Config pour Vue Router
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/', component: {} }]
+});
+
+describe('API Example Component Integration', () => {
+  // Setup avant tous les tests
+  beforeAll(() => server.listen());
+
+  // Reset après chaque test
+  afterEach(() => {
+    server.resetHandlers();
+    vi.clearAllMocks();
+  });
+
+  // Arrêt après tous les tests
+  afterAll(() => server.close());
+
+  // Setup avant chaque test
+  beforeEach(() => {
+    // Configurer Pinia
+    setActivePinia(createPinia());
+
+    // Mock localStorage
+    Storage.prototype.getItem = vi.fn();
+    Storage.prototype.setItem = vi.fn();
+    Storage.prototype.removeItem = vi.fn();
+  });
+
+  it('should display loading state and then users', async () => {
+    // Arrange - Initialiser les stores
+    const authStore = useAuthStore();
+    authStore.user.token = 'mock-token'; // Simuler un utilisateur connecté
+    vi.mocked(localStorage.getItem).mockReturnValue('mock-token');
+
+    // Act - Monter le composant avec tous les plugins nécessaires
+    const wrapper = mount(ApiExample, {
+      global: {
+        plugins: [router, createPinia(), VueQueryPlugin],
+        stubs: {
+          RouterLink: true // Stub des composants de navigation
+        }
+      }
+    });
+
+    // Assert - Vérifier le message de chargement initial
+    expect(wrapper.text()).toContain('Chargement des utilisateurs');
+
+    // Act - Attendre que les données soient chargées
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Assert - Vérifier que les utilisateurs sont affichés
+    expect(wrapper.text()).toContain('user1 - user1@example.com');
+    expect(wrapper.text()).toContain('user2 - user2@example.com');
+  });
+
+  it('should show user information when authenticated', async () => {
+    // Arrange - Initialiser les stores avec un utilisateur connecté
+    const authStore = useAuthStore();
+    const userStore = useUserStore();
+
+    // Simuler un utilisateur connecté
+    authStore.user.token = 'mock-token';
+    authStore.user.email = 'test@example.com';
+    userStore.currentUser = {
+      id: '123',
+      name: 'Test User',
+      email: 'test@example.com',
+      role: 'USER',
+      createdAt: new Date().toISOString()
+    };
+
+    // Act - Monter le composant
+    const wrapper = mount(ApiExample, {
+      global: {
+        plugins: [router, createPinia(), VueQueryPlugin],
+        stubs: {
+          RouterLink: true
+        }
+      }
+    });
+
+    // Assert - Vérifier les informations de l'utilisateur
+    expect(wrapper.text()).toContain('Connecté');
+    expect(wrapper.text()).toContain('test@example.com');
+  });
+
+  it('should handle API error correctly', async () => {
+    // Arrange - Reconfigurer le serveur pour renvoyer une erreur
+    server.use(
+      rest.get('/api/users', (req, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({ message: 'Server error' })
+        );
+      })
+    );
+
+    // Simuler un utilisateur connecté
+    const authStore = useAuthStore();
+    authStore.user.token = 'mock-token';
+
+    // Act - Monter le composant
+    const wrapper = mount(ApiExample, {
+      global: {
+        plugins: [router, createPinia(), VueQueryPlugin],
+        stubs: {
+          RouterLink: true
+        }
+      }
+    });
+
+    // Attendre que l'erreur soit traitée
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Assert - Vérifier le message d'erreur
+    expect(wrapper.text()).toContain('Erreur');
+  });
+});
