@@ -1,6 +1,5 @@
 package <%= packageName %>.controller;
 
-import <%= packageName %>.inertia.InertiaHelper;
 <% if (includeAuth) { %>
 import <%= packageName %>.service.UserService;
 import <%= packageName %>.dto.UserDTO;
@@ -9,9 +8,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 <% } %>
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -19,131 +21,132 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Contrôleur Inertia pour les pages nécessitant une authentification.
- * Ce contrôleur gère les pages accessibles uniquement aux utilisateurs authentifiés.
+ * Contrôleur REST pour les endpoints du tableau de bord.
+ * Ce contrôleur expose les API accessibles uniquement aux utilisateurs authentifiés.
  */
-@Controller
-@RequestMapping("/dashboard")
+@RestController
+@RequestMapping("/api/dashboard")
 <% if (includeAuth) { %>
 @PreAuthorize("isAuthenticated()")
 <% } %>
+@Tag(name = "Dashboard", description = "API du tableau de bord")
 public class DashboardController {
 
-    private final InertiaHelper inertiaHelper;
     <% if (includeAuth) { %>
     private final UserService userService;
-    <% } %>
 
     @Autowired
-    public DashboardController(
-        InertiaHelper inertiaHelper
-        <% if (includeAuth) { %>
-        , UserService userService
-        <% } %>
-    ) {
-        this.inertiaHelper = inertiaHelper;
-        <% if (includeAuth) { %>
+    public DashboardController(UserService userService) {
         this.userService = userService;
-        <% } %>
     }
+    <% } %>
 
     /**
-     * Page principale du tableau de bord
+     * Endpoint pour récupérer les données principales du tableau de bord
      */
     @GetMapping
-    public String index() {
+    @Operation(summary = "Récupère les données du tableau de bord principal")
+    public ResponseEntity<Map<String, Object>> getDashboardData() {
+        Map<String, Object> dashboardData = new HashMap<>();
+
         <% if (includeAuth) { %>
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UserDTO currentUser = userService.getCurrentUser();
+        dashboardData.put("currentUser", currentUser);
         <% } %>
 
-        return inertiaHelper.render("Dashboard/Index",
-            "title", "Tableau de bord",
-            <% if (includeAuth) { %>
-            "currentUser", currentUser,
-            <% } %>
-            "stats", Map.of(
-                "users", 42,
-                "articles", 148,
-                "comments", 358,
-                "views", 12589
-            )
-        );
+        dashboardData.put("title", "Tableau de bord");
+        dashboardData.put("stats", Map.of(
+            "users", 42,
+            "articles", 148,
+            "comments", 358,
+            "views", 12589
+        ));
+
+        return ResponseEntity.ok(dashboardData);
     }
 
     /**
-     * Page de profil utilisateur
+     * Endpoint pour récupérer les données de profil utilisateur
      */
     @GetMapping("/profile")
-    public String profile() {
+    @Operation(summary = "Récupère les données de profil de l'utilisateur")
+    public ResponseEntity<Map<String, Object>> getProfileData() {
+        Map<String, Object> profileData = new HashMap<>();
+        profileData.put("title", "Mon profil");
+
         <% if (includeAuth) { %>
         UserDTO currentUser = userService.getCurrentUser();
+        profileData.put("user", currentUser);
         <% } else { %>
         Map<String, Object> currentUser = new HashMap<>();
         currentUser.put("name", "Utilisateur Démo");
         currentUser.put("email", "demo@example.com");
+        profileData.put("user", currentUser);
         <% } %>
 
-        return inertiaHelper.render("Dashboard/Profile",
-            "title", "Mon profil",
-            <% if (includeAuth) { %>
-            "user", currentUser,
-            <% } else { %>
-            "user", currentUser,
-            <% } %>
-            "activities", Arrays.asList(
-                Map.of(
-                    "date", "2025-06-18T14:30:00",
-                    "type", "login",
-                    "description", "Connexion réussie"
-                ),
-                Map.of(
-                    "date", "2025-06-17T11:15:00",
-                    "type", "update",
-                    "description", "Profil mis à jour"
-                ),
-                Map.of(
-                    "date", "2025-06-15T09:30:00",
-                    "type", "login",
-                    "description", "Connexion réussie"
-                )
+        profileData.put("activities", Arrays.asList(
+            Map.of(
+                "date", "2025-06-18T14:30:00",
+                "type", "login",
+                "description", "Connexion réussie"
+            ),
+            Map.of(
+                "date", "2025-06-17T11:15:00",
+                "type", "update",
+                "description", "Profil mis à jour"
+            ),
+            Map.of(
+                "date", "2025-06-15T09:30:00",
+                "type", "login",
+                "description", "Connexion réussie"
             )
-        );
+        ));
+
+        return ResponseEntity.ok(profileData);
     }
 
     /**
-     * Page de paramètres
+     * Endpoint pour récupérer les paramètres utilisateur
      */
     @GetMapping("/settings")
-    public String settings() {
+    @Operation(summary = "Récupère les paramètres de l'utilisateur")
+    public ResponseEntity<Map<String, Object>> getSettingsData() {
+        Map<String, Object> settingsData = new HashMap<>();
+        settingsData.put("title", "Paramètres");
+
         Map<String, Object> settings = new HashMap<>();
         settings.put("notifications", true);
         settings.put("twoFactorAuth", false);
         settings.put("theme", "light");
         settings.put("language", "fr");
+        settingsData.put("settings", settings);
 
-        return inertiaHelper.render("Dashboard/Settings",
-            "title", "Paramètres",
-            "settings", settings,
-            "availableLanguages", Arrays.asList(
-                Map.of("code", "fr", "name", "Français"),
-                Map.of("code", "en", "name", "English"),
-                Map.of("code", "es", "name", "Español"),
-                Map.of("code", "de", "name", "Deutsch")
-            ),
-            "availableThemes", Arrays.asList(
-                Map.of("code", "light", "name", "Clair"),
-                Map.of("code", "dark", "name", "Sombre"),
-                Map.of("code", "system", "name", "Système")
-            )
-        );
+        settingsData.put("availableLanguages", Arrays.asList(
+            Map.of("code", "fr", "name", "Français"),
+            Map.of("code", "en", "name", "English"),
+            Map.of("code", "es", "name", "Español"),
+            Map.of("code", "de", "name", "Deutsch")
+        ));
+
+        settingsData.put("availableThemes", Arrays.asList(
+            Map.of("code", "light", "name", "Clair"),
+            Map.of("code", "dark", "name", "Sombre"),
+            Map.of("code", "system", "name", "Système")
+        ));
+
+        return ResponseEntity.ok(settingsData);
     }
 
     /**
-     * Page de gestion des données
+     * Endpoint pour récupérer les données tabulaires
      */
     @GetMapping("/data")
-    public String data() {
+    @Operation(summary = "Récupère des données tabulaires pour la gestion des projets")
+    public ResponseEntity<Map<String, Object>> getTableData() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("title", "Gestion des données");
+
         List<Map<String, Object>> tableData = Arrays.asList(
             Map.of(
                 "id", 1,
@@ -176,16 +179,15 @@ public class DashboardController {
                 "created", "2025-06-01"
             )
         );
+        response.put("items", tableData);
 
-        return inertiaHelper.render("Dashboard/Data",
-            "title", "Gestion des données",
-            "items", tableData,
-            "pagination", Map.of(
-                "current", 1,
-                "total", 5,
-                "perPage", 10,
-                "totalItems", 45
-            )
-        );
+        response.put("pagination", Map.of(
+            "current", 1,
+            "total", 5,
+            "perPage", 10,
+            "totalItems", 45
+        ));
+
+        return ResponseEntity.ok(response);
     }
 }

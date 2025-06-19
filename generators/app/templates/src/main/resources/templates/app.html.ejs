@@ -11,9 +11,14 @@
 
     <!-- Scripts -->
     <script th:src="@{/assets/js/app.js}" defer></script>
+
+    <!-- API URL Configuration -->
+    <script th:inline="javascript">
+        window.apiBaseUrl = /*[[@{/api}]]*/ '/api';
+    </script>
 </head>
 <body>
-    <!-- Inertia.js app placeholder -->
-    <div id="app" th:data-page="${inertiaPage}"></div>
+    <!-- Application root element -->
+    <div id="app"></div>
 </body>
 </html>
