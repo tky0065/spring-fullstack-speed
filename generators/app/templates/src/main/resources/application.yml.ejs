@@ -14,6 +14,9 @@ spring:
       host: localhost
       port: 27017
       database: <%= appName %>
+      auto-index-creation: true
+      uuid-representation: standard
+      field-naming-strategy: org.springframework.data.mapping.model.SnakeCaseFieldNamingStrategy
 <% } else { %>
   datasource:
     hikari:
@@ -210,6 +213,8 @@ spring:
   data:
     mongodb:
       database: <%= appName %>_dev
+      # Options de développement
+      auto-index-creation: true
 <% } %>
 <% if (database !== 'MongoDB') { %>
   jpa:
@@ -245,6 +250,7 @@ spring:
   data:
     mongodb:
       database: <%= appName %>_test
+      auto-index-creation: true
 <% } %>
 <% if (database !== 'MongoDB') { %>
   jpa:
@@ -309,6 +315,11 @@ spring:
       database: ${DB_NAME:<%= appName %>}
       username: ${DB_USERNAME:}
       password: ${DB_PASSWORD:}
+      authentication-database: ${DB_AUTH_SOURCE:admin}
+      # Options de production
+      auto-index-creation: false  # Désactivé en prod pour éviter les performances dégradées
+      uuid-representation: standard
+      field-naming-strategy: org.springframework.data.mapping.model.SnakeCaseFieldNamingStrategy
 <% } %>
 <% if (database !== 'MongoDB') { %>
   jpa:

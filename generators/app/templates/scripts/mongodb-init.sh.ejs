@@ -1,0 +1,85 @@
+#!/bin/bash
+# Script d'initialisation MongoDB pour <%= appName %>
+# Généré par Spring-Fullstack-Speed
+
+# Couleurs pour les messages
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Configuration de la base de données
+DB_NAME="<%= appName.toLowerCase().replace(/-/g, '_') %>"
+DB_USER="<%= appName.toLowerCase().replace(/-/g, '_') %>_user"
+DB_PASSWORD="change_this_password"
+ADMIN_DB="admin"
+
+echo -e "${YELLOW}=== Initialisation de la base de données MongoDB pour <%= appName %> ===${NC}"
+
+# Vérification si MongoDB est installé
+if ! command -v mongosh &> /dev/null; then
+    echo -e "${RED}MongoDB n'est pas installé ou mongosh n'est pas dans le PATH.${NC}"
+    echo -e "${YELLOW}Veuillez installer MongoDB et mongosh avant de continuer.${NC}"
+    exit 1
+fi
+
+# Vérification si MongoDB est en cours d'exécution
+if ! mongosh --eval "db.version()" --quiet &> /dev/null; then
+    echo -e "${RED}MongoDB ne semble pas être en cours d'exécution.${NC}"
+    echo -e "${YELLOW}Veuillez démarrer MongoDB avant de continuer.${NC}"
+    exit 1
+fi
+
+# Création des bases de données et de l'utilisateur
+echo -e "${YELLOW}Création des bases de données et de l'utilisateur...${NC}"
+
+# Script MongoDB pour créer l'utilisateur et les bases de données
+mongosh --quiet <<EOF
+// Création de l'utilisateur avec les droits d'administrateur
+use $ADMIN_DB
+db.createUser({
+  user: "$DB_USER",
+  pwd: "$DB_PASSWORD",
+  roles: [
+    { role: "readWrite", db: "$DB_NAME" },
+    { role: "readWrite", db: "${DB_NAME}_dev" },
+    { role: "readWrite", db: "${DB_NAME}_test" }
+  ]
+})
+
+// Création des bases de données (MongoDB crée la base de données lors de la première insertion)
+use $DB_NAME
+db.createCollection("init")
+
+use ${DB_NAME}_dev
+db.createCollection("init")
+
+use ${DB_NAME}_test
+db.createCollection("init")
+
+// Afficher les bases de données créées
+show dbs
+EOF
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Configuration de MongoDB terminée avec succès!${NC}"
+
+    # Informations de connexion pour application.yml
+    echo -e "${YELLOW}Configuration de la base de données pour application.yml:${NC}"
+    echo -e "${GREEN}spring.data.mongodb.host=localhost${NC}"
+    echo -e "${GREEN}spring.data.mongodb.port=27017${NC}"
+    echo -e "${GREEN}spring.data.mongodb.database=$DB_NAME${NC}"
+    echo -e "${GREEN}spring.data.mongodb.username=$DB_USER${NC}"
+    echo -e "${GREEN}spring.data.mongodb.password=$DB_PASSWORD${NC}"
+    echo -e "${GREEN}spring.data.mongodb.authentication-database=$ADMIN_DB${NC}"
+
+    # Instructions pour l'application.yml
+    echo -e "${YELLOW}Copiez ces informations dans votre fichier application.yml${NC}"
+else
+    echo -e "${RED}Erreur lors de la configuration de MongoDB. Vérifiez que MongoDB est bien installé et en cours d'exécution.${NC}"
+    exit 1
+fi
+
+# Rappel pour activation de l'authentification
+echo -e "${YELLOW}IMPORTANT: Si l'authentification n'est pas activée sur votre serveur MongoDB, vous devrez l'activer${NC}"
+echo -e "${YELLOW}dans votre configuration MongoDB pour utiliser les identifiants créés.${NC}"

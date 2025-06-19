@@ -99,7 +99,7 @@ generator-spring-fullstack/
 
 ### Module 2.2 : Configuration Base de Données
 - [x] Implémenter le support MySQL
-- [ ] Implémenter le support PostgreSQL
+- [x] Implémenter le support PostgreSQL
 - [ ] Implémenter le support MongoDB
 - [ ] Implémenter le support H2 (développement)
 - [ ] Créer les configurations DataSource
