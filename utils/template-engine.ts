@@ -1,140 +1,208 @@
 /**
- * Utilitaires pour le templating EJS
+ * Utilitaires pour le moteur de templates EJS
  */
 import ejs from 'ejs';
 import fs from 'fs';
-import path from 'path';
-import chalk from 'chalk';
+import path from 'node:path';
+import { promisify } from 'util';
 import crypto from 'crypto';
 import { addConditionalHelpersToContext } from './conditional-rendering.js';
+import { getGlobalConfig, GlobalConfig } from './config.js';
+
+const readFilePromise = promisify(fs.readFile);
+
+/**
+ * Options de rendu pour les templates
+ */
+export interface RenderOptions {
+  [key: string]: any;
+}
 
 /**
  * Rend un template EJS avec les données fournies
- * @param templatePath Chemin vers le fichier template
+ * @param template Contenu du template
  * @param data Données à injecter dans le template
- * @returns Chaîne rendue
+ * @param options Options de rendu
+ * @returns Contenu rendu
  */
-export function renderTemplate(templatePath: string, data: Record<string, any>): string {
+export async function renderTemplate(
+  template: string,
+  data: Record<string, any> = {},
+  options: RenderOptions = {}
+): Promise<string> {
   try {
-    const templateContent = fs.readFileSync(templatePath, 'utf8');
-    return ejs.render(templateContent, data);
+    const enhancedData = enhanceTemplateContext(data);
+    return ejs.render(template, enhancedData, options);
   } catch (error) {
-    console.error(chalk.red(`Erreur lors du rendu du template: ${templatePath}`));
-    console.error(error);
+    console.error('Erreur lors du rendu du template:', error);
     throw error;
   }
 }
 
 /**
- * Rend un template EJS et écrit le résultat dans un fichier
- * @param templatePath Chemin vers le fichier template
- * @param outputPath Chemin de sortie pour le fichier généré
+ * Rend un fichier template EJS avec les données fournies
+ * @param templatePath Chemin du fichier template
  * @param data Données à injecter dans le template
+ * @param options Options de rendu
+ * @returns Contenu rendu
  */
-export function renderTemplateToFile(templatePath: string, outputPath: string, data: Record<string, any>): void {
-  const rendered = renderTemplate(templatePath, data);
-
-  // Crée le répertoire parent s'il n'existe pas
-  const outputDir = path.dirname(outputPath);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  // Écrit le fichier
-  fs.writeFileSync(outputPath, rendered);
-}
-
-/**
- * Vérifie si un template EJS est valide
- * @param templatePath Chemin vers le fichier template
- * @returns true si le template est valide, false sinon
- */
-export function validateTemplate(templatePath: string): boolean {
+export async function renderTemplateFile(
+  templatePath: string,
+  data: Record<string, any> = {},
+  options: RenderOptions = {}
+): Promise<string> {
   try {
-    // Essaie de compiler le template
-    const templateContent = fs.readFileSync(templatePath, 'utf8');
-    ejs.compile(templateContent);
-    return true;
+    const template = await readFilePromise(templatePath, 'utf8');
+    const enhancedData = enhanceTemplateContext(data);
+    return ejs.render(template, enhancedData, { filename: templatePath, ...options });
   } catch (error) {
-    console.error(chalk.red(`Template invalide: ${templatePath}`));
-    console.error(error);
-    return false;
+    console.error(`Erreur lors du rendu du template ${templatePath}:`, error);
+    throw error;
   }
 }
 
 /**
- * Traite une chaîne comme un template EJS
- * @param template Chaîne template
+ * Rend une chaîne comme un template EJS
+ * @param str Chaîne à rendre
  * @param data Données à injecter
+ * @param options Options de rendu
  * @returns Chaîne rendue
  */
-export function renderString(template: string, data: Record<string, any>): string {
+export function renderString(
+  str: string,
+  data: Record<string, any> = {},
+  options: RenderOptions = {}
+): string {
   try {
-    return ejs.render(template, data);
+    const enhancedData = enhanceTemplateContext(data);
+    return ejs.render(str, enhancedData, options);
   } catch (error) {
-    console.error(chalk.red('Erreur lors du rendu de la chaîne template'));
-    console.error(error);
-    throw error;
+    console.error(`Erreur lors du rendu de la chaîne:`, error);
+    return str; // En cas d'erreur, retourner la chaîne originale
   }
 }
 
 /**
- * Transforme un nom de fichier EJS en nom de fichier de sortie
- * ex: MyClass.java.ejs -> MyClass.java
- * @param filename Nom du fichier EJS
- * @returns Nom du fichier sans l'extension .ejs
+ * Génère un hash MD5 basé sur le contenu et les options
+ * @param content Le contenu à hacher
+ * @param salt Sel optionnel pour renforcer le hachage
+ * @returns Le hash MD5 hexadécimal
  */
-export function getOutputFilename(filename: string): string {
-  return filename.replace(/\.ejs$/, '');
+export function generateContentHash(content: string, salt: string = ''): string {
+  return crypto.createHash('md5').update(content + salt).digest('hex');
 }
 
 /**
- * Construit le contexte global avec les helpers pour les templates
- * @param baseContext Contexte de base
+ * Construit un contexte de template avec les données fournies et la configuration globale
+ * @param data Données spécifiques au template
+ * @param config Configuration globale
  * @returns Contexte enrichi
  */
-export function buildTemplateContext(baseContext: Record<string, any>): Record<string, any> {
-  // Ajoute des fonctions helper pour utiliser dans les templates
-  const contextWithBasicHelpers = {
-    ...baseContext,
-
-    // Helper pour mettre en majuscule la première lettre d'une chaîne
-    capitalize: (str: string): string => {
-      if (!str) return '';
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    },
-
-    // Helper pour convertir en camelCase
-    camelCase: (str: string): string => {
-      if (!str) return '';
-      return str.replace(/[-_]([a-z])/g, (g) => g[1].toUpperCase());
-    },
-
-    // Helper pour convertir en PascalCase
-    pascalCase: (str: string): string => {
-      const camelCase = str.replace(/[-_]([a-z])/g, (g) => g[1].toUpperCase());
+export function buildTemplateContext(
+  data: Record<string, any> = {},
+  config: GlobalConfig = getGlobalConfig()
+): Record<string, any> {
+  return {
+    ...data,
+    config,
+    // Helpers spécifiques
+    formatDate: (date: Date) => date.toLocaleDateString(),
+    capitalize: (str: string) => str.charAt(0).toUpperCase() + str.slice(1),
+    lower: (str: string) => str.toLowerCase(),
+    upper: (str: string) => str.toUpperCase(),
+    camelCase: (str: string) => str.replace(/-([a-z])/g, g => g[1].toUpperCase()),
+    pascalCase: (str: string) => {
+      const camelCase = str.replace(/-([a-z])/g, g => g[1].toUpperCase());
       return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
     },
+    kebabCase: (str: string) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase(),
+    snakeCase: (str: string) => str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+  };
+}
 
-    // Helper pour générer un secret aléatoire
-    generateRandomSecret: (length = 32): string => {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      const randomValues = crypto.randomBytes(length);
-      for (let i = 0; i < length; i++) {
-        result += chars.charAt(randomValues[i] % chars.length);
-      }
-      return result;
+/**
+ * Valide un template avant de le rendre
+ * @param templatePath Chemin du template à valider
+ * @returns true si le template est valide, sinon lance une exception
+ */
+export async function validateTemplate(templatePath: string): Promise<boolean> {
+  try {
+    const template = await readFilePromise(templatePath, 'utf8');
+    // Vérifier que le template est un fichier EJS valide
+    ejs.compile(template, { filename: templatePath });
+    return true;
+  } catch (error) {
+    console.error(`Template invalide: ${templatePath}`);
+    console.error(error);
+    throw new Error(`Template invalide: ${templatePath} - ${error}`);
+  }
+}
+
+/**
+ * Génère un nom de fichier de sortie en fonction d'un chemin de template
+ * @param templatePath Chemin du template
+ * @param data Données de contexte
+ * @returns Chemin du fichier de sortie
+ */
+export function getOutputFilename(templatePath: string, data: Record<string, any> = {}): string {
+  // Exemple: transformer fichier.ejs en fichier
+  let outputPath = templatePath.replace(/\.ejs$/, '');
+
+  // Remplacer les variables dans le chemin (ex: __name__ devient la valeur de data.name)
+  outputPath = outputPath.replace(/__([a-zA-Z0-9_]+)__/g, (_, key) => {
+    return data[key] || '';
+  });
+
+  return outputPath;
+}
+
+/**
+ * Enrichit le contexte du template avec des helpers utilitaires
+ * @param context Contexte de base
+ * @returns Contexte enrichi
+ */
+export function enhanceTemplateContext(context: Record<string, any> = {}): Record<string, any> {
+  // Obtention de la configuration globale
+  const config = getGlobalConfig();
+
+  // Contexte de base avec des helpers utilitaires
+  const contextWithBasicHelpers = {
+    ...context,
+    // Helper pour convertir une chaîne en camelCase
+    camelCase: (str: string): string => {
+      return str
+        .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) =>
+          index === 0 ? word.toLowerCase() : word.toUpperCase()
+        )
+        .replace(/\s+/g, '');
     },
 
-    // Helper pour formater la date
-    formatDate: (date = new Date()): string => {
-      return date.toISOString().split('T')[0];
+    // Helper pour convertir une chaîne en PascalCase
+    pascalCase: (str: string): string => {
+      return str
+        .replace(/(?:^\w|[A-Z]|\b\w)/g, (word) => word.toUpperCase())
+        .replace(/\s+/g, '');
     },
 
-    // Helper pour échapper du HTML
-    escapeHtml: (unsafe: string): string => {
-      return unsafe
+    // Helper pour convertir une chaîne en snake_case
+    snakeCase: (str: string): string => {
+      return str
+        .replace(/\s+/g, '_')
+        .replace(/([a-z])([A-Z])/g, '$1_$2')
+        .toLowerCase();
+    },
+
+    // Helper pour convertir une chaîne en kebab-case
+    kebabCase: (str: string): string => {
+      return str
+        .replace(/\s+/g, '-')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .toLowerCase();
+    },
+
+    // Helper pour échapper les caractères HTML
+    escapeHtml: (str: string): string => {
+      return str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -144,5 +212,5 @@ export function buildTemplateContext(baseContext: Record<string, any>): Record<s
   };
 
   // Ajoute les helpers conditionnels et retourne le contexte enrichi
-  return addConditionalHelpersToContext(contextWithBasicHelpers);
+  return addConditionalHelpersToContext(contextWithBasicHelpers, config);
 }

@@ -8,8 +8,8 @@
 
 import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import inquirer from "inquirer";
 
 // Styles visuels constants
@@ -21,7 +21,8 @@ const ERROR_COLOR = chalk.red;
 const HELP_COLOR = chalk.gray.italic;
 
 // Résolution des chemins pour ESM
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default class GenerateGenerator extends BaseGenerator {
   // Options spécifiques au générateur
@@ -148,43 +149,54 @@ export default class GenerateGenerator extends BaseGenerator {
       entityClass: this.entityName as string
     };
 
-    switch (this.generateType) {
-      case 'entity':
-        try {
-          await this.composeWith(require.resolve('../entity'), generatorOptions);
-        } catch (error) {
-          this.log(ERROR_COLOR(`Erreur lors de la composition avec le générateur entity: ${error}`));
-        }
-        break;
+    try {
+      switch (this.generateType) {
+        case 'entity':
+          // Importation dynamique du générateur d'entités
+          const entityGen = await import('../entity/index.js');
+          await this.composeWith({
+            Generator: entityGen.default,
+            path: require.resolve('../entity/index.js')
+          }, generatorOptions);
+          break;
 
-      case 'dtos':
-        try {
+        case 'dtos':
+          // Importation dynamique du générateur de DTOs
+          const dtosGen = await import('../dtos/index.js');
+          await this.composeWith({
+            Generator: dtosGen.default,
+            path: require.resolve('../dtos/index.js')
+          }, dtosOptions);
+          break;
 
-          await this.composeWith(require.resolve('../dtos'), dtosOptions);
+        case 'crud':
+          // Pour le CRUD, on génère d'abord l'entité, puis les DTOs, puis le CRUD
+          const entityGenForCrud = await import('../entity/index.js');
+          await this.composeWith({
+            Generator: entityGenForCrud.default,
+            path: require.resolve('../entity/index.js')
+          }, generatorOptions);
 
-        } catch (error) {
-          this.log(ERROR_COLOR(`Erreur lors de la composition avec le générateur dtos: ${error}`));
-        }
-        break;
+          const dtosGenForCrud = await import('../dtos/index.js');
+          await this.composeWith({
+            Generator: dtosGenForCrud.default,
+            path: require.resolve('../dtos/index.js')
+          }, dtosOptions);
 
-      case 'crud':
-        try {
-          // On génère d'abord l'entité
-          await this.composeWith(require.resolve('../entity'), generatorOptions);
+          const crudGen = await import('../crud/index.js');
+          await this.composeWith({
+            Generator: crudGen.default,
+            path: require.resolve('../crud/index.js')
+          }, dtosOptions);
+          break;
 
-          // Puis les DTOs
-          await this.composeWith(require.resolve('../dtos'), dtosOptions);
-
-          // Et enfin le CRUD
-          await this.composeWith(require.resolve('../crud'), dtosOptions);
-        } catch (error) {
-          this.log(ERROR_COLOR(`Erreur lors de la génération CRUD: ${error}`));
-        }
-        break;
-
-      default:
-        this.log(ERROR_COLOR(`Type de génération '${this.generateType}' non reconnu. Utilisation: sfs generate [entity|dtos|crud] [nom]`));
-        process.exit(1);
+        default:
+          this.log(ERROR_COLOR(`Type de génération '${this.generateType}' non reconnu. Utilisation: sfs generate [entity|dtos|crud] [nom]`));
+          process.exit(1);
+      }
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la génération: ${error}`));
+      this.log(ERROR_COLOR((error as Error).stack || 'Aucune trace de pile disponible'));
     }
   }
 
@@ -197,8 +209,45 @@ export default class GenerateGenerator extends BaseGenerator {
       this.log(HELP_COLOR("Astuce: Générez maintenant des DTOs pour cette entité avec: sfs generate dtos " + this.entityName));
     } else if (this.generateType === 'dtos') {
       this.log(HELP_COLOR("Astuce: Générez maintenant un CRUD complet pour cette entité avec: sfs generate crud " + this.entityName));
+    } else if (this.generateType === 'crud') {
+      this.log(HELP_COLOR("Astuce: Vous pouvez maintenant tester votre API avec: sfs serve"));
     }
-
+    
+    this.log(SECTION_DIVIDER);
+    
+    // Affichage d'un résumé des générations effectuées
+    this.log(INFO_COLOR("Résumé de la génération:"));
+    this.log(`- Type: ${chalk.bold(this.generateType)}`);
+    this.log(`- Entité: ${chalk.bold(this.entityName)}`);
+    this.log(`- Package: ${chalk.bold(this.packageName)}`);
+    
+    if (this.generateType === 'crud') {
+      this.log(INFO_COLOR("\nPoints d'accès REST générés:"));
+      this.log(`- GET    /api/${this.entityName?.toLowerCase()}s - Liste tous les éléments`);
+      this.log(`- GET    /api/${this.entityName?.toLowerCase()}s/{id} - Récupère un élément par ID`);
+      this.log(`- POST   /api/${this.entityName?.toLowerCase()}s - Crée un nouvel élément`);
+      this.log(`- PUT    /api/${this.entityName?.toLowerCase()}s/{id} - Met à jour un élément existant`);
+      this.log(`- DELETE /api/${this.entityName?.toLowerCase()}s/{id} - Supprime un élément`);
+    }
+  }
+  
+  /**
+   * Affiche l'aide contextuelle pour le générateur
+   */
+  showHelp() {
+    this.log(SECTION_DIVIDER);
+    this.log(chalk.bold.green(" Spring Fullstack Speed - Aide du générateur unifié "));
+    this.log(SECTION_DIVIDER);
+    this.log("Utilisation: sfs generate [options]");
+    this.log("\nTypes de génération disponibles:");
+    this.log("  - entity : Génère une entité Java");
+    this.log("  - dtos   : Génère des DTOs pour une entité existante");
+    this.log("  - crud   : Génère un CRUD complet (entity + dtos + API REST)");
+    
+    this.log("\nExemples:");
+    this.log("  sfs generate entity Product");
+    this.log("  sfs generate dtos User --package=com.example.user");
+    this.log("  sfs generate crud Order --no-interactive");
     this.log(SECTION_DIVIDER);
   }
 }

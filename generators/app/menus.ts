@@ -4,7 +4,7 @@
  */
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { getPresets, displaySuccess, displayError, displayHelpMessage } from "./questions.js";
+import { getPresets, displaySuccess, displayError } from "./questions.js";
 
 // Importer les types Yeoman pour éviter les erreurs de typage
 import Generator from "yeoman-generator";
@@ -94,7 +94,8 @@ function getPresetDescription(presetKey: string): string {
     basic: "Application Spring Boot basique avec Thymeleaf et H2",
     fullstack: "Application fullstack avec React, PostgreSQL et Docker",
     microservice: "Microservice avec MongoDB, Kafka et support Kubernetes",
-    minimal: "Application Spring Boot minimale sans frontend"
+    minimal: "Application Spring Boot minimale sans frontend",
+    quickstart: "Application minimale prête à l'emploi, configuration rapide"
   };
 
   return descriptions[presetKey] || "Configuration personnalisée";
@@ -301,7 +302,9 @@ export function showProgressBar(step: number, total: number, message: string) {
  * @returns La commande de navigation choisie
  */
 export async function showNavigationMenu(): Promise<string> {
-  displayHelpMessage("Utilisez les raccourcis clavier pour naviguer plus rapidement");
+  console.log(MENU_SEPARATOR);
+  console.log(MENU_TITLE("Utilisez les raccourcis clavier pour naviguer plus rapidement"));
+  console.log(MENU_SEPARATOR);
 
   const { navCommand } = await inquirer.prompt({
     type: "list",
@@ -328,4 +331,86 @@ export async function showNavigationMenu(): Promise<string> {
   });
 
   return navCommand;
+}
+
+/**
+ * Menu de sélection des fonctionnalités supplémentaires
+ * @param features Liste des fonctionnalités disponibles
+ * @returns Liste des fonctionnalités sélectionnées
+ */
+export async function showFeaturesSelectionMenu(features: any[]): Promise<string[]> {
+  console.log(MENU_SEPARATOR);
+  console.log(MENU_TITLE("🧩 SÉLECTION DES FONCTIONNALITÉS"));
+  console.log(MENU_SEPARATOR);
+
+  const { selectedFeatures } = await inquirer.prompt({
+    type: "checkbox",
+    name: "selectedFeatures",
+    message: "Sélectionnez les fonctionnalités à ajouter:",
+    choices: features,
+    pageSize: 15
+  });
+
+  return selectedFeatures;
+}
+
+/**
+ * Menu de sélection du type d'authentification
+ * @returns Type d'authentification sélectionné
+ */
+export async function showAuthSelectionMenu(): Promise<string> {
+  console.log(MENU_SEPARATOR);
+  console.log(MENU_TITLE("🔐 CONFIGURATION DE L'AUTHENTIFICATION"));
+  console.log(MENU_SEPARATOR);
+
+  const { authType } = await inquirer.prompt({
+    type: "list",
+    name: "authType",
+    message: "Sélectionnez le type d'authentification:",
+    choices: [
+      {
+        name: `${MENU_OPTION_TITLE("JWT")} - ${MENU_OPTION_DESC("Authentification avec JSON Web Tokens")}`,
+        value: "JWT"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("OAuth2")} - ${MENU_OPTION_DESC("Authentification avec providers externes (Google, GitHub...)")}`,
+        value: "OAuth2"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("Session")} - ${MENU_OPTION_DESC("Authentification traditionnelle avec sessions")}`,
+        value: "Session"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("Keycloak")} - ${MENU_OPTION_DESC("Intégration avec Keycloak")}`,
+        value: "Keycloak"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("Aucune")} - ${MENU_OPTION_DESC("Pas d'authentification")}`,
+        value: "None"
+      }
+    ],
+    pageSize: 10
+  });
+
+  // Si OAuth2 est sélectionné, proposer de choisir les providers
+  if (authType === "OAuth2") {
+    const { oauth2Providers } = await inquirer.prompt({
+      type: "checkbox",
+      name: "oauth2Providers",
+      message: "Sélectionnez les providers OAuth2:",
+      choices: [
+        { name: "Google", value: "google" },
+        { name: "GitHub", value: "github" },
+        { name: "Facebook", value: "facebook" },
+        { name: "Microsoft", value: "microsoft" },
+        { name: "LinkedIn", value: "linkedin" }
+      ],
+      default: ["google", "github"],
+      pageSize: 8
+    });
+
+    return authType + "-" + oauth2Providers.join(",");
+  }
+
+  return authType;
 }

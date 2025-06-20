@@ -45,6 +45,7 @@ async function generateTestApplication() {
     frontendFramework: 'React avec Inertia.js',
     database: 'PostgreSQL',
     includeAuth: true,
+    authType: 'JWT', // Ajout de la propriété authType requise
     additionalFeatures: ['openapi', 'docker', 'tests']
   };
 

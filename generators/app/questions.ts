@@ -50,7 +50,6 @@ export function getPresets() {
       additionalFeatures: ["openapi", "tests"],
       springBootVersion: "3.1.0",
     },
-    // Nouveaux presets ajoutés
     fullstack: {
       appName: "sfs-fullstack",
       packageName: "com.example.fullstack",
@@ -59,362 +58,245 @@ export function getPresets() {
       database: "PostgreSQL",
       includeAuth: true,
       authType: "OAuth2",
-      additionalFeatures: ["openapi", "tests", "docker", "redis", "elasticsearch"],
-      springBootVersion: "3.2.0",
+      additionalFeatures: ["openapi", "tests", "docker", "monitoring"],
+      springBootVersion: "3.1.0",
     },
     microservice: {
       appName: "sfs-microservice",
-      packageName: "com.example.micro",
-      buildTool: "Gradle",
-      frontendFramework: "None",
-      database: "MySQL",
+      packageName: "com.example.service",
+      buildTool: "Maven",
+      frontendFramework: "Aucun (API seulement)",
+      database: "MongoDB",
       includeAuth: true,
       authType: "JWT",
-      additionalFeatures: ["openapi", "tests", "docker", "kafka", "prometheus"],
-      springBootVersion: "3.2.0",
+      additionalFeatures: ["openapi", "tests", "docker", "kubernetes", "messaging"],
+      springBootVersion: "3.1.0",
+    },
+    quickstart: {
+      appName: "sfs-quickstart",
+      packageName: "com.example.demo",
+      buildTool: "Maven",
+      frontendFramework: "Thymeleaf",
+      database: "H2",
+      includeAuth: false,
+      authType: "None",
+      additionalFeatures: ["openapi"],
+      springBootVersion: "3.1.0",
+      javaVersion: "17"
     }
   };
 }
 
 /**
- * Affiche un message d'aide contextuel
- * @param message Message d'aide à afficher
+ * Génère les questions de base pour le projet
+ * @returns Liste des questions de base
  */
-export function displayContextualHelp(message: string): void {
-  console.log(HELP_COLOR(`ℹ️ ${message}`));
-}
-
-/**
- * Affiche un message de confirmation avec formatage
- * @param message Message à confirmer
- * @param defaultValue Valeur par défaut (true/false)
- * @returns Question de type confirmation
- */
-export function createConfirmationPrompt(
-  message: string,
-  defaultValue: boolean = true
-): YeomanQuestion {
-  return {
-    type: "confirm",
-    name: "confirmation",
-    message: `${chalk.bold(message)} ${defaultValue ? chalk.gray("(Y/n)") : chalk.gray("(y/N)")}`,
-    default: defaultValue,
-  };
-}
-
-/**
- * Crée un menu de sélection avec options
- * @param name Nom de la propriété à définir
- * @param message Message à afficher
- * @param choices Options disponibles
- * @param defaultChoice Option par défaut
- * @returns Question de type liste
- */
-export function createSelectionMenu(
-  name: string,
-  message: string,
-  choices: string[] | { name: string; value: any }[],
-  defaultChoice?: string
-): YeomanQuestion {
-  return {
-    type: "list",
-    name,
-    message: chalk.bold(message),
-    choices: choices.map((choice) => {
-      if (typeof choice === "string") {
-        const isDefault = choice === defaultChoice;
-        return {
-          name: `${isDefault ? SELECTED_PREFIX : OPTION_PREFIX} ${choice} ${
-            isDefault ? chalk.gray("(recommandé)") : ""
-          }`,
-          value: choice,
-          short: choice,
-        };
-      }
-      return choice;
-    }),
-    default: defaultChoice,
-  };
-}
-
-/**
- * Crée un champ de saisie avec validation
- * @param name Nom de la propriété à définir
- * @param message Message à afficher
- * @param defaultValue Valeur par défaut
- * @param validator Fonction de validation
- * @returns Question de type input avec validation
- */
-export function createValidatedQuestion(
-  name: string,
-  message: string,
-  defaultValue: string,
-  validator: (input: string) => boolean | string
-): YeomanQuestion {
-  return {
-    type: "input",
-    name,
-    message: chalk.cyan(message),
-    default: defaultValue,
-    validate: validator
-  };
-}
-
-/**
- * Crée un champ de confirmation simple
- * @param name Nom de la propriété à définir
- * @param message Message à afficher
- * @param defaultValue Valeur par défaut
- * @returns Question de type confirmation
- */
-export function createConfirmQuestion(
-  name: string,
-  message: string,
-  defaultValue: boolean = true
-): YeomanQuestion {
-  return {
-    type: "confirm",
-    name,
-    message: chalk.cyan(message),
-    default: defaultValue
-  };
-}
-
-/**
- * Crée une liste de cases à cocher pour la sélection multiple
- * @param name Nom de la propriété à définir
- * @param message Message à afficher
- * @param choices Options disponibles
- * @param defaultChoices Options sélectionnées par défaut
- * @returns Question de type checkbox
- */
-export function createMultiSelect(
-  name: string,
-  message: string,
-  choices: string[] | { name: string; value: any; checked?: boolean }[],
-  defaultChoices: string[] = []
-): YeomanQuestion {
-  return {
-    type: "checkbox",
-    name,
-    message: chalk.bold(message),
-    choices: choices.map((choice) => {
-      if (typeof choice === "string") {
-        return {
-          name: choice,
-          value: choice,
-          checked: defaultChoices.includes(choice),
-        };
-      }
-      return choice;
-    }),
-  };
-}
-
-/**
- * Affiche un message de succès formaté
- * @param message Message à afficher
- */
-export function displaySuccess(message: string): void {
-  console.log(SUCCESS_COLOR(`✓ ${message}`));
-}
-
-/**
- * Affiche un message d'erreur formaté
- * @param message Message d'erreur
- */
-export function displayError(message: string): void {
-  console.log(ERROR_COLOR(`✗ ${message}`));
-}
-
-/**
- * Affiche une barre de progression
- * @param progress Pourcentage de progression (0-100)
- * @param width Largeur de la barre en caractères
- */
-export function displayProgressBar(progress: number, width: number = 40): void {
-  const filledWidth = Math.floor(progress / 100 * width);
-  const bar = '█'.repeat(filledWidth) + '░'.repeat(width - filledWidth);
-  process.stdout.write(`\r${bar} ${progress.toFixed(1)}%`);
-  if (progress >= 100) {
-    process.stdout.write('\n');
-  }
-}
-
-/**
- * Génère les questions de base pour la configuration du projet
- * @returns Liste de questions pour yeoman-generator
- */
-export function getProjectQuestions(): YeomanQuestion[] {
+export function getBasicQuestions(): YeomanQuestion[] {
   return [
-    createValidatedQuestion('appName', 'Nom de l\'application:', 'my-spring-app', validateProjectName),
-    createValidatedQuestion('packageName', 'Nom du package Java:', 'com.example.app', validateJavaPackageName),
     {
-      type: 'list',
-      name: 'buildTool',
-      message: chalk.cyan('Outil de build:'),
-      choices: ['Maven', 'Gradle'],
-      default: 'Maven'
+      type: "input",
+      name: "appName",
+      message: "Nom de l'application:",
+      validate: validateProjectName,
+      default: "spring-fullstack-app"
     },
     {
-      type: 'list',
-      name: 'springBootVersion',
-      message: chalk.cyan('Version de Spring Boot:'),
-      choices: ['3.0.0', '3.1.0', '3.1.5', '3.2.0'],
-      default: '3.1.5'
+      type: "input",
+      name: "packageName",
+      message: "Nom du package Java:",
+      validate: validateJavaPackageName,
+      default: "com.example.app"
+    },
+    {
+      type: "list",
+      name: "buildTool",
+      message: "Outil de build:",
+      choices: ["Maven", "Gradle"],
+      default: "Maven"
+    },
+    {
+      type: "list",
+      name: "javaVersion",
+      message: "Version de Java:",
+      choices: ["17", "21"],
+      default: "17"
+    },
+    {
+      type: "list",
+      name: "springBootVersion",
+      message: "Version de Spring Boot:",
+      choices: ["3.1.0", "3.0.0", "2.7.0"],
+      default: "3.1.0"
     }
   ];
 }
 
 /**
- * Génère les questions pour la configuration de la base de données
- * @returns Liste de questions pour yeoman-generator
- */
-export function getDatabaseQuestions(): YeomanQuestion[] {
-  return [
-    {
-      type: 'list',
-      name: 'database',
-      message: chalk.cyan('Base de données:'),
-      choices: [
-        { name: 'H2 (en mémoire, idéal pour le développement)', value: 'H2' },
-        { name: 'MySQL', value: 'MySQL' },
-        { name: 'PostgreSQL', value: 'PostgreSQL' },
-        { name: 'MongoDB', value: 'MongoDB' }
-      ],
-      default: 'H2'
-    },
-    {
-      type: 'input',
-      name: 'dbUrl',
-      message: chalk.cyan('URL de la base de données:'),
-      default: (answers: any) => {
-        switch(answers.database) {
-          case 'MySQL': return 'jdbc:mysql://localhost:3306/myapp';
-          case 'PostgreSQL': return 'jdbc:postgresql://localhost:5432/myapp';
-          case 'MongoDB': return 'mongodb://localhost:27017/myapp';
-          case 'H2': return 'jdbc:h2:mem:myapp';
-          default: return '';
-        }
-      },
-      when: (answers: any) => answers.database !== 'H2'
-    },
-    {
-      type: 'input',
-      name: 'dbUsername',
-      message: chalk.cyan('Nom d\'utilisateur DB:'),
-      default: 'root',
-      when: (answers: any) => answers.database !== 'H2'
-    },
-    {
-      type: 'password',
-      name: 'dbPassword',
-      message: chalk.cyan('Mot de passe DB:'),
-      default: '',
-      when: (answers: any) => answers.database !== 'H2'
-    }
-  ];
-}
-
-/**
- * Génère les questions pour la configuration du frontend
- * @returns Liste de questions pour yeoman-generator
+ * Génère les questions liées au frontend
+ * @returns Liste des questions pour le frontend
  */
 export function getFrontendQuestions(): YeomanQuestion[] {
   return [
     {
-      type: 'list',
-      name: 'frontendFramework',
-      message: chalk.cyan('Framework frontend:'),
+      type: "list",
+      name: "frontendFramework",
+      message: "Framework frontend:",
       choices: [
-        { name: 'React (avec TypeScript et openapi-generator)', value: 'React' },
-        { name: 'Vue.js (avec TypeScript et openapi-generator)', value: 'Vue' },
-        { name: 'Angular (avec Signal API et ng-openapi-gen)', value: 'Angular' },
-        { name: 'Thymeleaf (templates côté serveur)', value: 'Thymeleaf' },
-        { name: 'JTE (templates côté serveur)', value: 'JTE' },
-        { name: 'Aucun (API seulement)', value: 'none' }
+        "React",
+        "Vue.js",
+        "Angular",
+        "Thymeleaf",
+        "JTE",
+        "Aucun (API seulement)"
       ],
-      default: 'React'
-    },
-    {
-      type: 'confirm',
-      name: 'useTailwind',
-      message: chalk.cyan('Utiliser TailwindCSS?'),
-      default: true,
-      when: (answers: any) => ['React', 'Vue'].includes(answers.frontendFramework)
+      default: "React"
     }
   ];
 }
 
 /**
- * Génère les questions pour la configuration de l'authentification
- * @returns Liste de questions pour yeoman-generator
+ * Génère les questions liées à l'API et à la base de données
+ * @returns Liste des questions pour l'API et la base de données
  */
-export function getAuthenticationQuestions(): YeomanQuestion[] {
-  return [
-    createConfirmQuestion('includeAuth', 'Inclure l\'authentification?'),
-    {
-      type: 'list',
-      name: 'authType',
-      message: chalk.cyan('Type d\'authentification:'),
-      choices: [
-        { name: 'JWT', value: 'JWT' },
-        { name: 'JWT + OAuth2 (Google, GitHub, etc.)', value: 'JWT+OAuth2' },
-        { name: 'Session (cookie-based)', value: 'Session' }
-      ],
-      default: 'JWT',
-      when: (answers: any) => answers.includeAuth
-    },
-    {
-      type: 'checkbox',
-      name: 'oauth2Providers',
-      message: chalk.cyan('Fournisseurs OAuth2:'),
-      choices: [
-        { name: 'Google', value: 'google' },
-        { name: 'GitHub', value: 'github' },
-        { name: 'Facebook', value: 'facebook' },
-        { name: 'Twitter', value: 'twitter' }
-      ],
-      when: (answers: any) => answers.includeAuth && answers.authType === 'JWT+OAuth2'
-    }
-  ];
-}
-
-/**
- * Génère les questions pour les fonctionnalités additionnelles
- * @returns Liste de questions pour yeoman-generator
- */
-export function getFeaturesQuestions(): YeomanQuestion[] {
+export function getApiDbQuestions(): YeomanQuestion[] {
   return [
     {
-      type: 'checkbox',
-      name: 'additionalFeatures',
-      message: chalk.cyan('Fonctionnalités additionnelles:'),
-      choices: [
-        { name: 'Documentation API (OpenAPI/Swagger)', value: 'openapi' },
-        { name: 'Tests unitaires et d\'intégration', value: 'tests' },
-        { name: 'Docker', value: 'docker' },
-        { name: 'Kubernetes', value: 'kubernetes' },
-        { name: 'Support Redis (cache)', value: 'redis' },
-        { name: 'Kafka (messaging)', value: 'kafka' },
-        { name: 'Elasticsearch (recherche)', value: 'elasticsearch' },
-        { name: 'Monitoring (Actuator, Micrometer)', value: 'monitoring' }
-      ],
-      default: ['openapi', 'tests']
+      type: "list",
+      name: "database",
+      message: "Base de données:",
+      choices: ["H2", "MySQL", "PostgreSQL", "MongoDB"],
+      default: "H2"
+    },
+    {
+      type: "confirm",
+      name: "includeAuth",
+      message: "Ajouter l'authentification?",
+      default: true
     }
   ];
 }
 
 /**
- * Crée un objet de questions complet pour toutes les étapes du wizard
- * @returns Objet contenant toutes les questions par étape
+ * Génère les questions liées aux fonctionnalités additionnelles
+ * @param context Le contexte actuel (réponses précédentes)
+ * @returns Liste des questions pour les fonctionnalités additionnelles
  */
-export function createWizardQuestions() {
+export function getFeaturesQuestions(context: Record<string, any> = {}): YeomanQuestion[] {
+  const features = [
+    { name: "OpenAPI/Swagger", value: "openapi" },
+    { name: "Tests unitaires & intégration", value: "tests" },
+    { name: "Docker", value: "docker" },
+    { name: "Kubernetes", value: "kubernetes" },
+    { name: "Monitoring (Actuator, Prometheus)", value: "monitoring" },
+    { name: "Cache (Redis)", value: "cache" },
+    { name: "Messaging (Kafka/RabbitMQ)", value: "messaging" },
+  ];
+
+  // Adaptation des fonctionnalités selon le contexte
+  if (context.frontendFramework !== "Aucun (API seulement)") {
+    features.push({ name: "CORS configuré", value: "cors" });
+  }
+
+  if (context.database === "MongoDB") {
+    features.push({ name: "MongoDB Reactive", value: "mongo-reactive" });
+  }
+
+  return [
+    {
+      type: "checkbox",
+      name: "additionalFeatures",
+      message: "Fonctionnalités supplémentaires:",
+      choices: features,
+      default: ["openapi", "tests"]
+    }
+  ];
+}
+
+/**
+ * Génère les choix de fonctionnalités selon le contexte
+ * @param context Le contexte actuel (réponses précédentes)
+ * @returns Liste des choix de fonctionnalités
+ */
+export function buildFeatureChoices(context: Record<string, any> = {}): any[] {
+  const features = [
+    { name: "OpenAPI/Swagger", value: "openapi" },
+    { name: "Tests unitaires & intégration", value: "tests" },
+    { name: "Docker", value: "docker" },
+    { name: "Kubernetes", value: "kubernetes" },
+    { name: "Monitoring (Actuator, Prometheus)", value: "monitoring" },
+    { name: "Cache (Redis)", value: "cache" },
+    { name: "Messaging (Kafka/RabbitMQ)", value: "messaging" },
+  ];
+
+  // Adaptation des fonctionnalités selon le contexte
+  if (context.frontendFramework !== "Aucun (API seulement)") {
+    features.push({ name: "CORS configuré", value: "cors" });
+  }
+
+  if (context.database === "MongoDB") {
+    features.push({ name: "MongoDB Reactive", value: "mongo-reactive" });
+  }
+
+  return features;
+}
+
+/**
+ * Affiche un résumé des choix de configuration
+ * @param config La configuration à afficher
+ */
+export function displaySummary(config: Record<string, any>) {
+  console.log("\n" + SECTION_DIVIDER);
+  console.log(chalk.bold.green(" RÉSUMÉ DE LA CONFIGURATION "));
+  console.log(SECTION_DIVIDER);
+
+  // Afficher les détails de configuration
+  console.log(`${chalk.cyan("Nom de l'application:")} ${chalk.green(config.appName)}`);
+  console.log(`${chalk.cyan("Package Java:")} ${chalk.green(config.packageName)}`);
+  console.log(`${chalk.cyan("Outil de build:")} ${chalk.green(config.buildTool)}`);
+  console.log(`${chalk.cyan("Framework frontend:")} ${chalk.green(config.frontendFramework)}`);
+  console.log(`${chalk.cyan("Base de données:")} ${chalk.green(config.database)}`);
+  console.log(`${chalk.cyan("Authentification:")} ${chalk.green(config.includeAuth ? config.authType || "Oui" : "Non")}`);
+
+  if (config.additionalFeatures && config.additionalFeatures.length > 0) {
+    console.log(`${chalk.cyan("Fonctionnalités supplémentaires:")} ${chalk.green(config.additionalFeatures.join(", "))}`);
+  }
+
+  console.log(SECTION_DIVIDER);
+}
+
+/**
+ * Génère une question de confirmation
+ * @returns Question de confirmation
+ */
+export function getConfirmationQuestion(): YeomanQuestion {
   return {
-    project: getProjectQuestions(),
-    database: getDatabaseQuestions(),
-    frontend: getFrontendQuestions(),
-    authentication: getAuthenticationQuestions(),
-    features: getFeaturesQuestions()
+    type: "confirm",
+    name: "confirmConfig",
+    message: "Confirmer cette configuration?",
+    default: true
   };
+}
+
+/**
+ * Affiche un message d'erreur
+ * @param message Le message d'erreur à afficher
+ */
+export function displayError(message: string) {
+  console.log(ERROR_COLOR(message));
+}
+
+/**
+ * Affiche un message de succès
+ * @param message Le message de succès à afficher
+ */
+export function displaySuccess(message: string) {
+  console.log(SUCCESS_COLOR(message));
+}
+
+/**
+ * Affiche un message d'aide
+ * @param message Le message d'aide à afficher
+ */
+export function displayHelpMessage(message: string) {
+  console.log(HELP_COLOR(message));
 }

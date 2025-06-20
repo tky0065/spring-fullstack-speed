@@ -23,6 +23,7 @@
     "test:generators": "node --experimental-vm-modules node_modules/jest/bin/jest.js generators/",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js utils/",
     "test:templates": "npm run build && node dist/scripts/test-generation.js",
+    "test:all-generators": "node scripts/test-all-generators.js",
     "docs": "typedoc --out docs src"
   },
   "keywords": [
@@ -60,10 +61,12 @@
     "glob": "^11.0.3",
     "keypress": "^0.2.1",
     "portfinder": "^1.0.37",
+    "supertest": "^7.1.1",
     "tabtab": "^3.0.2",
     "type-fest": "4.41.0",
     "typescript": "5.8.3",
     "typescript-eslint": "8.34.1",
+    "vitest": "^3.2.4",
     "yaml": "2.8.0",
     "yeoman-assert": "^3.1.1",
     "yeoman-environment": "^4.4.3",

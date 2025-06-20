@@ -42,7 +42,8 @@ const dbTestConfigurations = [
       appName: 'mysql-app',
       packageName: 'com.example.mysqlapp',
       database: DATABASE_OPTIONS.MYSQL,
-      buildTool: BUILD_TOOL_OPTIONS.MAVEN
+      buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+      authType: 'JWT' // Ajout de authType obligatoire
     }
   },
   {
@@ -52,7 +53,8 @@ const dbTestConfigurations = [
       appName: 'postgres-app',
       packageName: 'com.example.postgresapp',
       database: DATABASE_OPTIONS.POSTGRESQL,
-      buildTool: BUILD_TOOL_OPTIONS.MAVEN
+      buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+      authType: 'JWT' // Ajout de authType obligatoire
     }
   },
   {
@@ -62,7 +64,8 @@ const dbTestConfigurations = [
       appName: 'mongodb-app',
       packageName: 'com.example.mongodbapp',
       database: DATABASE_OPTIONS.MONGODB,
-      buildTool: BUILD_TOOL_OPTIONS.MAVEN
+      buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+      authType: 'JWT' // Ajout de authType obligatoire
     }
   },
   {
@@ -72,7 +75,8 @@ const dbTestConfigurations = [
       appName: 'h2-app',
       packageName: 'com.example.h2app',
       database: DATABASE_OPTIONS.H2,
-      buildTool: BUILD_TOOL_OPTIONS.MAVEN
+      buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+      authType: 'JWT' // Ajout de authType obligatoire
     }
   }
 ];

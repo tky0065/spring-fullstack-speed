@@ -31,7 +31,7 @@ export interface GenerateFileOptions {
  * @param options Options pour la génération
  * @returns true si le fichier a été généré, false sinon
  */
-export function generateFile(options: GenerateFileOptions): boolean {
+export async function generateFile(options: GenerateFileOptions): Promise<boolean> {
   const {
     templatePath,
     destinationPath,
@@ -62,7 +62,7 @@ export function generateFile(options: GenerateFileOptions): boolean {
     ensureDirectoryExists(dirPath);
 
     // Rend le template et écrit le fichier
-    const renderedContent = renderTemplate(templatePath, context);
+    const renderedContent = await renderTemplate(templatePath, context);
     fs.writeFileSync(finalDestPath, renderedContent);
 
     console.log(chalk.green(`Fichier généré avec succès: ${finalDestPath}`));
@@ -97,7 +97,7 @@ export interface GenerateStructureOptions {
  * @param options Options pour la génération
  * @returns Nombre de fichiers générés
  */
-export function generateStructure(options: GenerateStructureOptions): number {
+export async function generateStructure(options: GenerateStructureOptions): Promise<number> {
   const {
     templateRoot,
     destinationRoot,
@@ -119,7 +119,7 @@ export function generateStructure(options: GenerateStructureOptions): number {
   let generatedFiles = 0;
 
   // Fonction récursive pour parcourir les dossiers
-  function processDirectory(sourcePath: string, destPath: string) {
+  async function processDirectory(sourcePath: string, destPath: string) {
     const items = fs.readdirSync(sourcePath);
 
     for (const item of items) {
@@ -158,10 +158,10 @@ export function generateStructure(options: GenerateStructureOptions): number {
       const stats = fs.statSync(sourceItemPath);
       if (stats.isDirectory()) {
         ensureDirectoryExists(destItemPath);
-        processDirectory(sourceItemPath, destItemPath);
+        await processDirectory(sourceItemPath, destItemPath);
       } else if (stats.isFile() && item.endsWith('.ejs')) {
         try {
-          const fileGenerated = generateFile({
+          const fileGenerated = await generateFile({
             templatePath: sourceItemPath,
             destinationPath: destItemPath,
             context,
@@ -192,7 +192,7 @@ export function generateStructure(options: GenerateStructureOptions): number {
   }
 
   // Lance la génération récursive
-  processDirectory(templateRoot, destinationRoot);
+  await processDirectory(templateRoot, destinationRoot);
   console.log(chalk.green(`${generatedFiles} fichiers ont été générés avec succès.`));
 
   return generatedFiles;
@@ -202,14 +202,14 @@ export function generateStructure(options: GenerateStructureOptions): number {
  * Fonction utilitaire pour générer un fichier source Java à partir d'un template
  * Gère automatiquement le package et les chemins
  */
-export function generateJavaSource(options: {
+export async function generateJavaSource(options: {
   templatePath: string;
   className: string;
   packageName: string;
   outputDir: string;
   context: GlobalConfig;
   force?: boolean;
-}): string {
+}): Promise<string> {
   const { templatePath, className, packageName, outputDir, context, force = false } = options;
 
   // Transforme le nom du package en chemin de dossiers
@@ -226,7 +226,7 @@ export function generateJavaSource(options: {
   };
 
   // Génère le fichier
-  generateFile({
+  await generateFile({
     templatePath,
     destinationPath,
     context: enrichedContext,
@@ -239,20 +239,20 @@ export function generateJavaSource(options: {
 /**
  * Fonction utilitaire pour générer un fichier de ressource à partir d'un template
  */
-export function generateResource(options: {
+export async function generateResource(options: {
   templatePath: string;
   resourcePath: string;
   outputDir: string;
   context: Record<string, any>;
   force?: boolean;
-}): string {
+}): Promise<string> {
   const { templatePath, resourcePath, outputDir, context, force = false } = options;
 
   // Construit le chemin de destination
   const destinationPath = path.join(outputDir, 'src/main/resources', resourcePath);
 
   // Génère le fichier
-  generateFile({
+  await generateFile({
     templatePath,
     destinationPath,
     context,
@@ -305,5 +305,52 @@ export function identifyFileType(filePath: string): 'java' | 'resource' | 'front
     return 'config';
   } else {
     return 'other';
+  }
+}
+
+/**
+ * Rend un template et écrit le résultat dans un fichier
+ * @param templatePath Chemin du fichier de template
+ * @param finalDestPath Chemin du fichier de destination
+ * @param context Contexte pour le rendu
+ * @param force Forcer l'écrasement si le fichier existe déjà
+ * @param skipIfExists Ignorer si le fichier existe déjà (a priorité sur force)
+ * @returns true si le fichier a été généré avec succès, false sinon
+ */
+export async function renderTemplateFile(
+  templatePath: string,
+  finalDestPath: string,
+  context: Record<string, any>,
+  force = false,
+  skipIfExists = false
+): Promise<boolean> {
+  if (!fs.existsSync(templatePath)) {
+    throw new Error(`Le fichier de template ${templatePath} n'existe pas.`);
+  }
+
+  if (fs.existsSync(finalDestPath)) {
+    if (skipIfExists) {
+      console.log(chalk.yellow(`Le fichier ${finalDestPath} existe déjà, génération ignorée.`));
+      return false;
+    } else if (!force) {
+      throw new Error(`Le fichier ${finalDestPath} existe déjà. Utilisez l'option 'force' pour l'écraser.`);
+    }
+  }
+
+  try {
+    // Crée le répertoire parent si nécessaire
+    const dirPath = path.dirname(finalDestPath);
+    ensureDirectoryExists(dirPath);
+
+    // Rend le template et écrit le fichier
+    const renderedContent = await renderTemplate(templatePath, context);
+    fs.writeFileSync(finalDestPath, renderedContent);
+
+    console.log(chalk.green(`Fichier généré avec succès: ${finalDestPath}`));
+    return true;
+  } catch (error) {
+    console.error(chalk.red(`Erreur lors de la génération du fichier ${finalDestPath}:`));
+    console.error(error);
+    throw error;
   }
 }

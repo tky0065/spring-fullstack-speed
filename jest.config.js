@@ -27,5 +27,7 @@ export default {
   transformIgnorePatterns: [
     'node_modules/(?!(chalk|strip-ansi|ansi-regex|ansi-styles)/)',
   ],
+  testPathIgnorePatterns: [
+    '<rootDir>/generators/frontend-tests/templates/',
+  ],
 }
-

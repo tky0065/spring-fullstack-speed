@@ -1,7 +1,11 @@
-const path = require('path');
-const helpers = require('yeoman-test');
-const assert = require('yeoman-assert');
-const fs = require('fs');
+import path from 'path';
+import fs from 'fs';
+import assert from 'yeoman-assert';
+import helpers from 'yeoman-test';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 describe('Test des commandes CLI', () => {
   describe('Test des commandes principales', () => {
@@ -18,7 +22,7 @@ describe('Test des commandes CLI', () => {
         'deploy', 'migrate', 'doctor', 'upgrade', 'plugins'
       ].forEach(cmd => {
         const capitalizedCmd = cmd.charAt(0).toUpperCase() + cmd.slice(1);
-        assert.textIncludes(indexContent, `${capitalizedCmd}Generator`);
+        assert.fileContent(path.join(__dirname, '../index.ts'), `${capitalizedCmd}Generator`);
       });
     });
   });
@@ -44,11 +48,11 @@ describe('Test des commandes CLI', () => {
       };
 
       // Vérifier que l'objet COMMAND_ALIASES est exporté
-      assert.textIncludes(indexContent, 'export const COMMAND_ALIASES');
+      assert.fileContent(path.join(__dirname, '../index.ts'), 'export const COMMAND_ALIASES');
 
       // Vérifier que chaque alias est défini
       for (const [alias, command] of Object.entries(expectedAliases)) {
-        assert.textIncludes(indexContent, `'${alias}': '${command}'`);
+        assert.fileContent(path.join(__dirname, '../index.ts'), `'${alias}': '${command}'`);
       }
     });
   });
@@ -66,7 +70,7 @@ describe('Test du fichier CLI principal', () => {
   it('Le fichier CLI importe bien le système d\'alias', () => {
     assert.file(path.join(__dirname, '../../cli.js'));
     const cliContent = fs.readFileSync(path.join(__dirname, '../../cli.js'), 'utf8');
-    assert.textIncludes(cliContent, 'import { COMMAND_ALIASES }');
-    assert.textIncludes(cliContent, 'if (generatorName in COMMAND_ALIASES)');
+    assert.fileContent(path.join(__dirname, '../../cli.js'), 'import { COMMAND_ALIASES }');
+    assert.fileContent(path.join(__dirname, '../../cli.js'), 'if (generatorName in COMMAND_ALIASES)');
   });
 });

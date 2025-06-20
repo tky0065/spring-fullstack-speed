@@ -53,7 +53,8 @@ const testConfigurations = [
       packageName: 'com.example.reactpg',
       frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
       database: DATABASE_OPTIONS.POSTGRESQL,
-      buildTool: BUILD_TOOL_OPTIONS.MAVEN
+      buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+      authType: 'JWT' // Ajout de la propriété authType requise
     }
   },
   {
@@ -64,7 +65,8 @@ const testConfigurations = [
       packageName: 'com.example.vuemysql',
       frontendFramework: FRONTEND_OPTIONS.VUE_INERTIA,
       database: DATABASE_OPTIONS.MYSQL,
-      buildTool: BUILD_TOOL_OPTIONS.GRADLE
+      buildTool: BUILD_TOOL_OPTIONS.GRADLE,
+      authType: 'JWT' // Ajout de la propriété authType requise
     }
   }
 ];

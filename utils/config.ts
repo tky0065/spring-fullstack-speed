@@ -34,6 +34,11 @@ export const BUILD_TOOL_OPTIONS = {
 };
 
 /**
+ * Nombre d'éléments par page dans les menus CLI
+ */
+export const COMMAND_PAGE_SIZE = 10;
+
+/**
  * Fonctionnalités additionnelles disponibles
  */
 export const ADDITIONAL_FEATURES = {
@@ -128,22 +133,54 @@ export const ADVANCED_CONFIG = {
 };
 
 /**
- * Structure des options de configuration globale
+ * Configuration globale pour les templates et la génération
  */
 export interface GlobalConfig {
-  appName: string;
-  packageName: string;
-  buildTool: string;
   frontendFramework: string;
   database: string;
+  buildTool: string;
   includeAuth: boolean;
+  authType: string;
   additionalFeatures: string[];
-  serverPort: number;
-  javaVersion: string;
-  springBootVersion: string;
-  nodeVersion: string;
-  npmVersion: string;
-  advancedConfig?: Record<string, any>;
+  [key: string]: any;
+}
+
+/**
+ * Configuration par défaut pour la génération
+ */
+const defaultGlobalConfig: GlobalConfig = {
+  frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
+  database: DATABASE_OPTIONS.H2,
+  buildTool: BUILD_TOOL_OPTIONS.MAVEN,
+  includeAuth: true,
+  authType: 'JWT',
+  additionalFeatures: ['openapi', 'tests'],
+};
+
+// Stocke la configuration courante
+let currentConfig: GlobalConfig = { ...defaultGlobalConfig };
+
+/**
+ * Définit la configuration globale
+ * @param config La configuration à utiliser
+ */
+export function setGlobalConfig(config: Partial<GlobalConfig>): void {
+  currentConfig = { ...defaultGlobalConfig, ...config };
+}
+
+/**
+ * Récupère la configuration globale
+ * @returns La configuration globale courante
+ */
+export function getGlobalConfig(): GlobalConfig {
+  return currentConfig;
+}
+
+/**
+ * Réinitialise la configuration globale aux valeurs par défaut
+ */
+export function resetGlobalConfig(): void {
+  currentConfig = { ...defaultGlobalConfig };
 }
 
 /**
@@ -166,9 +203,8 @@ export function validateConfig(config: Partial<GlobalConfig>): GlobalConfig {
     database: Object.values(DATABASE_OPTIONS).includes(config.database || '')
       ? config.database!
       : DEFAULT_CONFIG.database,
-    additionalFeatures: config.additionalFeatures?.filter(feature =>
-      Object.values(ADDITIONAL_FEATURES).includes(feature)
-    ) || DEFAULT_CONFIG.additionalFeatures,
+    authType: config.authType || 'JWT', // Assure que authType est toujours défini
+    // Autres validations si nécessaire
   };
 }
 

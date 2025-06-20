@@ -5,294 +5,239 @@
  */
 
 import chalk from 'chalk';
-import keypress from 'keypress';
-import { displaySectionTitle, displaySectionEnd, info } from './cli-ui';
+import inquirer from 'inquirer';
+import { COMMAND_PAGE_SIZE } from './config.js';
+import { displaySectionTitle, displaySectionEnd, info } from './cli-ui.js';
 
-interface MenuItem {
-  key: string;
-  label: string;
+// Types
+type MenuItem = {
+  name: string;
+  value: string;
   description?: string;
-  action: () => void | Promise<void>;
-}
-
-interface MenuOptions {
-  title: string;
-  subtitle?: string;
-  items: MenuItem[];
-  exitKey?: string;
-  exitLabel?: string;
-}
+  disabled?: boolean | string;
+};
 
 /**
- * Active le mode écoute du clavier et retourne à l'état initial à la fin
- * @param callback Fonction appelée pendant l'écoute
+ * Affiche un menu paginé et permet la navigation
+ * @param title Titre du menu
+ * @param items Éléments du menu
+ * @param pageSize Taille de la page
+ * @returns L'élément sélectionné
  */
-export async function withKeyboardInput(callback: () => Promise<void>): Promise<void> {
-  // Configuration du terminal pour la capture des touches
-  keypress(process.stdin);
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
+export async function displayPaginatedMenu(
+  title: string,
+  items: MenuItem[],
+  pageSize = COMMAND_PAGE_SIZE
+): Promise<string> {
+  let currentPage = 1;
+  const totalPages = Math.ceil(items.length / pageSize);
 
-  try {
-    await callback();
-  } finally {
-    // Restauration des paramètres du terminal
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
-  }
-}
+  // Ajouter des items de navigation si plusieurs pages
+  const getPageItems = (page: number) => {
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, items.length);
+    const pageItems = items.slice(startIdx, endIdx);
 
-/**
- * Affiche un menu navigable avec les raccourcis clavier
- * @param options Configuration du menu
- * @returns Promesse résolue lorsqu'une action est exécutée
- */
-export async function showNavigableMenu(options: MenuOptions): Promise<void> {
-  return new Promise<void>((resolve) => {
-    displaySectionTitle(options.title);
-
-    if (options.subtitle) {
-      console.log(chalk.gray(options.subtitle));
-      console.log();
-    }
-
-    // Afficher les éléments du menu
-    options.items.forEach((item) => {
-      const keyDisplay = chalk.yellow(`[${item.key}]`);
-      const description = item.description
-        ? chalk.gray(` - ${item.description}`)
-        : '';
-
-      console.log(`  ${keyDisplay} ${item.label}${description}`);
-    });
-
-    // Afficher l'option de sortie
-    const exitKey = options.exitKey || 'q';
-    const exitLabel = options.exitLabel || 'Quitter';
-    console.log(`  ${chalk.red(`[${exitKey}]`)} ${exitLabel}`);
-
-    displaySectionEnd();
-
-    console.log(chalk.gray('Appuyez sur une touche pour continuer...'));
-
-    // Gestionnaire d'événement clavier
-    const keyHandler = async (ch: string, key: { name: string; ctrl: boolean; }) => {
-      if (key && key.ctrl && key.name === 'c') {
-        process.exit(0);
-      }
-
-      if (key && key.name === exitKey) {
-        process.stdin.removeListener('keypress', keyHandler);
-        console.log(chalk.gray(`${exitLabel}...`));
-        resolve();
-        return;
-      }
-
-      // Recherche de l'élément de menu correspondant à la touche
-      const menuItem = options.items.find(item => item.key === (key ? key.name : ch));
-
-      if (menuItem) {
-        process.stdin.removeListener('keypress', keyHandler);
-        console.log(chalk.gray(`Sélection: ${menuItem.label}...`));
-
-        try {
-          const result = menuItem.action();
-          if (result instanceof Promise) {
-            await result;
-          }
-        } catch (error) {
-          console.error(chalk.red(`Erreur lors de l'exécution de l'action: ${error}`));
-        }
-
-        resolve();
-      }
-    };
-
-    // Attacher l'écouteur d'événement
-    process.stdin.on('keypress', keyHandler);
-  });
-}
-
-/**
- * Crée un menu à pages multiples avec pagination
- * @param options Configuration du menu principal
- * @param pageSize Nombre d'éléments par page
- * @returns Promesse résolue lorsqu'une action est exécutée
- */
-export async function showPaginatedMenu(
-  options: Omit<MenuOptions, 'items'> & { items: MenuItem[]; pageSize?: number }
-): Promise<void> {
-  const pageSize = options.pageSize || 10;
-  let currentPage = 0;
-  const totalPages = Math.ceil(options.items.length / pageSize);
-
-  while (true) {
-    const startIndex = currentPage * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, options.items.length);
-    const pageItems = options.items.slice(startIndex, endIndex);
-
-    // Ajouter les contrôles de pagination
     const navigationItems: MenuItem[] = [];
 
-    if (currentPage > 0) {
-      navigationItems.push({
-        key: 'left',
-        label: 'Page précédente',
-        action: () => {
-          currentPage--;
-          // Pas de resolve pour rester dans la boucle
-          return Promise.resolve();
-        }
-      });
-    }
-
-    if (currentPage < totalPages - 1) {
-      navigationItems.push({
-        key: 'right',
-        label: 'Page suivante',
-        action: () => {
-          currentPage++;
-          // Pas de resolve pour rester dans la boucle
-          return Promise.resolve();
-        }
-      });
-    }
-
-    // Afficher le menu pour la page courante
-    const menuTitle = `${options.title} (Page ${currentPage + 1}/${totalPages})`;
-
-    let menuResolved = false;
-
-    await showNavigableMenu({
-      ...options,
-      title: menuTitle,
-      items: [...pageItems, ...navigationItems],
-      exitKey: options.exitKey,
-      exitLabel: options.exitLabel
-    }).then(() => {
-      // Vérifier si une action de pagination a été choisie
-      if (navigationItems.length === 0) {
-        menuResolved = true;
+    if (totalPages > 1) {
+      if (page > 1) {
+        navigationItems.push({
+          name: '⬆️ Page précédente',
+          value: '__prev',
+          description: 'Aller à la page précédente'
+        });
       }
-    });
 
-    // Sortir de la boucle si une action non-navigation a été choisie
-    if (menuResolved) {
-      break;
+      if (page < totalPages) {
+        navigationItems.push({
+          name: '⬇️ Page suivante',
+          value: '__next',
+          description: 'Aller à la page suivante'
+        });
+      }
+
+      navigationItems.push({
+        name: '🔍 Rechercher',
+        value: '__search',
+        description: 'Rechercher dans les options'
+      });
     }
+
+    return [...pageItems, ...navigationItems];
+  };
+
+  displaySectionTitle(title);
+  info(`Page ${currentPage}/${totalPages}`);
+
+  while (true) {
+    const pageItems = getPageItems(currentPage);
+
+    const { selection } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selection',
+        message: 'Choisissez une option:',
+        choices: pageItems,
+        pageSize: Math.min(pageSize + 3, 15)
+      }
+    ]);
+
+    if (selection === '__prev') {
+      currentPage--;
+      info(`Page ${currentPage}/${totalPages}`);
+      continue;
+    }
+
+    if (selection === '__next') {
+      currentPage++;
+      info(`Page ${currentPage}/${totalPages}`);
+      continue;
+    }
+
+    if (selection === '__search') {
+      const { searchTerm } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'searchTerm',
+          message: 'Entrez un terme de recherche:'
+        }
+      ]);
+
+      if (searchTerm) {
+        const results = items.filter(item =>
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+
+        if (results.length === 0) {
+          info(chalk.yellow('Aucun résultat trouvé. Réessayez.'));
+        } else if (results.length === 1) {
+          displaySectionEnd();
+          return results[0].value;
+        } else {
+          const { foundSelection } = await inquirer.prompt([
+            {
+              type: 'list',
+              name: 'foundSelection',
+              message: `${results.length} résultats trouvés:`,
+              choices: results
+            }
+          ]);
+
+          displaySectionEnd();
+          return foundSelection;
+        }
+      }
+
+      continue;
+    }
+
+    displaySectionEnd();
+    return selection;
   }
 }
 
 /**
- * Affiche un écran d'aide avec raccourcis clavier
- * @param shortcuts Liste des raccourcis disponibles avec leur description
+ * Fonction pour gérer l'entrée clavier dans une interface CLI
+ * @param callback Fonction à exécuter lorsqu'une touche est pressée
  */
-export function showKeyboardShortcutsHelp(
-  shortcuts: { key: string; description: string }[]
-): void {
-  displaySectionTitle('Raccourcis Clavier Disponibles');
+export async function withKeyboardInput(callback: (key: string) => Promise<boolean> | boolean): Promise<void> {
+  const readline = await import('readline');
+  readline.emitKeypressEvents(process.stdin);
 
-  shortcuts.forEach(shortcut => {
-    console.log(`  ${chalk.yellow(shortcut.key)} : ${shortcut.description}`);
-  });
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
 
-  displaySectionEnd();
-}
-
-/**
- * Attend que l'utilisateur appuie sur une touche spécifique
- * @param expectedKey Touche attendue
- * @param message Message à afficher
- */
-export async function waitForKeypress(
-  expectedKey: string,
-  message: string = `Appuyez sur ${chalk.yellow(expectedKey)} pour continuer...`
-): Promise<void> {
   return new Promise<void>((resolve) => {
-    console.log(message);
-
-    const keyHandler = (ch: string, key: { name: string; ctrl: boolean; }) => {
-      if (key && key.ctrl && key.name === 'c') {
-        process.exit(0);
+    const keyPressHandler = async (str: string, key: any) => {
+      // Sortir si ctrl+c est pressé
+      if (key.ctrl && key.name === 'c') {
+        process.stdin.removeListener('keypress', keyPressHandler);
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
+        process.exit();
       }
 
-      if (!key || key.name === expectedKey) {
-        process.stdin.removeListener('keypress', keyHandler);
+      const shouldContinue = await callback(key.name || str);
+      if (!shouldContinue) {
+        process.stdin.removeListener('keypress', keyPressHandler);
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+        }
         resolve();
       }
     };
 
-    process.stdin.on('keypress', keyHandler);
+    process.stdin.on('keypress', keyPressHandler);
   });
 }
 
 /**
- * Affiche un menu d'aide basé sur le contexte actuel
- * @param contextualHelp Objet contenant l'aide contextuelle
+ * Affiche un menu navigable avec les touches du clavier
+ * @param title Titre du menu
+ * @param items Éléments du menu
+ * @param renderItem Fonction de rendu personnalisée pour chaque élément
+ * @returns La valeur de l'élément sélectionné
  */
-export function showContextualHelp(
-  contextualHelp: { title: string; content: string[] }
-): void {
-  displaySectionTitle(`Aide: ${contextualHelp.title}`);
+export async function showNavigableMenu<T>(
+  title: string,
+  items: Array<{ name: string; value: T; disabled?: boolean }>,
+  renderItem?: (item: { name: string; value: T }, isSelected: boolean) => string
+): Promise<T> {
+  if (items.length === 0) {
+    throw new Error('Le menu ne peut pas être vide');
+  }
 
-  contextualHelp.content.forEach(line => {
-    console.log(`  ${line}`);
+  displaySectionTitle(title);
+
+  let selectedIndex = 0;
+  let done = false;
+  let result: T | null = null;
+
+  const defaultRender = (item: { name: string; value: T }, isSelected: boolean) => {
+    const prefix = isSelected ? chalk.green('› ') : '  ';
+    return `${prefix}${isSelected ? chalk.bold(item.name) : item.name}`;
+  };
+
+  const renderer = renderItem || defaultRender;
+
+  const renderMenu = () => {
+    console.clear();
+    console.log(chalk.bold(title) + '\n');
+    items.forEach((item, index) => {
+      if (item.disabled) {
+        console.log(chalk.gray(`  ${item.name} (non disponible)`));
+      } else {
+        console.log(renderer(item, index === selectedIndex));
+      }
+    });
+    console.log('\n' + chalk.gray('Utilisez les flèches ↑/↓ pour naviguer, Entrée pour sélectionner, Ctrl+C pour quitter'));
+  };
+
+  renderMenu();
+
+  await withKeyboardInput(async (key) => {
+    if (key === 'up' || key === 'k') {
+      do {
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+      } while (items[selectedIndex].disabled);
+      renderMenu();
+    } else if (key === 'down' || key === 'j') {
+      do {
+        selectedIndex = (selectedIndex + 1) % items.length;
+      } while (items[selectedIndex].disabled);
+      renderMenu();
+    } else if (key === 'return') {
+      result = items[selectedIndex].value;
+      done = true;
+      return false; // Arrêter l'écoute des touches
+    }
+    return !done; // Continuer l'écoute des touches tant que done est false
   });
 
   displaySectionEnd();
-
-  console.log(chalk.gray('Appuyez sur une touche pour revenir...'));
-}
-
-/**
- * Crée un menu interactif pour la navigation entre les différentes étapes du wizard
- * @param steps Liste des étapes avec leur fonction d'exécution
- */
-export async function createWizardNavigation(
-  steps: { title: string; execute: () => Promise<any> }[]
-): Promise<void> {
-  let currentStep = 0;
-
-  while (currentStep < steps.length) {
-    // Afficher l'en-tête de l'étape
-    console.log(`\n${chalk.blue('■')} ${chalk.bold(`Étape ${currentStep + 1}/${steps.length}: ${steps[currentStep].title}`)}\n`);
-
-    // Exécuter l'étape courante
-    await steps[currentStep].execute();
-
-    if (currentStep < steps.length - 1) {
-      // Proposer de naviguer à la prochaine étape
-      const navigateOptions = {
-        title: 'Navigation',
-        items: [
-          {
-            key: 'enter',
-            label: 'Continuer à l\'étape suivante',
-            action: () => {
-              currentStep++;
-              return Promise.resolve();
-            }
-          },
-          {
-            key: 'b',
-            label: 'Retour à l\'étape précédente',
-            action: () => {
-              if (currentStep > 0) {
-                currentStep--;
-              }
-              return Promise.resolve();
-            }
-          }
-        ],
-        exitKey: 'q',
-        exitLabel: 'Quitter le wizard'
-      };
-
-      await showNavigableMenu(navigateOptions);
-    } else {
-      // Terminer le wizard
-      info('Configuration terminée!');
-      currentStep++;
-    }
-  }
+  return result as T;
 }

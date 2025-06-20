@@ -1,8 +1,8 @@
 import { describe, expect, test } from '@jest/globals';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import helpers from 'yeoman-test';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,8 +15,7 @@ describe('FrontendTemplatesTests', () => {
       const runResult = await helpers
         .create(generatorPath)
         .withOptions({
-          skipInstall: true,
-          skipPrompts: true,
+          skipInstall: true
         })
         .withPrompts({
           projectName: 'test-react-app',
@@ -50,8 +49,7 @@ describe('FrontendTemplatesTests', () => {
       const runResult = await helpers
         .create(generatorPath)
         .withOptions({
-          skipInstall: true,
-          skipPrompts: true,
+          skipInstall: true
         })
         .withPrompts({
           projectName: 'test-vue-app',
@@ -85,8 +83,7 @@ describe('FrontendTemplatesTests', () => {
       const runResult = await helpers
         .create(generatorPath)
         .withOptions({
-          skipInstall: true,
-          skipPrompts: true,
+          skipInstall: true
         })
         .withPrompts({
           projectName: 'test-angular-app',
@@ -125,8 +122,7 @@ describe('FrontendTemplatesTests', () => {
       const runResult = await helpers
         .create(generatorPath)
         .withOptions({
-          skipInstall: true,
-          skipPrompts: true,
+          skipInstall: true
         })
         .withPrompts({
           projectName: 'test-thymeleaf-app',
@@ -160,8 +156,7 @@ describe('FrontendTemplatesTests', () => {
       const runResult = await helpers
         .create(generatorPath)
         .withOptions({
-          skipInstall: true,
-          skipPrompts: true,
+          skipInstall: true
         })
         .withPrompts({
           projectName: 'test-jte-app',

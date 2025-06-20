@@ -15,7 +15,6 @@ export { default as AddGenerator } from './add/index.js';
 export { default as GenerateGenerator } from './generate/index.js';
 export { default as ServeGenerator } from './serve/index.js';
 export { default as TestGenerator } from './test/index.js';
-export { default as BuildGenerator } from './build/index.js';
 export { default as DeployGenerator } from './deploy/index.js';
 export { default as MigrateGenerator } from './migrate/index.js';
 export { default as DoctorGenerator } from './doctor/index.js';

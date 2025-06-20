@@ -6,17 +6,19 @@ import {
   getBasicQuestions,
   getFrontendQuestions,
   getApiDbQuestions,
-  getFeatureQuestions,
+  getFeaturesQuestions,
   displaySummary,
   getConfirmationQuestion,
-  displayStepHeader, buildFeatureChoices
+  displayStepHeader,
+  buildFeatureChoices
 } from "./questions.js";
 import {
   showWelcomeMenu,
   showPresetMenu,
+  showConfirmationMenu,
+  showEntitySelectionMenu,
   showFeaturesSelectionMenu,
-  showAuthSelectionMenu,
-  showConfirmationMenu
+  showAuthSelectionMenu
 } from "./menus.js";
 import {
   TemplateData,
@@ -148,17 +150,17 @@ export default class AppGenerator extends BaseGenerator {
       // ÉTAPE 1: Configuration de base du projet
       displayStepHeader(1, "CONFIGURATION DE BASE DU PROJET", 4);
       const basicQuestions = getBasicQuestions();
-      const basicAnswers = await this.prompt(basicQuestions);
+      const basicAnswers = await this.prompt(basicQuestions as any);
 
       // ÉTAPE 2: Configuration du frontend
       displayStepHeader(2, "SÉLECTION DU FRAMEWORK FRONTEND", 4);
       const frontendQuestions = getFrontendQuestions();
-      const frontendAnswers = await this.prompt(frontendQuestions);
+      const frontendAnswers = await this.prompt(frontendQuestions as any);
 
       // ÉTAPE 3: Configuration de l'API et de la base de données
       displayStepHeader(3, "CONFIGURATION DE L'API ET DE LA BASE DE DONNÉES", 4);
       const apiDbQuestions = getApiDbQuestions();
-      const apiDbAnswers = await this.prompt(apiDbQuestions);
+      const apiDbAnswers = await this.prompt(apiDbQuestions as any);
 
       // Utiliser le menu amélioré pour l'authentification si includeAuth est true
       if (apiDbAnswers.includeAuth) {
@@ -170,7 +172,7 @@ export default class AppGenerator extends BaseGenerator {
 
       // ÉTAPE 4: Fonctionnalités supplémentaires avec menu amélioré
       displayStepHeader(4, "SÉLECTION DES FONCTIONNALITÉS SUPPLÉMENTAIRES", 4);
-      const featureQuestions = getFeatureQuestions({
+      const featureQuestions = getFeaturesQuestions({
         ...basicAnswers,
         ...frontendAnswers,
         ...apiDbAnswers
@@ -188,7 +190,7 @@ export default class AppGenerator extends BaseGenerator {
         featureAnswers = { additionalFeatures: selectedFeatures };
       } catch (error) {
         // Fallback: utiliser le prompt standard
-        featureAnswers = await this.prompt(featureQuestions);
+        featureAnswers = await this.prompt(featureQuestions as any);
       }
 
       // Fusionner toutes les réponses

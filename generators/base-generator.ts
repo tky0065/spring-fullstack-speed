@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import {
   renderTemplate,
-  renderTemplateToFile,
+  renderTemplateFile, // Correction du nom de la fonction (renderTemplateToFile -> renderTemplateFile)
   validateTemplate,
   buildTemplateContext,
   getOutputFilename,
@@ -31,7 +31,10 @@ export class BaseGenerator extends Generator {
   // Contexte global pour les templates
   templateContext: Record<string, any> = {};
   // Configuration globale (renommée pour éviter le conflit avec config de Generator)
-  appConfig: GlobalConfig = DEFAULT_CONFIG;
+  appConfig: GlobalConfig = {
+    ...DEFAULT_CONFIG,
+    authType: 'JWT' // Ajout de la propriété authType requise
+  };
   // Nous n'avons pas besoin de redéclarer 'options' car elle est déjà définie dans la classe de base
   // La propriété options réelle sera du type de Yeoman, mais nous utiliserons notre interface pour le typage
 
@@ -69,7 +72,7 @@ export class BaseGenerator extends Generator {
    */
   initTemplateContext(): void {
     // S'assurer que la configuration est initialisée
-    if (this.appConfig === DEFAULT_CONFIG && Object.keys(this.answers).length > 0) {
+    if (Object.keys(this.appConfig).length === 0 && Object.keys(this.answers).length > 0) {
       this.initConfig();
     }
 
@@ -181,9 +184,9 @@ export class BaseGenerator extends Generator {
    * Valide un template EJS
    * @param templatePath Chemin relatif du template
    */
-  validateTemplate(templatePath: string): boolean {
+  async validateTemplate(templatePath: string): Promise<boolean> {
     const fullPath = this.templatePath(templatePath);
-    return validateTemplate(fullPath);
+    return await validateTemplate(fullPath);
   }
 
   /**
@@ -193,11 +196,11 @@ export class BaseGenerator extends Generator {
    * @param outputPath Chemin relatif du fichier à générer
    * @param context Contexte pour le rendu (utilise le contexte global par défaut)
    */
-  renderEjsTemplate(
+  async renderEjsTemplate(
     templatePath: string,
     outputPath: string,
     context: Record<string, any> = this.templateContext
-  ): void {
+  ): Promise<void> {
     // Vérifie si le contexte a été initialisé
     if (Object.keys(this.templateContext).length === 0) {
       this.initTemplateContext();
@@ -206,21 +209,36 @@ export class BaseGenerator extends Generator {
     const fullTemplatePath = this.templatePath(templatePath);
     const fullOutputPath = this.destinationPath(outputPath);
 
-    renderTemplateToFile(fullTemplatePath, fullOutputPath, context);
+    // Assurer que le contexte est un objet de type Record<string, any>
+    const templateContext: Record<string, any> = typeof context === 'string'
+      ? { content: context }
+      : context;
+
+    // Récupérer le contenu rendu du template
+    const content = await renderTemplateFile(fullTemplatePath, templateContext);
+
+    // S'assurer que le répertoire parent existe
+    const dirPath = path.dirname(fullOutputPath);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+
+    // Écrire le contenu rendu dans le fichier de destination
+    fs.writeFileSync(fullOutputPath, content);
   }
 
   /**
    * Génère un fichier à partir d'un template,
    * conditionnellement selon une condition fournie
    */
-  renderTemplateIf(
+  async renderTemplateIf(
     condition: boolean,
     templatePath: string,
     outputPath: string,
     context: Record<string, any> = this.templateContext
-  ): void {
+  ): Promise<void> {
     if (condition) {
-      this.renderEjsTemplate(templatePath, outputPath, context);
+      await this.renderEjsTemplate(templatePath, outputPath, context);
     }
   }
 
@@ -231,12 +249,12 @@ export class BaseGenerator extends Generator {
    * @param context Contexte pour le rendu (utilise le contexte global par défaut)
    * @param ignore Liste des fichiers/dossiers à ignorer
    */
-  renderTemplateDirectory(
+  async renderTemplateDirectory(
     sourceDir: string,
     outputDir: string,
     context: Record<string, any> = this.templateContext,
     ignore: string[] = []
-  ): void {
+  ): Promise<void> {
     // Chemin complet du dossier source
     const fullSourceDir = this.templatePath(sourceDir);
 
@@ -247,19 +265,19 @@ export class BaseGenerator extends Generator {
     }
 
     // Lire tous les fichiers du dossier source
-    this._processDirectory(fullSourceDir, sourceDir, outputDir, context, ignore);
+    await this._processDirectory(fullSourceDir, sourceDir, outputDir, context, ignore);
   }
 
   /**
    * Méthode interne pour traiter récursivement un dossier de templates
    */
-  private _processDirectory(
+  private async _processDirectory(
     fullSourcePath: string,
     relativePath: string,
     outputDir: string,
     context: Record<string, any>,
     ignore: string[]
-  ): void {
+  ): Promise<void> {
     const files = fs.readdirSync(fullSourcePath);
 
     for (const file of files) {
@@ -281,7 +299,7 @@ export class BaseGenerator extends Generator {
         this.createDirectory(newOutputDir);
 
         // Traiter récursivement le sous-dossier
-        this._processDirectory(
+        await this._processDirectory(
           fullFilePath,
           relativeFilePath,
           newOutputDir,
@@ -293,7 +311,7 @@ export class BaseGenerator extends Generator {
         const outputFileName = getOutputFilename(file);
         const outputPath = path.join(outputDir, outputFileName);
 
-        this.renderEjsTemplate(relativeFilePath, outputPath, context);
+        await this.renderEjsTemplate(relativeFilePath, outputPath, context);
       } else {
         // Pour les autres fichiers, simplement les copier
         const outputPath = path.join(outputDir, file);

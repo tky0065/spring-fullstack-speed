@@ -1,0 +1,183 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import supertest from 'supertest';
+import { mockApp } from '../test-utils/mock-app';
+
+// Mock du serveur express pour les tests d'API
+const request = supertest(mockApp);
+
+describe('API Integration Tests', () => {
+  beforeEach(() => {
+    // Configuration des mocks et préparation de l'environnement de test
+    vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    // Nettoyage des mocks après chaque test
+    vi.restoreAllMocks();
+  });
+
+  describe('Authentication API', () => {
+    it('devrait permettre à un utilisateur de s\'authentifier avec des identifiants valides', async () => {
+      // Préparation des données de test
+      const loginData = {
+        username: 'testuser',
+        password: 'password123'
+      };
+
+      // Exécution du test
+      const response = await request
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      // Assertions
+      expect(response.body).toHaveProperty('token');
+      expect(response.body).toHaveProperty('user');
+      expect(response.body.user.username).toBe(loginData.username);
+    });
+
+    it('devrait refuser l\'authentification avec des identifiants invalides', async () => {
+      // Préparation des données de test
+      const invalidLoginData = {
+        username: 'testuser',
+        password: 'wrongpassword'
+      };
+
+      // Exécution du test
+      const response = await request
+        .post('/api/auth/login')
+        .send(invalidLoginData)
+        .expect('Content-Type', /json/)
+        .expect(401);
+
+      // Assertions
+      expect(response.body).toHaveProperty('error');
+    });
+
+    it('devrait permettre l\'enregistrement d\'un nouvel utilisateur', async () => {
+      // Préparation des données de test
+      const newUser = {
+        username: 'newuser',
+        email: 'newuser@example.com',
+        password: 'newpassword123'
+      };
+
+      // Exécution du test
+      const response = await request
+        .post('/api/auth/register')
+        .send(newUser)
+        .expect('Content-Type', /json/)
+        .expect(201);
+
+      // Assertions
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('user');
+      expect(response.body.user.username).toBe(newUser.username);
+      expect(response.body.user.email).toBe(newUser.email);
+      // Le mot de passe ne doit pas être retourné
+      expect(response.body.user).not.toHaveProperty('password');
+    });
+  });
+
+  describe('CRUD API', () => {
+    // Variables pour stocker les identifiants des ressources créées
+    let resourceId: string;
+    let authToken: string;
+
+    // Connexion avant les tests CRUD
+    beforeEach(async () => {
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({ username: 'testuser', password: 'password123' });
+
+      authToken = loginResponse.body.token;
+    });
+
+    it('devrait créer une nouvelle ressource', async () => {
+      const resourceData = {
+        name: 'Test Resource',
+        description: 'A test resource for API integration tests',
+        active: true
+      };
+
+      const response = await request
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(resourceData)
+        .expect('Content-Type', /json/)
+        .expect(201);
+
+      // Sauvegarde de l'ID pour les tests suivants
+      resourceId = response.body.id;
+
+      // Assertions
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.name).toBe(resourceData.name);
+      expect(response.body.description).toBe(resourceData.description);
+      expect(response.body.active).toBe(resourceData.active);
+    });
+
+    it('devrait récupérer une ressource existante', async () => {
+      const response = await request
+        .get(`/api/resources/${resourceId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      // Assertions
+      expect(response.body).toHaveProperty('id', resourceId);
+      expect(response.body).toHaveProperty('name');
+      expect(response.body).toHaveProperty('description');
+    });
+
+    it('devrait mettre à jour une ressource existante', async () => {
+      const updateData = {
+        name: 'Updated Resource',
+        description: 'This resource has been updated',
+        active: false
+      };
+
+      const response = await request
+        .put(`/api/resources/${resourceId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      // Assertions
+      expect(response.body).toHaveProperty('id', resourceId);
+      expect(response.body.name).toBe(updateData.name);
+      expect(response.body.description).toBe(updateData.description);
+      expect(response.body.active).toBe(updateData.active);
+    });
+
+    it('devrait supprimer une ressource existante', async () => {
+      await request
+        .delete(`/api/resources/${resourceId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(204);
+
+      // Vérifier que la ressource a bien été supprimée
+      await request
+        .get(`/api/resources/${resourceId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(404);
+    });
+
+    it('devrait récupérer une liste de ressources avec pagination', async () => {
+      const response = await request
+        .get('/api/resources')
+        .set('Authorization', `Bearer ${authToken}`)
+        .query({ page: 0, size: 10 })
+        .expect('Content-Type', /json/)
+        .expect(200);
+
+      // Assertions
+      expect(response.body).toHaveProperty('content');
+      expect(response.body).toHaveProperty('totalElements');
+      expect(response.body).toHaveProperty('totalPages');
+      expect(Array.isArray(response.body.content)).toBe(true);
+    });
+  });
+});

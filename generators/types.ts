@@ -2,6 +2,7 @@
  * Fichier de définition des types communs pour les générateurs
  */
 import Generator from "yeoman-generator";
+import { GlobalConfig } from "../utils/config.js";
 
 // Définition des interfaces pour représenter les options de générateur
 
@@ -14,13 +15,17 @@ export interface SFSOptions {
   // Options communes
   destinationRoot?: string;
   skipInstall?: boolean;
+  skipWelcome?: boolean;
+  skipPrompts?: boolean;
+  preset?: string;
+  quickStart?: boolean;
 }
 
 /**
  * Options spécifiques au générateur d'entité
  * Nous ajoutons les options spécifiques à nos besoins
  */
-export interface EntityGeneratorOptions {
+export interface EntityGeneratorOptions extends SFSOptions {
   entityName?: string;
   package?: string;
   interactive?: boolean;
@@ -28,42 +33,71 @@ export interface EntityGeneratorOptions {
   skipService?: boolean;
   skipController?: boolean;
   skipDto?: boolean;
-  [key: string]: any;  // Pour la compatibilité avec Yeoman
 }
 
 /**
- * Options spécifiques au générateur principal (app)
+ * Options spécifiques au générateur d'application principale
  */
-export interface AppGeneratorOptions {
+export interface AppGeneratorOptions extends SFSOptions {
   appName?: string;
   packageName?: string;
   buildTool?: string;
-  database?: string;
   frontendFramework?: string;
-  skipTests?: boolean;
-  skipDocker?: boolean;
-  preset?: string;
-  [key: string]: any;  // Pour la compatibilité avec Yeoman
+  database?: string;
+  includeAuth?: boolean;
+  authType?: string; // Ajout explicite de authType
+  additionalFeatures?: string[];
+  serverPort?: number;
+  javaVersion?: string;
+  springBootVersion?: string;
+}
+
+/**
+ * Options spécifiques au générateur de modules
+ */
+export interface ModuleGeneratorOptions extends SFSOptions {
+  moduleName?: string;
+  basePackage?: string;
+  moduleType?: string;
+  moduleFeatures?: string[];
 }
 
 /**
  * Options spécifiques au générateur de DTOs
  */
-export interface DtoGeneratorOptions {
-  entityClass?: string;
-  package?: string;
-  mapperFramework?: string;
-  [key: string]: any;  // Pour la compatibilité avec Yeoman
+export interface DtoGeneratorOptions extends SFSOptions {
+  entityName?: string;
+  dtoName?: string;
+  basePackage?: string;
+  includeMappers?: boolean;
+  useRecords?: boolean;
+  useBuilders?: boolean;
 }
 
 /**
- * Options spécifiques au générateur de CRUD
+ * Options pour les générateurs de plugins
  */
-export interface CrudGeneratorOptions {
-  entity?: string;
-  package?: string;
-  skipTests?: boolean;
-  [key: string]: any;  // Pour la compatibilité avec Yeoman
+export interface PluginGeneratorOptions extends SFSOptions {
+  pluginType?: string;
+  pluginName?: string;
+}
+
+/**
+ * Options pour les tests
+ */
+export interface TestGeneratorOptions extends SFSOptions {
+  testType?: string; // unit, integration, e2e
+  component?: string; // le composant à tester
+  packageName?: string;
+  mockStrategy?: string;
+}
+
+/**
+ * Interface de base pour les réponses des prompts
+ * Étend GlobalConfig pour assurer la cohérence avec la configuration
+ */
+export interface BaseAnswers extends GlobalConfig {
+  [key: string]: any;
 }
 
 /**

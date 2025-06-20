@@ -1,6 +1,16 @@
 {
   "include": ["./cli", "./generators", "./lib", "./scripts", "./utils"],
-  "exclude": ["**/*.spec.*", "**/__*/**", "**/node_modules", "**/.*/"],
+  "exclude": [
+    "**/*.spec.*",
+    "**/__*/**",
+    "**/node_modules",
+    "**/.*/",
+    "**/*.ejs",
+    "**/templates/**/*.ts",
+    "**/templates/**/*.tsx",
+    "**/templates/**/*.js",
+    "**/templates/**/*.jsx"
+  ],
   "compilerOptions": {
     /* Language and Environment */
     "target": "ES2022" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
