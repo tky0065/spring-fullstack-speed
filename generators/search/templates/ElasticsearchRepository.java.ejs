@@ -1,0 +1,10 @@
+package <%= packageName %>.repository.search;
+
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+
+/**
+ * Interface de base pour les repositories de recherche.
+ */
+public interface SearchRepository<T, ID> extends ElasticsearchRepository<T, ID> {
+    // Méthodes de recherche communes peuvent être ajoutées ici
+}

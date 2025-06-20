@@ -1,0 +1,107 @@
+name: Frontend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Lint
+      working-directory: ./frontend
+      run: npm run lint
+
+<% if (testLibraries.includes('jest') || testLibraries.includes('vitest')) { %>
+    - name: Run unit tests
+      working-directory: ./frontend
+      run: npm test
+
+    - name: Upload test coverage
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: ./frontend/coverage
+<% } %>
+
+<% if (hasE2E && testLibraries.includes('cypress')) { %>
+    - name: Install Cypress dependencies
+      run: sudo apt-get install -y libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb
+
+    - name: Start development server
+      working-directory: ./frontend
+      run: npm run serve &
+
+    - name: Run Cypress E2E tests
+      working-directory: ./frontend
+      run: npm run test:e2e -- --headless
+
+    - name: Upload Cypress screenshots
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-screenshots
+        path: ./frontend/cypress/screenshots
+<% } %>
+
+<% if (hasE2E && testLibraries.includes('playwright')) { %>
+    - name: Install Playwright browsers
+      working-directory: ./frontend
+      run: npx playwright install --with-deps
+
+    - name: Start development server
+      working-directory: ./frontend
+      run: npm run serve &
+
+    - name: Run Playwright E2E tests
+      working-directory: ./frontend
+      run: npm run test:e2e:playwright
+
+    - name: Upload Playwright report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: ./frontend/playwright/report
+<% } %>
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: ./frontend/dist

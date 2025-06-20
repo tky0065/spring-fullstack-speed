@@ -1,0 +1,50 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.dto.EmailDTO;
+
+/**
+ * Interface pour les services d'envoi d'emails.
+ */
+public interface EmailService {
+
+    /**
+     * Envoie un email simple.
+     *
+     * @param to destinataire
+     * @param subject sujet
+     * @param content contenu
+     * @param isHtml si le contenu est au format HTML
+     * @return true si l'email a été envoyé avec succès
+     */
+    boolean sendEmail(String to, String subject, String content, boolean isHtml);
+
+    /**
+     * Envoie un email en utilisant un DTO.
+     *
+     * @param emailDTO DTO contenant les détails de l'email
+     * @return true si l'email a été envoyé avec succès
+     */
+    boolean sendEmail(EmailDTO emailDTO);
+
+    <% if (useTemplating) { %>
+    /**
+     * Envoie un email basé sur un template.
+     *
+     * @param to destinataire
+     * @param subject sujet
+     * @param templateName nom du template
+     * @param variables variables à utiliser dans le template
+     * @return true si l'email a été envoyé avec succès
+     */
+    boolean sendTemplateEmail(String to, String subject, String templateName, java.util.Map<String, Object> variables);
+    <% } %>
+
+    <% if (trackingEnabled) { %>
+    /**
+     * Récupère les statistiques d'envoi d'emails.
+     *
+     * @return Map contenant les statistiques
+     */
+    java.util.Map<String, Object> getEmailStats();
+    <% } %>
+}

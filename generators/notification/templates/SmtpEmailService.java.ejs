@@ -1,0 +1,245 @@
+package <%= packageName %>.service.impl;
+
+import <%= packageName %>.dto.EmailDTO;
+import <%= packageName %>.service.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+<% if (useTemplating && templateEngine === 'thymeleaf') { %>
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring5.SpringTemplateEngine;
+<% } else if (useTemplating && templateEngine === 'freemarker') { %>
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
+<% } else if (useTemplating && templateEngine === 'handlebars') { %>
+import com.github.jknack.handlebars.Handlebars;
+import com.github.jknack.handlebars.Template;
+import com.github.jknack.handlebars.io.ClassPathTemplateLoader;
+import com.github.jknack.handlebars.io.TemplateLoader;
+<% } %>
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+<% if (trackingEnabled) { %>
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+<% } %>
+
+/**
+ * Service pour l'envoi d'emails via SMTP.
+ */
+@Service
+public class SmtpEmailService implements EmailService {
+
+    private final Logger log = LoggerFactory.getLogger(SmtpEmailService.class);
+
+    @Value("${application.mail.from}")
+    private String from;
+
+    private final JavaMailSender javaMailSender;
+
+<% if (useTemplating && templateEngine === 'thymeleaf') { %>
+    private final SpringTemplateEngine templateEngine;
+<% } else if (useTemplating && templateEngine === 'freemarker') { %>
+    private final Configuration freemarkerConfig;
+<% } else if (useTemplating && templateEngine === 'handlebars') { %>
+    private final Handlebars handlebars;
+<% } %>
+
+<% if (trackingEnabled) { %>
+    // Statistiques d'envoi d'emails
+    private final AtomicInteger sentCount = new AtomicInteger(0);
+    private final AtomicInteger failedCount = new AtomicInteger(0);
+    private final ConcurrentHashMap<String, AtomicInteger> templateUsage = new ConcurrentHashMap<>();
+<% } %>
+
+    @Autowired
+    public SmtpEmailService(JavaMailSender javaMailSender<% if (useTemplating && templateEngine === 'thymeleaf') { %>, SpringTemplateEngine templateEngine<% } else if (useTemplating && templateEngine === 'freemarker') { %>, Configuration freemarkerConfig<% } %>) {
+        this.javaMailSender = javaMailSender;
+<% if (useTemplating && templateEngine === 'thymeleaf') { %>
+        this.templateEngine = templateEngine;
+<% } else if (useTemplating && templateEngine === 'freemarker') { %>
+        this.freemarkerConfig = freemarkerConfig;
+<% } else if (useTemplating && templateEngine === 'handlebars') { %>
+        TemplateLoader loader = new ClassPathTemplateLoader();
+        ((ClassPathTemplateLoader) loader).setPrefix("/templates/mail");
+        ((ClassPathTemplateLoader) loader).setSuffix(".html");
+        this.handlebars = new Handlebars(loader);
+<% } %>
+    }
+
+<% if (asyncNotifications) { %>
+    /**
+     * {@inheritDoc}
+     * Méthode asynchrone pour ne pas bloquer l'exécution du thread appelant.
+     */
+    @Async
+<% } %>
+    @Override
+    public boolean sendEmail(String to, String subject, String content, boolean isHtml) {
+        try {
+            log.debug("Sending email to '{}'", to);
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper message = new MimeMessageHelper(mimeMessage, StandardCharsets.UTF_8.name());
+            message.setTo(to);
+            message.setFrom(from);
+            message.setSubject(subject);
+            message.setText(content, isHtml);
+            javaMailSender.send(mimeMessage);
+            log.debug("Sent email to '{}'", to);
+<% if (trackingEnabled) { %>
+            sentCount.incrementAndGet();
+<% } %>
+            return true;
+        } catch (Exception e) {
+            log.error("Email could not be sent to '{}'", to, e);
+<% if (trackingEnabled) { %>
+            failedCount.incrementAndGet();
+<% } %>
+            return false;
+        }
+    }
+
+<% if (asyncNotifications) { %>
+    /**
+     * {@inheritDoc}
+     * Méthode asynchrone pour ne pas bloquer l'exécution du thread appelant.
+     */
+    @Async
+<% } %>
+    @Override
+    public boolean sendEmail(EmailDTO emailDTO) {
+        try {
+            log.debug("Sending email to '{}'", emailDTO.getTo());
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper message = new MimeMessageHelper(
+                mimeMessage,
+                !emailDTO.getAttachments().isEmpty(), // multipart if attachments present
+                StandardCharsets.UTF_8.name()
+            );
+
+            message.setTo(emailDTO.getTo());
+            message.setFrom(from);
+            message.setSubject(emailDTO.getSubject());
+
+            if (emailDTO.getCc() != null && !emailDTO.getCc().isEmpty()) {
+                message.setCc(emailDTO.getCc());
+            }
+
+            if (emailDTO.getBcc() != null && !emailDTO.getBcc().isEmpty()) {
+                message.setBcc(emailDTO.getBcc());
+            }
+
+<% if (useTemplating) { %>
+            // Si un template est spécifié, l'utiliser
+            if (emailDTO.getTemplateName() != null && !emailDTO.getTemplateName().isEmpty()) {
+                String content = processTemplate(emailDTO.getTemplateName(), emailDTO.getTemplateVariables());
+                message.setText(content, true);
+<% if (trackingEnabled) { %>
+                templateUsage.computeIfAbsent(emailDTO.getTemplateName(), k -> new AtomicInteger()).incrementAndGet();
+<% } %>
+            } else {
+                message.setText(emailDTO.getContent(), emailDTO.isHtml());
+            }
+<% } else { %>
+            message.setText(emailDTO.getContent(), emailDTO.isHtml());
+<% } %>
+
+            // Ajouter des pièces jointes si nécessaire
+            for (String attachment : emailDTO.getAttachments()) {
+                File file = new File(attachment);
+                if (file.exists()) {
+                    message.addAttachment(file.getName(), file);
+                } else {
+                    log.warn("Attachment file not found: {}", attachment);
+                }
+            }
+
+            javaMailSender.send(mimeMessage);
+            log.debug("Sent email to '{}'", emailDTO.getTo());
+<% if (trackingEnabled) { %>
+            sentCount.incrementAndGet();
+<% } %>
+            return true;
+        } catch (Exception e) {
+            log.error("Email could not be sent to '{}'", emailDTO.getTo(), e);
+<% if (trackingEnabled) { %>
+            failedCount.incrementAndGet();
+<% } %>
+            return false;
+        }
+    }
+
+<% if (useTemplating) { %>
+<% if (asyncNotifications) { %>
+    /**
+     * {@inheritDoc}
+     * Méthode asynchrone pour ne pas bloquer l'exécution du thread appelant.
+     */
+    @Async
+<% } %>
+    @Override
+    public boolean sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
+        EmailDTO emailDTO = new EmailDTO();
+        emailDTO.setTo(to);
+        emailDTO.setSubject(subject);
+        emailDTO.setTemplateName(templateName);
+        emailDTO.setTemplateVariables(variables);
+        emailDTO.setHtml(true);
+
+        return sendEmail(emailDTO);
+    }
+
+    /**
+     * Traite un template avec les variables fournies.
+     *
+     * @param templateName nom du template
+     * @param variables variables à utiliser dans le template
+     * @return contenu du template processé
+     */
+    private String processTemplate(String templateName, Map<String, Object> variables) throws IOException {
+<% if (templateEngine === 'thymeleaf') { %>
+        Context context = new Context();
+        if (variables != null) {
+            variables.forEach(context::setVariable);
+        }
+        return templateEngine.process(templateName, context);
+<% } else if (templateEngine === 'freemarker') { %>
+        try {
+            Template template = freemarkerConfig.getTemplate(templateName + ".ftl");
+            StringWriter writer = new StringWriter();
+            template.process(variables, writer);
+            return writer.toString();
+        } catch (TemplateException e) {
+            throw new IOException("Could not process FreeMarker template", e);
+        }
+<% } else if (templateEngine === 'handlebars') { %>
+        Template template = handlebars.compile(templateName);
+        return template.apply(variables);
+<% } %>
+    }
+<% } %>
+
+<% if (trackingEnabled) { %>
+    @Override
+    public Map<String, Object> getEmailStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("sentCount", sentCount.get());
+        stats.put("failedCount", failedCount.get());
+        stats.put("templateUsage", templateUsage);
+        return stats;
+    }
+<% } %>
+}

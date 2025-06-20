@@ -1,0 +1,144 @@
+package <%= packageName %>.dto;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter un email à envoyer.
+ */
+public class EmailDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @NotNull
+    @Email
+    private String to;
+
+    private String cc;
+
+    private String bcc;
+
+    @NotNull
+    @Size(min = 1, max = 255)
+    private String subject;
+
+    @NotNull
+    @Size(min = 1)
+    private String content;
+
+    private boolean isHtml = false;
+
+    private List<String> attachments = new ArrayList<>();
+
+    private Map<String, Object> templateVariables = new HashMap<>();
+
+    private String templateName;
+
+    // Constructeurs
+    public EmailDTO() {
+    }
+
+    public EmailDTO(String to, String subject, String content) {
+        this.to = to;
+        this.subject = subject;
+        this.content = content;
+    }
+
+    // Getters et Setters
+    public String getTo() {
+        return to;
+    }
+
+    public void setTo(String to) {
+        this.to = to;
+    }
+
+    public String getCc() {
+        return cc;
+    }
+
+    public void setCc(String cc) {
+        this.cc = cc;
+    }
+
+    public String getBcc() {
+        return bcc;
+    }
+
+    public void setBcc(String bcc) {
+        this.bcc = bcc;
+    }
+
+    public String getSubject() {
+        return subject;
+    }
+
+    public void setSubject(String subject) {
+        this.subject = subject;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public boolean isHtml() {
+        return isHtml;
+    }
+
+    public void setHtml(boolean isHtml) {
+        this.isHtml = isHtml;
+    }
+
+    public List<String> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<String> attachments) {
+        this.attachments = attachments;
+    }
+
+    public void addAttachment(String attachment) {
+        this.attachments.add(attachment);
+    }
+
+    public Map<String, Object> getTemplateVariables() {
+        return templateVariables;
+    }
+
+    public void setTemplateVariables(Map<String, Object> templateVariables) {
+        this.templateVariables = templateVariables;
+    }
+
+    public void addTemplateVariable(String key, Object value) {
+        this.templateVariables.put(key, value);
+    }
+
+    public String getTemplateName() {
+        return templateName;
+    }
+
+    public void setTemplateName(String templateName) {
+        this.templateName = templateName;
+    }
+
+    @Override
+    public String toString() {
+        return "EmailDTO{" +
+            "to='" + to + '\'' +
+            ", subject='" + subject + '\'' +
+            ", isHtml=" + isHtml +
+            ", templateName='" + templateName + '\'' +
+            '}';
+    }
+}

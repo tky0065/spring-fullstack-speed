@@ -1,0 +1,399 @@
+# Guide des Services Docker
+
+Ce document décrit les services inclus dans votre configuration Docker Compose et comment les utiliser efficacement.
+
+## Table des Matières
+
+<% services.forEach(function(service) { %>
+- [<%= service.charAt(0).toUpperCase() + service.slice(1) %>](#<%= service %>)
+<% }); %>
+- [Réseaux et Volumes](#réseaux-et-volumes)
+- [Configuration Avancée](#configuration-avancée)
+
+<% if (services.includes('postgres')) { %>
+## Postgres
+
+### Description
+PostgreSQL est un système de gestion de bases de données relationnelles puissant et open-source.
+
+### Configuration
+- **Version**: 15-alpine
+- **Port**: ${POSTGRES_PORT:-5432}
+- **Utilisateur**: ${DB_USERNAME:-postgres}
+- **Mot de passe**: ${DB_PASSWORD:-postgres_password}
+- **Base de données**: ${DB_NAME:-postgres_db}
+- **Volume**: postgres-data
+
+### Utilisation
+Pour se connecter à PostgreSQL depuis votre machine locale :
+
+```bash
+docker exec -it postgres psql -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-postgres_db}
+```
+
+Pour exporter une base de données :
+
+```bash
+docker exec -it postgres pg_dump -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-postgres_db} > backup.sql
+```
+
+Pour importer une base de données :
+
+```bash
+cat backup.sql | docker exec -i postgres psql -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-postgres_db}
+```
+<% } %>
+
+<% if (services.includes('mysql')) { %>
+## MySQL
+
+### Description
+MySQL est un système de gestion de bases de données relationnelles populaire et open-source.
+
+### Configuration
+- **Version**: 8.0
+- **Port**: ${MYSQL_PORT:-3306}
+- **Utilisateur Root**: root
+- **Mot de passe Root**: ${DB_ROOT_PASSWORD:-rootpassword}
+- **Utilisateur**: ${DB_USERNAME:-mysql_user}
+- **Mot de passe**: ${DB_PASSWORD:-mysql_password}
+- **Base de données**: ${DB_NAME:-mysql_db}
+- **Volume**: mysql-data
+
+### Utilisation
+Pour se connecter à MySQL depuis votre machine locale :
+
+```bash
+docker exec -it mysql mysql -u ${DB_USERNAME:-mysql_user} -p${DB_PASSWORD:-mysql_password} ${DB_NAME:-mysql_db}
+```
+
+Pour exporter une base de données :
+
+```bash
+docker exec -it mysql mysqldump -u ${DB_USERNAME:-mysql_user} -p${DB_PASSWORD:-mysql_password} ${DB_NAME:-mysql_db} > backup.sql
+```
+
+Pour importer une base de données :
+
+```bash
+cat backup.sql | docker exec -i mysql mysql -u ${DB_USERNAME:-mysql_user} -p${DB_PASSWORD:-mysql_password} ${DB_NAME:-mysql_db}
+```
+<% } %>
+
+<% if (services.includes('mongodb')) { %>
+## MongoDB
+
+### Description
+MongoDB est une base de données NoSQL orientée documents, performante et scalable.
+
+### Configuration
+- **Version**: 6.0
+- **Port**: ${MONGODB_PORT:-27017}
+- **Utilisateur Root**: ${DB_USERNAME:-mongodb_user}
+- **Mot de passe Root**: ${DB_PASSWORD:-mongodb_password}
+- **Base de données**: ${DB_NAME:-mongodb_db}
+- **Volume**: mongodb-data
+
+### Utilisation
+Pour se connecter à MongoDB depuis votre machine locale :
+
+```bash
+docker exec -it mongodb mongosh -u ${DB_USERNAME:-mongodb_user} -p ${DB_PASSWORD:-mongodb_password} ${DB_NAME:-mongodb_db}
+```
+
+Pour exporter une collection :
+
+```bash
+docker exec -it mongodb mongoexport --username ${DB_USERNAME:-mongodb_user} --password ${DB_PASSWORD:-mongodb_password} --db ${DB_NAME:-mongodb_db} --collection mycollection --out /tmp/mycollection.json
+docker cp mongodb:/tmp/mycollection.json ./mycollection.json
+```
+
+Pour importer une collection :
+
+```bash
+docker cp ./mycollection.json mongodb:/tmp/mycollection.json
+docker exec -it mongodb mongoimport --username ${DB_USERNAME:-mongodb_user} --password ${DB_PASSWORD:-mongodb_password} --db ${DB_NAME:-mongodb_db} --collection mycollection --file /tmp/mycollection.json
+```
+<% } %>
+
+<% if (services.includes('redis')) { %>
+## Redis
+
+### Description
+Redis est une base de données en mémoire, utilisée comme cache, broker de messages et stockage de données.
+
+### Configuration
+- **Version**: 7-alpine
+- **Port**: ${REDIS_PORT:-6379}
+- **Volume**: redis-data
+- **Persistance**: Activée
+
+### Utilisation
+Pour se connecter à Redis depuis votre machine locale :
+
+```bash
+docker exec -it redis redis-cli
+```
+
+Pour surveiller les statistiques Redis :
+
+```bash
+docker exec -it redis redis-cli info
+```
+
+Pour vider le cache Redis :
+
+```bash
+docker exec -it redis redis-cli FLUSHALL
+```
+<% } %>
+
+<% if (services.includes('elasticsearch')) { %>
+## Elasticsearch
+
+### Description
+Elasticsearch est un moteur de recherche et d'analyse distribué, conçu pour la recherche en texte intégral et l'analyse de données.
+
+### Configuration
+- **Version**: 8.10.4
+- **Port**: ${ES_PORT:-9200}
+- **Mode**: Single Node (pour développement)
+- **Sécurité X-Pack**: Désactivée
+- **Volume**: elasticsearch-data
+
+### Utilisation
+Pour vérifier l'état d'Elasticsearch :
+
+```bash
+curl http://localhost:${ES_PORT:-9200}/_cluster/health?pretty
+```
+
+Pour créer un index :
+
+```bash
+curl -X PUT "http://localhost:${ES_PORT:-9200}/my-index"
+```
+
+Pour indexer un document :
+
+```bash
+curl -X POST "http://localhost:${ES_PORT:-9200}/my-index/_doc" -H "Content-Type: application/json" -d'{"title": "Document de test", "content": "Contenu de test"}'
+```
+<% } %>
+
+<% if (services.includes('kibana')) { %>
+## Kibana
+
+### Description
+Kibana est une interface utilisateur qui vous permet de visualiser vos données Elasticsearch et de naviguer dans la stack Elastic.
+
+### Configuration
+- **Version**: 8.10.4
+- **Port**: ${KIBANA_PORT:-5601}
+- **Elasticsearch URL**: http://elasticsearch:9200
+
+### Utilisation
+Pour accéder à Kibana, ouvrez votre navigateur et accédez à :
+
+```
+http://localhost:${KIBANA_PORT:-5601}
+```
+
+À partir de là, vous pouvez :
+- Créer des visualisations et dashboards
+- Explorer vos données
+- Gérer vos index Elasticsearch
+- Configurer des alertes et rapports
+<% } %>
+
+<% if (services.includes('rabbitmq')) { %>
+## RabbitMQ
+
+### Description
+RabbitMQ est un broker de messages open-source qui implémente le protocole AMQP.
+
+### Configuration
+- **Version**: 3.12-management
+- **Port AMQP**: ${RABBITMQ_PORT:-5672}
+- **Port Management**: ${RABBITMQ_MGMT_PORT:-15672}
+- **Utilisateur**: ${RABBITMQ_USERNAME:-guest}
+- **Mot de passe**: ${RABBITMQ_PASSWORD:-guest}
+- **Volume**: rabbitmq-data
+
+### Utilisation
+Pour accéder à l'interface de gestion de RabbitMQ, ouvrez votre navigateur et accédez à :
+
+```
+http://localhost:${RABBITMQ_MGMT_PORT:-15672}
+```
+
+Pour se connecter depuis votre application, utilisez l'URL :
+
+```
+amqp://${RABBITMQ_USERNAME:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+```
+<% } %>
+
+<% if (services.includes('kafka')) { %>
+## Kafka
+
+### Description
+Apache Kafka est une plateforme distribuée de streaming d'événements.
+
+### Configuration
+- **Version**: 7.4.0 (Confluent Platform)
+- **Port**: ${KAFKA_PORT:-9092}
+- **Zookeeper Port**: ${ZOOKEEPER_PORT:-2181}
+- **Volumes**: kafka-data, zookeeper-data, zookeeper-log
+
+### Utilisation
+Pour créer un topic :
+
+```bash
+docker exec -it kafka kafka-topics --create --topic my-topic --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1
+```
+
+Pour lister les topics :
+
+```bash
+docker exec -it kafka kafka-topics --list --bootstrap-server kafka:9092
+```
+
+Pour produire des messages :
+
+```bash
+docker exec -it kafka kafka-console-producer --topic my-topic --bootstrap-server kafka:9092
+```
+
+Pour consommer des messages :
+
+```bash
+docker exec -it kafka kafka-console-consumer --topic my-topic --bootstrap-server kafka:9092 --from-beginning
+```
+<% } %>
+
+<% if (services.includes('prometheus')) { %>
+## Prometheus
+
+### Description
+Prometheus est un système de monitoring open-source qui collecte des métriques à partir de cibles configurées.
+
+### Configuration
+- **Version**: v2.45.0
+- **Port**: ${PROMETHEUS_PORT:-9090}
+- **Configuration**: ./docker/prometheus/prometheus.yml
+- **Volume**: prometheus-data
+
+### Utilisation
+Pour accéder à l'interface web de Prometheus, ouvrez votre navigateur et accédez à :
+
+```
+http://localhost:${PROMETHEUS_PORT:-9090}
+```
+
+Pour voir les métriques Actuator de votre application Spring Boot :
+
+```
+http://localhost:${PROMETHEUS_PORT:-9090}/graph?g0.expr=system_cpu_usage&g0.tab=0&g0.stacked=0&g0.show_exemplars=0&g0.range_input=1h
+```
+<% } %>
+
+<% if (services.includes('grafana')) { %>
+## Grafana
+
+### Description
+Grafana est une plateforme d'analyse et de visualisation pour vos métriques.
+
+### Configuration
+- **Version**: 10.0.3
+- **Port**: ${GRAFANA_PORT:-3000}
+- **Utilisateur Admin**: ${GRAFANA_USERNAME:-admin}
+- **Mot de passe Admin**: ${GRAFANA_PASSWORD:-admin}
+- **Volume**: grafana-data
+- **Provisioning**: ./docker/grafana/provisioning
+
+### Utilisation
+Pour accéder à Grafana, ouvrez votre navigateur et accédez à :
+
+```
+http://localhost:${GRAFANA_PORT:-3000}
+```
+
+Connectez-vous avec les identifiants administrateur puis :
+- Ajoutez une source de données Prometheus
+- Importez des dashboards prédéfinis pour Spring Boot
+- Créez vos propres visualisations
+<% } %>
+
+## Réseaux et Volumes
+
+### Réseaux
+
+Votre configuration utilise un réseau Docker nommé `app-network` qui permet à tous les services de communiquer entre eux de manière isolée.
+
+```yaml
+networks:
+  app-network:
+    driver: bridge
+```
+
+### Volumes
+
+Des volumes Docker sont utilisés pour persister les données de vos services. Ces volumes existent indépendamment du cycle de vie des containers.
+
+<% services.forEach(function(service) { %>
+<% if (service === 'postgres') { %>
+- **postgres-data**: Stocke les données PostgreSQL
+<% } else if (service === 'mysql') { %>
+- **mysql-data**: Stocke les données MySQL
+<% } else if (service === 'mongodb') { %>
+- **mongodb-data**: Stocke les données MongoDB
+<% } else if (service === 'redis') { %>
+- **redis-data**: Stocke les données Redis
+<% } else if (service === 'elasticsearch') { %>
+- **elasticsearch-data**: Stocke les données Elasticsearch
+<% } else if (service === 'rabbitmq') { %>
+- **rabbitmq-data**: Stocke les données RabbitMQ
+<% } else if (service === 'kafka') { %>
+- **kafka-data**: Stocke les données Kafka
+- **zookeeper-data**: Stocke les données Zookeeper
+- **zookeeper-log**: Stocke les logs Zookeeper
+<% } else if (service === 'prometheus') { %>
+- **prometheus-data**: Stocke les métriques Prometheus
+<% } else if (service === 'grafana') { %>
+- **grafana-data**: Stocke les configurations et dashboards Grafana
+<% } %>
+<% }); %>
+
+## Configuration Avancée
+
+### Variables d'Environnement
+
+Vous pouvez personnaliser la configuration en créant un fichier `.env` à la racine du projet :
+
+```bash
+cp docker/secrets/secrets-example.env .env
+```
+
+Puis modifiez les valeurs selon vos besoins.
+
+### Modification de la Configuration Docker Compose
+
+Pour personnaliser davantage votre configuration Docker Compose :
+
+1. Modifiez `docker-compose.yml` directement
+2. Ou créez un fichier `docker-compose.override.yml` pour des changements spécifiques à votre environnement local
+
+### Ajout de Services Personnalisés
+
+Pour ajouter de nouveaux services à votre configuration, ajoutez-les à la section `services` de votre fichier `docker-compose.yml` :
+
+```yaml
+services:
+  my-custom-service:
+    image: custom-image:latest
+    ports:
+      - "8888:8888"
+    networks:
+      - app-network
+```

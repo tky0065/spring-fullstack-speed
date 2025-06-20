@@ -5,7 +5,9 @@
 Tu travailles sur le développement du projet **Spring-Fullstack CLI**, un générateur de code basé sur Yeoman qui crée des applications fullstack modernes avec Spring Boot et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE).
 environnement de développement : on est sur windows 11
 
-## 📋 INSTRUCTIONS PRINCIPALES
+## 📋 INSTRUCTIONS PRINCIPALES 
+
+ * IMPORTANT *  ## AVANT DE COMMENCER UNE TÂCHE FAIT `tree -a generators `  Pour vérifier la structure du projet pour éviter les erreurs de structure. et la duplication de code  
 
 ### 1. GESTION DES TÂCHES
 - Consulte le fichier [spring-fullstack-planning.md](spring-fullstack-planning.md) qui contient le planning détaillé avec toutes les tâches

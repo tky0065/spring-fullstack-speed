@@ -1,0 +1,41 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.*;
+
+/**
+ * Configuration pour les WebSockets.
+ */
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    /**
+     * Configure le message broker pour les WebSockets.
+     * @param config la configuration du message broker
+     */
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config) {
+        // Définit le prefixe pour envoyer des messages à l'application
+        config.setApplicationDestinationPrefixes("/app");
+
+        // Permet l'envoi de messages en mode broadcast à tous les clients connectés au topic
+        config.enableSimpleBroker("/topic", "/queue");
+
+        // Configuration pour les messages privés avec le préfixe /user
+        config.setUserDestinationPrefix("/user");
+    }
+
+    /**
+     * Configure les endpoints WebSocket.
+     * @param registry le registre des endpoints
+     */
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Endpoint principal WebSocket avec support SockJS pour les navigateurs ne supportant pas les WebSockets
+        registry.addEndpoint("/ws")
+            .setAllowedOrigins("*")
+            .withSockJS();
+    }
+}

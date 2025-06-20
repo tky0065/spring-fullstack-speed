@@ -1,0 +1,67 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.dto.SearchDTO;
+import <%= packageName %>.service.search.<%= entity %>SearchService;
+import <%= packageName %>.domain.<%= entity %>;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST controller pour gérer les recherches spécifiques à l'entité <%= entity %>.
+ */
+@RestController
+@RequestMapping("/api/<%= entity.toLowerCase() %>/search")
+public class <%= entity %>SearchController {
+
+    private final Logger log = LoggerFactory.getLogger(<%= entity %>SearchController.class);
+    private final <%= entity %>SearchService searchService;
+
+    public <%= entity %>SearchController(<%= entity %>SearchService searchService) {
+        this.searchService = searchService;
+    }
+
+    /**
+     * {@code GET /api/<%= entity.toLowerCase() %>/search} : Recherche des <%= entity %> par terme.
+     *
+     * @param query terme de recherche
+     * @return {@code 200 OK} avec la liste des résultats
+     */
+    @GetMapping
+    public ResponseEntity<List<<%= entity %>>> search(@RequestParam String query) {
+        log.debug("REST request to search <%= entity %> for query: {}", query);
+        List<<%= entity %>> results = searchService.search(query);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * {@code POST /api/<%= entity.toLowerCase() %>/search/advanced} : Recherche avancée.
+     *
+     * @param searchDTO critères de recherche avancée
+     * @return {@code 200 OK} avec la liste des résultats
+     */
+    @PostMapping("/advanced")
+    public ResponseEntity<Map<String, Object>> advancedSearch(@Valid @RequestBody SearchDTO searchDTO) {
+        log.debug("REST request for advanced search on <%= entity %> with criteria: {}", searchDTO);
+        Map<String, Object> results = searchService.advancedSearch(searchDTO);
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * {@code POST /api/<%= entity.toLowerCase() %>/search/index} : Réindexe tous les <%= entity %>.
+     *
+     * @return {@code 200 OK} avec le statut de l'indexation
+     */
+    @PostMapping("/index")
+    public ResponseEntity<Map<String, Object>> reindex() {
+        log.debug("REST request to reindex all <%= entity %>");
+        Map<String, Object> result = searchService.reindexAll();
+        return ResponseEntity.ok(result);
+    }
+}

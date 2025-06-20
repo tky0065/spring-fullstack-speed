@@ -1,0 +1,62 @@
+# Étape de build
+FROM eclipse-temurin:17-jdk-alpine AS build
+WORKDIR /workspace/app
+
+<% if (buildTool === 'maven') { %>
+# Copier le pom.xml et télécharger les dépendances
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+RUN chmod +x ./mvnw
+RUN ./mvnw dependency:go-offline -B
+
+# Copier le code source
+COPY src src
+
+# Construire un jar sans les tests
+RUN ./mvnw package -DskipTests
+<% } else { %>
+# Copier le build.gradle et télécharger les dépendances
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle* .
+COPY settings.gradle* .
+RUN chmod +x ./gradlew
+RUN ./gradlew --no-daemon dependencies
+
+# Copier le code source
+COPY src src
+
+# Construire un jar sans les tests
+RUN ./gradlew --no-daemon build -x test
+<% } %>
+
+# Extraire la couche de dépendances pour une meilleure réutilisation des couches Docker
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+
+# Étape d'exécution
+FROM <%= baseImage %>
+VOLUME /tmp
+ARG DEPENDENCY=/workspace/app/target/dependency
+
+# Copier les couches extraites du jar
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+
+<% if (healthcheck) { %>
+# Configuration du Health Check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:<%= containerPort %><%= healthcheckPath %> || exit 1
+<% } %>
+
+# Utilisateur non-root pour plus de sécurité
+RUN addgroup --system --gid 1000 appuser && \
+    adduser --system --uid 1000 --ingroup appuser --shell /bin/false appuser
+USER appuser:appuser
+
+# Variables d'environnement pour JVM
+ENV JAVA_OPTS="<%= javaOpts %>"
+
+EXPOSE <%= containerPort %>
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -cp app:app/lib/* <%= packageName %>.Application"]

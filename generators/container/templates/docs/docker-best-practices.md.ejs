@@ -1,0 +1,165 @@
+# Docker Best Practices
+
+Ce document présente les bonnes pratiques à suivre pour la containerisation de votre application Spring Boot.
+
+## Table des Matières
+1. [Sécurité](#sécurité)
+2. [Optimisation des Images](#optimisation-des-images)
+3. [Multi-Stage Builds](#multi-stage-builds)
+4. [Variables d'Environnement](#variables-denvironnement)
+5. [Volumes et Persistance des Données](#volumes-et-persistance-des-données)
+6. [Logs et Monitoring](#logs-et-monitoring)
+7. [Healthchecks](#healthchecks)
+8. [Docker Compose](#docker-compose)
+
+## Sécurité
+
+### Utilisateur Non-Root
+
+Privilégiez toujours l'exécution de vos containers avec un utilisateur non-root.
+
+```dockerfile
+RUN addgroup --system --gid 1000 appuser && \
+    adduser --system --uid 1000 --ingroup appuser --shell /bin/false appuser
+USER appuser:appuser
+```
+
+### Minimisez la Surface d'Attaque
+
+Utilisez des images de base minimales comme Alpine ou Distroless pour réduire la surface d'attaque.
+
+### Scanner les Vulnérabilités
+
+Intégrez des outils comme Trivy ou Docker Scout dans votre pipeline CI/CD pour scanner les vulnérabilités de vos images.
+
+```bash
+docker scan myapp:latest
+```
+
+### Secrets
+
+Ne stockez jamais de secrets directement dans votre image Docker. Utilisez plutôt :
+- Des variables d'environnement au runtime
+- Docker secrets
+- Un système de gestion de secrets comme Vault
+
+## Optimisation des Images
+
+### Réduire la Taille
+
+- Utilisez `.dockerignore` pour exclure les fichiers non nécessaires
+- Combinez les commandes RUN pour réduire le nombre de couches
+- Nettoyez les caches des gestionnaires de paquets
+
+```dockerfile
+RUN apk add --no-cache curl && \
+    apk add --no-cache bash
+```
+
+### Optimiser le Cache des Couches
+
+Ordonnez votre Dockerfile pour maximiser la réutilisation du cache :
+1. Installez d'abord les dépendances qui changent rarement
+2. Copiez ensuite les fichiers de configuration
+3. Copiez le code source en dernier
+
+## Multi-Stage Builds
+
+Les builds multi-étapes permettent de séparer l'environnement de compilation de l'environnement d'exécution.
+
+```dockerfile
+FROM maven:3.8-jdk-17 as build
+WORKDIR /app
+COPY . .
+RUN mvn package -DskipTests
+
+FROM eclipse-temurin:17-jre
+COPY --from=build /app/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+## Variables d'Environnement
+
+### Configuration de l'Application
+
+Configurez votre application pour utiliser des variables d'environnement plutôt que des fichiers de configuration hardcodés.
+
+### Valeurs par Défaut
+
+Fournissez des valeurs par défaut raisonnables pour les variables d'environnement.
+
+```dockerfile
+ENV SERVER_PORT=8080 \
+    JAVA_OPTS="-Xms256m -Xmx512m"
+```
+
+## Volumes et Persistance des Données
+
+### Séparation des Données
+
+Stockez toutes les données persistantes dans des volumes Docker.
+
+```yaml
+volumes:
+  - postgres-data:/var/lib/postgresql/data
+```
+
+### Sauvegarde des Volumes
+
+Mettez en place une stratégie de backup pour vos volumes Docker.
+
+```bash
+docker run --rm -v postgres-data:/data -v $(pwd)/backup:/backup alpine \
+    tar -czf /backup/postgres-data.tar.gz -C /data ./
+```
+
+## Logs et Monitoring
+
+### Journalisation
+
+Configurez votre application pour écrire les logs sur la sortie standard (stdout) et la sortie d'erreur (stderr).
+
+### Centralisation des Logs
+
+Utilisez des solutions comme ELK Stack, Loki ou Graylog pour centraliser vos logs.
+
+### Métriques
+
+Exposez des métriques avec Prometheus et visualisez-les dans Grafana.
+
+## Healthchecks
+
+Implémentez des healthchecks Docker pour vérifier l'état de santé de votre application.
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD wget -q -O /dev/null http://localhost:8080/actuator/health || exit 1
+```
+
+## Docker Compose
+
+### Environnement de Développement
+
+Utilisez des profils dans Docker Compose pour différencier les environnements de développement et de production.
+
+### Dépendances
+
+Utilisez `depends_on` et les healthchecks pour gérer les dépendances entre services.
+
+```yaml
+services:
+  app:
+    depends_on:
+      postgres:
+        condition: service_healthy
+```
+
+### Réseaux
+
+Créez des réseaux Docker dédiés pour isoler les groupes de services.
+
+```yaml
+networks:
+  frontend-network:
+  backend-network:
+```

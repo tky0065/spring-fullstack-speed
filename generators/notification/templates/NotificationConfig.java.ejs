@@ -1,0 +1,47 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+
+/**
+ * Configuration pour les fonctionnalités de notification.
+ */
+@Configuration
+<% if (asyncNotifications) { %>
+@EnableAsync
+<% } %>
+public class NotificationConfig {
+
+    /**
+     * Configure les paramètres de notification pour l'application.
+     */
+    @Bean
+    public NotificationProperties notificationProperties() {
+        return new NotificationProperties();
+    }
+
+    /**
+     * Classe pour contenir les propriétés de configuration des notifications.
+     */
+    public static class NotificationProperties {
+        private boolean enabled = true;
+        private boolean trackingEnabled = <%= trackingEnabled %>;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public boolean isTrackingEnabled() {
+            return trackingEnabled;
+        }
+
+        public void setTrackingEnabled(boolean trackingEnabled) {
+            this.trackingEnabled = trackingEnabled;
+        }
+    }
+}

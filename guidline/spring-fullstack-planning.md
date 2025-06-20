@@ -22,19 +22,10 @@ Architecture Générale
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 
 
-generator-spring-fullstack/
-├── generators/
-│   ├── app/           # Générateur principal
-│   ├── entity/        # Générateur d'entités
-│   ├── crud/          # Générateur CRUD
-    |---dtos/          # Générateur de DTOs
-│   ├
-│   └── module/        # Générateur de modules
-├── templates/
-│   ├── backend/       # Templates Spring Boot
-│   ├── frontend/      # Templates React/Vue/Angular
-│   └── docker/        # Templates Docker/K8s
-└── utils/             # Utilitaires partagés
+
+# NOTE IMPORTANT :
+* IMPORTANT *  ## AVANT DE COMMENCER UNE TÂCHE FAIT `tree -a generators `  Pour vérifier la structure du projet pour éviter les erreurs de structure. et la duplication de code
+
 
 ## 🚀 Fonctionnalités Supplémentaires Proposées
 
@@ -248,29 +239,29 @@ generator-spring-fullstack/
 
 ### Module 5.2 : Recherche & Analytics
 - [x] Intégrer Elasticsearch
-- [ ] Configurer les indexes
-- [ ] Créer les repositories Elasticsearch
-- [ ] Implémenter la recherche full-text
-- [ ] Générer les configurations search
-- [ ] Créer les DTOs de recherche
-- [ ] Implémenter les filtres avancés
-- [ ] Configurer les analyzers
-- [ ] Créer les dashboards Kibana
-- [ ] Implémenter les métriques
-- [ ] Optimiser les requêtes search
+- [x] Configurer les indexes
+- [x] Créer les repositories Elasticsearch
+- [x] Implémenter la recherche full-text
+- [x] Générer les configurations search
+- [x] Créer les DTOs de recherche
+- [x] Implémenter les filtres avancés
+- [x] Configurer les analyzers
+- [x] Créer les dashboards Kibana
+- [x] Implémenter les métriques
+- [x] Optimiser les requêtes search
   - [ ] Créer les tests de recherche(  pas important pour le moment)
 
 ### Module 5.3 : Notifications & Communication
-- [ ] Intégrer les notifications email (SMTP)
-- [ ] Configurer les templates email
-- [ ] Implémenter les notifications push
-- [ ] Intégrer WebSocket pour temps réel
-- [ ] Créer les services de notification
-- [ ] Implémenter les webhooks
-- [ ] Configurer les providers email (SendGrid, Mailgun)
-- [ ] Créer les templates de notification
-- [ ] Implémenter les préférences utilisateur
-- [ ] Configurer les queues de notification
+- [x] Intégrer les notifications email (SMTP)
+- [x] Configurer les templates email
+- [x] Implémenter les notifications push
+- [x] Intégrer WebSocket pour temps réel
+- [x] Créer les services de notification
+- [x] Implémenter les webhooks
+- [x] Configurer les providers email (SendGrid, Mailgun)
+- [x] Créer les templates de notification
+- [x] Implémenter les préférences utilisateur
+- [x] Configurer les queues de notification
 - [ ] Créer les tests de notification
 - [ ] Implémenter le tracking des emails
 
@@ -279,18 +270,18 @@ generator-spring-fullstack/
 ## 📋 PHASE 6 : CLOUD & DEVOPS (Priorité Moyenne)
 
 ### Module 6.1 : Containerisation
-- [ ] Créer les Dockerfiles optimisés
-- [ ] Générer docker-compose.yml
-- [ ] Configurer multi-stage builds
-- [ ] Créer les scripts de build Docker
-- [ ] Implémenter health checks
-- [ ] Configurer les volumes Docker
-- [ ] Optimiser les images Docker
-- [ ] Créer les tests Docker
-- [ ] Implémenter Docker secrets
-- [ ] Configurer les réseaux Docker
-- [ ] Créer la documentation Docker
-- [ ] Tester la containerisation
+- [x] Créer les Dockerfiles optimisés
+- [x] Générer docker-compose.yml
+- [x] Configurer multi-stage builds
+- [x] Créer les scripts de build Docker
+- [x] Implémenter health checks
+- [x] Configurer les volumes Docker
+- [x] Optimiser les images Docker
+- [x] Créer les tests Docker
+- [x] Implémenter Docker secrets
+- [x] Configurer les réseaux Docker
+- [x] Créer la documentation Docker
+- [x] Tester la containerisation
 
 ### Module 6.2 : CI/CD Pipeline
 - [ ] Créer les workflows GitHub Actions
@@ -403,21 +394,21 @@ generator-spring-fullstack/
 ## 📋 PHASE 9 : CLI AVANCÉ (Priorité Haute)
 
 ### Module 9.1 : Interface CLI Interactive
-- [x] **[PRIORITÉ]** Créer l'interface de questions interactive
-- [x] **[PRIORITÉ]** Implémenter la validation des réponses
-- [x] **[PRIORITÉ]** Créer les menus de sélection
+- [ ] Créer l'interface de questions interactive
+- [ ] Implémenter la validation des réponses
+- [ ] Créer les menus de sélection
 - [ ] Implémenter l'auto-complétion
-- [x] Créer les progress bars
-- [x] Implémenter les confirmations
-- [x] Créer les messages d'erreur colorés
-- [x] Implémenter l'aide contextuelle
-- [x] Créer les raccourcis clavier
-- [x] Implémenter la navigation
-- [ ] Configurer les thèmes CLI (pas important pour le moment)
+- [ ] Créer les progress bars
+- [ ] Implémenter les confirmations
+- [ ] Créer les messages d'erreur colorés
+- [ ] Implémenter l'aide contextuelle
+- [ ] Créer les raccourcis clavier
+- [ ] Implémenter la navigation
+- [ ] Configurer les thèmes CLI
 - [ ] Tester l'interface utilisateur
 
 ### Module 9.2 : Gestion des Templates
-- [ ]  Créer le système de versioning templates
+- [ ] Créer le système de versioning templates
 - [ ] Implémenter le téléchargement de templates
 - [ ] Créer le cache des templates
 - [ ] Implémenter la mise à jour automatique
@@ -431,10 +422,10 @@ generator-spring-fullstack/
 - [ ] Documenter le système de templates
 
 ### Module 9.3 : Commandes Utilitaires
-- [x] **[PRIORITÉ]** Implémenter `sfs add` (composants)
-- [ ] **[PRIORITÉ]** Créer `sfs generate` (CRUD)
-- [x] **[PRIORITÉ]** Implémenter `sfs generate` (entity)
-- [x] Implémenter `sfs generate` (dtos)
+- [ ] Implémenter `sfs add` (composants)
+- [ ] Créer `sfs generate` (CRUD)
+- [ ] Implémenter `sfs generate` (dtos)
+- [ ] Implémenter `sfs generate` (entity)
 - [ ] Implémenter `sfs serve` (dev server)
 - [ ] Créer `sfs test` (tests)
 - [ ] Implémenter `sfs build` (production)

@@ -1,0 +1,77 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.dto.PushNotificationDTO;
+import <%= packageName %>.service.PushNotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.Map;
+
+/**
+ * REST controller pour gérer les notifications push.
+ */
+@RestController
+@RequestMapping("/api/push-notification")
+public class PushNotificationController {
+
+    private final Logger log = LoggerFactory.getLogger(PushNotificationController.class);
+    private final PushNotificationService pushNotificationService;
+
+    public PushNotificationController(PushNotificationService pushNotificationService) {
+        this.pushNotificationService = pushNotificationService;
+    }
+
+    /**
+     * {@code POST /api/push-notification/send} : Envoie une notification push à un appareil.
+     *
+     * @param notification les détails de la notification
+     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     */
+    @PostMapping("/send")
+    public ResponseEntity<Map<String, Object>> sendNotification(@Valid @RequestBody PushNotificationDTO notification) {
+        log.debug("REST request to send push notification: {}", notification);
+        boolean result = pushNotificationService.sendNotification(notification);
+        return ResponseEntity.ok(Map.of("sent", result));
+    }
+
+    /**
+     * {@code POST /api/push-notification/multicast} : Envoie une notification push à plusieurs appareils.
+     *
+     * @param notification les détails de la notification avec les tokens des appareils
+     * @return {@code 200 OK} avec les résultats détaillés
+     */
+    @PostMapping("/multicast")
+    public ResponseEntity<Map<String, Object>> sendMulticastNotification(@Valid @RequestBody PushNotificationDTO notification) {
+        log.debug("REST request to send multicast push notification to {} devices", notification.getTokens().length);
+        Map<String, Object> result = pushNotificationService.sendMulticastNotification(notification);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * {@code POST /api/push-notification/topic} : Envoie une notification push à tous les abonnés d'un topic.
+     *
+     * @param notification les détails de la notification avec le topic
+     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     */
+    @PostMapping("/topic")
+    public ResponseEntity<Map<String, Object>> sendTopicNotification(@Valid @RequestBody PushNotificationDTO notification) {
+        log.debug("REST request to send push notification to topic: {}", notification.getTopic());
+        boolean result = pushNotificationService.sendTopicNotification(notification);
+        return ResponseEntity.ok(Map.of("sent", result));
+    }
+
+    /**
+     * {@code GET /api/push-notification/stats} : Récupère les statistiques d'envoi de notifications push.
+     *
+     * @return {@code 200 OK} avec les statistiques
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getPushNotificationStats() {
+        log.debug("REST request to get push notification statistics");
+        Map<String, Object> stats = pushNotificationService.getPushNotificationStats();
+        return ResponseEntity.ok(stats);
+    }
+}

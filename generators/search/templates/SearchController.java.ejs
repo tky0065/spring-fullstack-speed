@@ -1,0 +1,51 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.dto.SearchDTO;
+import <%= packageName %>.service.SearchService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.validation.Valid;
+import java.util.Map;
+
+/**
+ * REST controller pour gérer les requêtes de recherche globale.
+ */
+@RestController
+@RequestMapping("/api/search")
+public class SearchController {
+
+    private final Logger log = LoggerFactory.getLogger(SearchController.class);
+    private final SearchService searchService;
+
+    public SearchController(SearchService searchService) {
+        this.searchService = searchService;
+    }
+
+    /**
+     * {@code POST /api/search} : Effectue une recherche globale.
+     *
+     * @param searchDTO les critères de recherche
+     * @return {@code 200 OK} avec les résultats de recherche
+     */
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> search(@Valid @RequestBody SearchDTO searchDTO) {
+        log.debug("REST request to search with criteria : {}", searchDTO);
+        var results = searchService.globalSearch(searchDTO);
+        return ResponseEntity.ok(Map.of("results", results));
+    }
+
+    /**
+     * {@code GET /api/search/stats} : Récupère les statistiques de recherche.
+     *
+     * @return {@code 200 OK} avec les statistiques
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getSearchStats() {
+        log.debug("REST request to get search stats");
+        var stats = searchService.getSearchStats();
+        return ResponseEntity.ok(stats);
+    }
+}

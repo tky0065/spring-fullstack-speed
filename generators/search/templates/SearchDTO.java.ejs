@@ -1,0 +1,110 @@
+package <%= packageName %>.dto;
+
+import java.io.Serializable;
+
+/**
+ * DTO pour les paramètres de recherche.
+ */
+public class SearchDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String query;
+    private String[] fields;
+    private String[] indices;
+    private int page = 0;
+    private int size = 20;
+    private String sortField;
+    private String sortDirection = "ASC";
+
+    // Filtre avancé (optionnel)
+    private String filterField;
+    private String filterValue;
+
+    // Constructeurs
+    public SearchDTO() {
+    }
+
+    public SearchDTO(String query) {
+        this.query = query;
+    }
+
+    public SearchDTO(String query, String[] fields, String[] indices) {
+        this.query = query;
+        this.fields = fields;
+        this.indices = indices;
+    }
+
+    // Getters et Setters
+    public String getQuery() {
+        return query;
+    }
+
+    public void setQuery(String query) {
+        this.query = query;
+    }
+
+    public String[] getFields() {
+        return fields;
+    }
+
+    public void setFields(String[] fields) {
+        this.fields = fields;
+    }
+
+    public String[] getIndices() {
+        return indices;
+    }
+
+    public void setIndices(String[] indices) {
+        this.indices = indices;
+    }
+
+    public int getPage() {
+        return page;
+    }
+
+    public void setPage(int page) {
+        this.page = page;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public String getSortField() {
+        return sortField;
+    }
+
+    public void setSortField(String sortField) {
+        this.sortField = sortField;
+    }
+
+    public String getSortDirection() {
+        return sortDirection;
+    }
+
+    public void setSortDirection(String sortDirection) {
+        this.sortDirection = sortDirection;
+    }
+
+    public String getFilterField() {
+        return filterField;
+    }
+
+    public void setFilterField(String filterField) {
+        this.filterField = filterField;
+    }
+
+    public String getFilterValue() {
+        return filterValue;
+    }
+
+    public void setFilterValue(String filterValue) {
+        this.filterValue = filterValue;
+    }
+}

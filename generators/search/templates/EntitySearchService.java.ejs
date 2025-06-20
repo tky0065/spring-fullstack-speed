@@ -1,0 +1,124 @@
+package <%= packageName %>.service.search;
+
+import <%= packageName %>.domain.<%= entity %>;
+import <%= packageName %>.repository.search.<%= entity %>SearchRepository;
+import <%= packageName %>.repository.<%= entity %>Repository;
+import <%= packageName %>.dto.SearchDTO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+/**
+ * Service pour les opérations de recherche liées à l'entité <%= entity %>.
+ */
+@Service
+@Transactional
+public class <%= entity %>SearchService {
+
+    private final Logger log = LoggerFactory.getLogger(<%= entity %>SearchService.class);
+
+    private final <%= entity %>Repository <%= entity.toLowerCase() %>Repository;
+    private final <%= entity %>SearchRepository <%= entity.toLowerCase() %>SearchRepository;
+
+    public <%= entity %>SearchService(
+        <%= entity %>Repository <%= entity.toLowerCase() %>Repository,
+        <%= entity %>SearchRepository <%= entity.toLowerCase() %>SearchRepository
+    ) {
+        this.<%= entity.toLowerCase() %>Repository = <%= entity.toLowerCase() %>Repository;
+        this.<%= entity.toLowerCase() %>SearchRepository = <%= entity.toLowerCase() %>SearchRepository;
+    }
+
+    /**
+     * Sauvegarde une entité <%= entity %> dans l'index Elasticsearch.
+     *
+     * @param <%= entity.toLowerCase() %> l'entité à indexer
+     * @return l'entité indexée
+     */
+    public <%= entity %> save(<%= entity %> <%= entity.toLowerCase() %>) {
+        log.debug("Request to save <%= entity %> : {}", <%= entity.toLowerCase() %>);
+        <%= entity %> result = <%= entity.toLowerCase() %>Repository.save(<%= entity.toLowerCase() %>);
+        <%= entity.toLowerCase() %>SearchRepository.save(result);
+        return result;
+    }
+
+    /**
+     * Recherche des entités <%= entity %> par terme de recherche.
+     *
+     * @param query terme de recherche
+     * @return liste des entités correspondantes
+     */
+    @Transactional(readOnly = true)
+    public List<<%= entity %>> search(String query) {
+        log.debug("Request to search <%= entity %> for query {}", query);
+        return <%= entity.toLowerCase() %>SearchRepository.search(query);
+    }
+
+    /**
+     * Recherche avancée des entités <%= entity %>.
+     *
+     * @param searchDTO critères de recherche avancée
+     * @return map contenant les résultats et métadonnées
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> advancedSearch(SearchDTO searchDTO) {
+        log.debug("Request to perform advanced search on <%= entity %> with criteria: {}", searchDTO);
+
+        // Implémenter ici la logique de recherche avancée
+        List<<%= entity %>> results = <%= entity.toLowerCase() %>SearchRepository.search(searchDTO.getQuery());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("results", results);
+        response.put("count", results.size());
+
+        return response;
+    }
+
+    /**
+     * Réindexe toutes les entités <%= entity %> dans Elasticsearch.
+     *
+     * @return statistiques d'indexation
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> reindexAll() {
+        log.debug("Request to reindex all <%= entity %>");
+
+        // Supprimer l'index existant
+        <%= entity.toLowerCase() %>SearchRepository.deleteAll();
+
+        // Récupérer toutes les entités et les indexer
+        List<<%= entity %>> entities = StreamSupport
+            .stream(<%= entity.toLowerCase() %>Repository.findAll().spliterator(), false)
+            .collect(Collectors.toList());
+
+        int count = 0;
+        for (<%= entity %> entity : entities) {
+            <%= entity.toLowerCase() %>SearchRepository.save(entity);
+            count++;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("indexed", count);
+        result.put("status", "completed");
+
+        return result;
+    }
+
+    /**
+     * Supprime une entité <%= entity %> de l'index Elasticsearch.
+     *
+     * @param id l'ID de l'entité à supprimer
+     */
+    public void delete(String id) {
+        log.debug("Request to delete <%= entity %> from Elasticsearch index: {}", id);
+        <%= entity.toLowerCase() %>SearchRepository.deleteById(id);
+    }
+}

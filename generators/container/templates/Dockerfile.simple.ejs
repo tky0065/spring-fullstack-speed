@@ -1,0 +1,27 @@
+FROM <%= baseImage %>
+VOLUME /tmp
+WORKDIR /app
+
+<% if (buildTool === 'maven') { %>
+# Copier le jar vers le container
+COPY target/*.jar app.jar
+<% } else { %>
+COPY build/libs/*.jar app.jar
+<% } %>
+
+<% if (healthcheck) { %>
+# Configuration du Health Check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:<%= containerPort %><%= healthcheckPath %> || exit 1
+<% } %>
+
+# Utilisateur non-root pour plus de sécurité
+RUN addgroup --system --gid 1000 appuser && \
+    adduser --system --uid 1000 --ingroup appuser --shell /bin/false appuser
+USER appuser:appuser
+
+# Variables d'environnement pour JVM
+ENV JAVA_OPTS="<%= javaOpts %>"
+
+EXPOSE <%= containerPort %>
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar app.jar"]

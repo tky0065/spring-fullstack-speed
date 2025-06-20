@@ -1,0 +1,170 @@
+# Guide de Containerisation Docker
+
+Ce document explique comment utiliser la configuration Docker générée pour votre application Spring Boot.
+
+## Table des Matières
+1. [Prérequis](#prérequis)
+2. [Structure des Fichiers](#structure-des-fichiers)
+3. [Construction de l'Image Docker](#construction-de-limage-docker)
+4. [Exécution du Container](#exécution-du-container)
+5. [Docker Compose](#docker-compose)
+6. [Gestion des Secrets](#gestion-des-secrets)
+7. [Déploiement](#déploiement)
+8. [Bonnes Pratiques](#bonnes-pratiques)
+
+## Prérequis
+
+Avant de commencer, assurez-vous d'avoir installé :
+- Docker Engine (version 20.10.0 ou supérieure)
+- Docker Compose (version 2.0.0 ou supérieure)
+<% if (dockerCompose) { %>
+- Les services externes nécessaires (configurés dans docker-compose.yml)
+<% } %>
+
+## Structure des Fichiers
+
+Votre projet contient désormais les fichiers Docker suivants :
+
+```
+📁 projet-racine
+├── 📄 Dockerfile                 # Configuration principale du container Docker
+├── 📄 .dockerignore              # Liste des fichiers à exclure du build Docker
+├── 📄 docker-compose.yml         # Configuration pour orchestrer plusieurs services
+└── 📁 docker/
+    ├── 📁 scripts/               # Scripts utilitaires pour Docker
+    │   ├── 📄 build.sh           # Script pour construire l'image
+    │   ├── 📄 run.sh             # Script pour exécuter le container
+    │   └── 📄 deploy.sh          # Script pour déployer l'application
+    ├── 📁 secrets/               # Gestion des secrets
+    │   ├── 📄 secrets-example.env # Exemple de variables d'environnement
+    │   └── 📄 manage-secrets.sh  # Script de gestion des secrets
+    └── 📁 docs/                  # Documentation Docker
+```
+
+## Construction de l'Image Docker
+
+<% if (multiStage) { %>
+Votre application utilise un Dockerfile multi-stage pour optimiser la taille et la sécurité de l'image finale.
+<% } else { %>
+Votre application utilise un Dockerfile simple qui crée une image Docker à partir de votre application packagée.
+<% } %>
+
+### Méthode Manuelle
+
+Pour construire l'image Docker manuellement :
+
+```bash
+# Construction du projet (Maven ou Gradle)
+<% if (buildTool === 'maven') { %>
+./mvnw clean package -DskipTests
+<% } else { %>
+./gradlew clean build -x test
+<% } %>
+
+# Construction de l'image Docker
+docker build -t <%= applicationName %>:latest .
+```
+
+### Utilisation du Script de Build
+
+Vous pouvez également utiliser le script de build fourni :
+
+```bash
+# Rendre le script exécutable
+chmod +x docker/scripts/build.sh
+
+# Exécuter le script
+./docker/scripts/build.sh
+```
+
+Le script de build détectera automatiquement la version de votre application depuis votre fichier de build et tagguera l'image en conséquence.
+
+## Exécution du Container
+
+### Méthode Manuelle
+
+Pour exécuter votre container Docker manuellement :
+
+```bash
+docker run -d --name <%= applicationName %> -p <%= containerPort %>:<%= containerPort %> <%= applicationName %>:latest
+```
+
+### Utilisation du Script d'Exécution
+
+Vous pouvez également utiliser le script d'exécution fourni :
+
+```bash
+# Rendre le script exécutable
+chmod +x docker/scripts/run.sh
+
+# Exécuter le script
+./docker/scripts/run.sh
+```
+
+## Docker Compose
+
+<% if (dockerCompose) { %>
+Le fichier `docker-compose.yml` permet d'orchestrer votre application avec les services dont elle dépend.
+
+### Services Inclus
+
+Votre configuration Docker Compose inclut les services suivants :
+
+- **<%= applicationName %>** : Votre application Spring Boot
+<% services.forEach(function(service) { %>
+- **<%= service %>** : <%= service === 'postgres' ? 'PostgreSQL database' : service === 'mysql' ? 'MySQL database' : service === 'mongodb' ? 'MongoDB database' : service === 'redis' ? 'Redis cache' : service === 'elasticsearch' ? 'Elasticsearch search engine' : service === 'kibana' ? 'Kibana dashboard for Elasticsearch' : service === 'rabbitmq' ? 'RabbitMQ message broker' : service === 'kafka' ? 'Kafka streaming platform' : service === 'prometheus' ? 'Prometheus monitoring' : service === 'grafana' ? 'Grafana dashboards' : service %>
+<% }); %>
+
+### Démarrer l'Environnement Complet
+
+Pour démarrer tous les services définis dans docker-compose.yml :
+
+```bash
+docker compose up -d
+```
+
+### Arrêter l'Environnement
+
+Pour arrêter tous les services :
+
+```bash
+docker compose down
+```
+<% } else { %>
+Docker Compose n'a pas été configuré pour ce projet. Si vous souhaitez l'ajouter ultérieurement, vous pouvez régénérer la configuration Docker avec l'option Docker Compose activée.
+<% } %>
+
+## Gestion des Secrets
+
+Pour gérer les variables d'environnement et secrets de manière sécurisée, un script utilitaire est fourni.
+
+```bash
+# Rendre le script exécutable
+chmod +x docker/secrets/manage-secrets.sh
+
+# Créer un fichier .env à partir du modèle
+cd docker/secrets
+./manage-secrets.sh create
+
+# Chiffrer le fichier .env pour un stockage sécurisé
+./manage-secrets.sh encrypt
+
+# Déchiffrer un fichier .env.enc existant
+./manage-secrets.sh decrypt
+```
+
+## Déploiement
+
+Pour déployer l'application sur un serveur distant :
+
+```bash
+# Rendre le script exécutable
+chmod +x docker/scripts/deploy.sh
+
+# Déployer sur un serveur distant (nécessite SSH)
+REMOTE_HOST=your-server.com REMOTE_USER=your-username ./docker/scripts/deploy.sh
+```
+
+## Bonnes Pratiques
+
+Consultez le document [docker-best-practices.md](./docker-best-practices.md) pour des conseils sur les meilleures pratiques Docker à suivre pour votre application.

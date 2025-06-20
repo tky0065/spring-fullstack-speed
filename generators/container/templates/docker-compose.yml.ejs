@@ -1,0 +1,302 @@
+version: '3.8'
+
+services:
+  <%= applicationName %>:
+    build:
+      context: .
+    image: <%= applicationName %>:latest
+    container_name: <%= applicationName %>
+    restart: unless-stopped
+<% if (healthcheck) { %>
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:<%= containerPort %><%= healthcheckPath %>"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+<% } %>
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+<% if (dbDetails.type !== 'none') { %>
+      - SPRING_DATASOURCE_URL=jdbc:<%= dbDetails.type %>://<%= dbDetails.type %>:<%= dbDetails.port %>/<%= dbDetails.database %>
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-<%= dbDetails.username %>}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-<%= dbDetails.password %>}
+<% } %>
+<% if (hasElasticsearch) { %>
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+<% } %>
+<% if (hasRedis) { %>
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+<% } %>
+<% if (hasRabbitMQ) { %>
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+<% } %>
+<% if (hasKafka) { %>
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+<% } %>
+    ports:
+      - "${APP_PORT:-<%= containerPort %>}:<%= containerPort %>"
+    depends_on:
+<% services.forEach(function(service) { %>
+      - <%= service %>
+<% }); %>
+    networks:
+      - app-network
+
+<% if (services.includes('postgres')) { %>
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USERNAME:-<%= dbDetails.username %>}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-<%= dbDetails.password %>}
+      - POSTGRES_DB=${DB_NAME:-<%= dbDetails.database %>}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-<%= dbDetails.username %>}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('mysql')) { %>
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=${DB_NAME:-<%= dbDetails.database %>}
+      - MYSQL_USER=${DB_USERNAME:-<%= dbDetails.username %>}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-<%= dbDetails.password %>}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USERNAME:-<%= dbDetails.username %>}", "-p${DB_PASSWORD:-<%= dbDetails.password %>}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('mongodb')) { %>
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USERNAME:-<%= dbDetails.username %>}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD:-<%= dbDetails.password %>}
+      - MONGO_INITDB_DATABASE=${DB_NAME:-<%= dbDetails.database %>}
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/${DB_NAME:-<%= dbDetails.database %>} --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('redis')) { %>
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('elasticsearch')) { %>
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('kibana')) { %>
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.4
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('rabbitmq')) { %>
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('kafka')) { %>
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    restart: unless-stopped
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "${ZOOKEEPER_PORT:-2181}:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('prometheus')) { %>
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - app-network
+<% } %>
+
+<% if (services.includes('grafana')) { %>
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    networks:
+      - app-network
+<% } %>
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+<% if (services.includes('postgres')) { %>
+  postgres-data:
+<% } %>
+<% if (services.includes('mysql')) { %>
+  mysql-data:
+<% } %>
+<% if (services.includes('mongodb')) { %>
+  mongodb-data:
+<% } %>
+<% if (services.includes('redis')) { %>
+  redis-data:
+<% } %>
+<% if (services.includes('elasticsearch')) { %>
+  elasticsearch-data:
+<% } %>
+<% if (services.includes('rabbitmq')) { %>
+  rabbitmq-data:
+<% } %>
+<% if (services.includes('kafka')) { %>
+  kafka-data:
+  zookeeper-data:
+  zookeeper-log:
+<% } %>
+<% if (services.includes('prometheus')) { %>
+  prometheus-data:
+<% } %>
+<% if (services.includes('grafana')) { %>
+  grafana-data:
+<% } %>

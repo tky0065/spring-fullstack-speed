@@ -1,0 +1,176 @@
+package <%= packageName %>.dto;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ * DTO pour les résultats de recherche.
+ */
+public class SearchResultDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String indexName;
+    private long totalHits;
+    private long tookInMs;
+    private List<Object> results = new ArrayList<>();
+    private List<String> highlightedFields = new ArrayList<>();
+
+    // Pagination
+    private int page;
+    private int size;
+    private long totalPages;
+
+    // Facettes/Agrégations
+    private List<FacetResult> facets = new ArrayList<>();
+
+    // Classe interne pour les facettes
+    public static class FacetResult implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private String name;
+        private List<FacetEntry> entries = new ArrayList<>();
+
+        public FacetResult() {
+        }
+
+        public FacetResult(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public List<FacetEntry> getEntries() {
+            return entries;
+        }
+
+        public void setEntries(List<FacetEntry> entries) {
+            this.entries = entries;
+        }
+    }
+
+    public static class FacetEntry implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private String key;
+        private long count;
+
+        public FacetEntry() {
+        }
+
+        public FacetEntry(String key, long count) {
+            this.key = key;
+            this.count = count;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public void setKey(String key) {
+            this.key = key;
+        }
+
+        public long getCount() {
+            return count;
+        }
+
+        public void setCount(long count) {
+            this.count = count;
+        }
+    }
+
+    // Constructeurs
+    public SearchResultDTO() {
+    }
+
+    public SearchResultDTO(String indexName, long totalHits, long tookInMs) {
+        this.indexName = indexName;
+        this.totalHits = totalHits;
+        this.tookInMs = tookInMs;
+    }
+
+    // Getters et Setters
+    public String getIndexName() {
+        return indexName;
+    }
+
+    public void setIndexName(String indexName) {
+        this.indexName = indexName;
+    }
+
+    public long getTotalHits() {
+        return totalHits;
+    }
+
+    public void setTotalHits(long totalHits) {
+        this.totalHits = totalHits;
+    }
+
+    public long getTookInMs() {
+        return tookInMs;
+    }
+
+    public void setTookInMs(long tookInMs) {
+        this.tookInMs = tookInMs;
+    }
+
+    public List<Object> getResults() {
+        return results;
+    }
+
+    public void setResults(List<Object> results) {
+        this.results = results;
+    }
+
+    public void addResult(Object result) {
+        this.results.add(result);
+    }
+
+    public List<String> getHighlightedFields() {
+        return highlightedFields;
+    }
+
+    public void setHighlightedFields(List<String> highlightedFields) {
+        this.highlightedFields = highlightedFields;
+    }
+
+    public int getPage() {
+        return page;
+    }
+
+    public void setPage(int page) {
+        this.page = page;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public long getTotalPages() {
+        return totalPages;
+    }
+
+    public void setTotalPages(long totalPages) {
+        this.totalPages = totalPages;
+    }
+
+    public List<FacetResult> getFacets() {
+        return facets;
+    }
+
+    public void setFacets(List<FacetResult> facets) {
+        this.facets = facets;
+    }
+}

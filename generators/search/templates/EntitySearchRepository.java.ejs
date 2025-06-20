@@ -1,0 +1,74 @@
+package <%= packageName %>.repository.search;
+
+import <%= packageName %>.domain.<%= entity %>;
+import org.springframework.stereotype.Repository;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.core.query.Query;
+import org.elasticsearch.index.query.QueryBuilders;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Repository Elasticsearch pour l'entité <%= entity %>.
+ */
+@Repository
+public class <%= entity %>SearchRepository {
+
+    private final ElasticsearchOperations operations;
+
+    public <%= entity %>SearchRepository(ElasticsearchOperations operations) {
+        this.operations = operations;
+    }
+
+    /**
+     * Sauvegarde une entité <%= entity %> dans l'index Elasticsearch.
+     *
+     * @param entity l'entité à indexer
+     * @return l'entité indexée
+     */
+    public <%= entity %> save(<%= entity %> entity) {
+        return operations.save(entity);
+    }
+
+    /**
+     * Recherche d'entités <%= entity %> par terme de recherche.
+     *
+     * @param searchTerm terme de recherche
+     * @return liste des entités correspondantes
+     */
+    public List<<%= entity %>> search(String searchTerm) {
+        Query query = new NativeSearchQueryBuilder()
+            .withQuery(QueryBuilders.multiMatchQuery(searchTerm,
+                "name", "description", "keywords"))  // Adapter ces champs selon l'entité
+            .build();
+
+        SearchHits<<%= entity %>> searchHits = operations.search(query, <%= entity %>.class);
+
+        return searchHits.stream()
+            .map(SearchHit::getContent)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Supprime une entité <%= entity %> de l'index Elasticsearch.
+     *
+     * @param id identifiant de l'entité à supprimer
+     */
+    public void deleteById(String id) {
+        operations.delete(id, <%= entity %>.class);
+    }
+
+    /**
+     * Supprime toutes les entités <%= entity %> de l'index Elasticsearch.
+     */
+    public void deleteAll() {
+        Query query = new NativeSearchQueryBuilder()
+            .withQuery(QueryBuilders.matchAllQuery())
+            .build();
+        operations.delete(query, <%= entity %>.class);
+    }
+}

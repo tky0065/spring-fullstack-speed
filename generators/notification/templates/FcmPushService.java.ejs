@@ -1,0 +1,293 @@
+package <%= packageName %>.service.impl;
+
+import <%= packageName %>.dto.PushNotificationDTO;
+import <%= packageName %>.service.PushNotificationService;
+import com.google.firebase.messaging.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Service pour l'envoi de notifications push via Firebase Cloud Messaging (FCM).
+ */
+@Service
+public class FcmPushService implements PushNotificationService {
+
+    private final Logger log = LoggerFactory.getLogger(FcmPushService.class);
+
+    @Value("${application.push-notification.enabled:true}")
+    private boolean pushNotificationEnabled;
+
+    // Statistiques
+    private final AtomicInteger sentCount = new AtomicInteger(0);
+    private final AtomicInteger failedCount = new AtomicInteger(0);
+    private final ConcurrentHashMap<String, AtomicInteger> topicUsage = new ConcurrentHashMap<>();
+
+    /**
+     * {@inheritDoc}
+     * Implémentation FCM pour l'envoi de notification à un token spécifique.
+     */
+    @Async
+    @Override
+    public boolean sendNotification(PushNotificationDTO notification) {
+        if (!pushNotificationEnabled) {
+            log.debug("Push notifications are disabled");
+            return false;
+        }
+
+        try {
+            log.debug("Sending push notification: {}", notification);
+
+            Message message = buildMessage(notification);
+            String response = FirebaseMessaging.getInstance().send(message);
+
+            log.debug("Successfully sent notification: {}", response);
+            sentCount.incrementAndGet();
+
+            // Enregistrer l'utilisation du topic si applicable
+            if (notification.getTopic() != null) {
+                topicUsage.computeIfAbsent(notification.getTopic(), k -> new AtomicInteger()).incrementAndGet();
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send FCM notification", e);
+            failedCount.incrementAndGet();
+            return false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Implémentation FCM pour l'envoi de notification à plusieurs tokens.
+     */
+    @Async
+    @Override
+    public Map<String, Object> sendMulticastNotification(PushNotificationDTO notification) {
+        if (!pushNotificationEnabled) {
+            log.debug("Push notifications are disabled");
+            return Map.of("success", false, "reason", "Push notifications are disabled");
+        }
+
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            log.debug("Sending multicast push notification to {} recipients", notification.getTokens().length);
+
+            MulticastMessage multicastMessage = buildMulticastMessage(notification);
+            BatchResponse response = FirebaseMessaging.getInstance().sendMulticast(multicastMessage);
+
+            log.debug("Sent multicast notification. Success count: {}, Failure count: {}",
+                      response.getSuccessCount(), response.getFailureCount());
+
+            sentCount.addAndGet(response.getSuccessCount());
+            failedCount.addAndGet(response.getFailureCount());
+
+            result.put("success", true);
+            result.put("successCount", response.getSuccessCount());
+            result.put("failureCount", response.getFailureCount());
+
+            // Extraire les erreurs si nécessaire
+            if (response.getFailureCount() > 0) {
+                List<Map<String, Object>> errors = new ArrayList<>();
+                List<SendResponse> responses = response.getResponses();
+
+                for (int i = 0; i < responses.size(); i++) {
+                    SendResponse resp = responses.get(i);
+                    if (!resp.isSuccessful()) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("index", i);
+                        error.put("token", notification.getTokens()[i]);
+                        error.put("error", resp.getException().getMessage());
+                        errors.add(error);
+                    }
+                }
+
+                result.put("errors", errors);
+            }
+
+            return result;
+        } catch (Exception e) {
+            log.error("Failed to send FCM multicast notification", e);
+            failedCount.addAndGet(notification.getTokens().length);
+
+            result.put("success", false);
+            result.put("reason", e.getMessage());
+            return result;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * Implémentation FCM pour l'envoi de notification à un topic.
+     */
+    @Async
+    @Override
+    public boolean sendTopicNotification(PushNotificationDTO notification) {
+        if (!pushNotificationEnabled) {
+            log.debug("Push notifications are disabled");
+            return false;
+        }
+
+        try {
+            log.debug("Sending push notification to topic: {}", notification.getTopic());
+
+            Message message = buildTopicMessage(notification);
+            String response = FirebaseMessaging.getInstance().send(message);
+
+            log.debug("Successfully sent notification to topic: {}", response);
+            sentCount.incrementAndGet();
+
+            // Enregistrer l'utilisation du topic
+            topicUsage.computeIfAbsent(notification.getTopic(), k -> new AtomicInteger()).incrementAndGet();
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to send FCM topic notification", e);
+            failedCount.incrementAndGet();
+            return false;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Map<String, Object> getPushNotificationStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("sentCount", sentCount.get());
+        stats.put("failedCount", failedCount.get());
+        stats.put("topicUsage", topicUsage);
+        stats.put("provider", "Firebase Cloud Messaging");
+        return stats;
+    }
+
+    /**
+     * Construit un message FCM pour un token spécifique.
+     *
+     * @param notification les détails de la notification
+     * @return le message FCM construit
+     */
+    private Message buildMessage(PushNotificationDTO notification) {
+        return Message.builder()
+            .setToken(notification.getToken())
+            .setNotification(buildNotification(notification))
+            .putAllData(notification.getData())
+            .setAndroidConfig(buildAndroidConfig(notification))
+            .setApnsConfig(buildApnsConfig(notification))
+            .setWebpushConfig(buildWebpushConfig(notification))
+            .build();
+    }
+
+    /**
+     * Construit un message FCM pour plusieurs tokens.
+     *
+     * @param notification les détails de la notification
+     * @return le message FCM multicast construit
+     */
+    private MulticastMessage buildMulticastMessage(PushNotificationDTO notification) {
+        return MulticastMessage.builder()
+            .addAllTokens(List.of(notification.getTokens()))
+            .setNotification(buildNotification(notification))
+            .putAllData(notification.getData())
+            .setAndroidConfig(buildAndroidConfig(notification))
+            .setApnsConfig(buildApnsConfig(notification))
+            .setWebpushConfig(buildWebpushConfig(notification))
+            .build();
+    }
+
+    /**
+     * Construit un message FCM pour un topic.
+     *
+     * @param notification les détails de la notification
+     * @return le message FCM construit
+     */
+    private Message buildTopicMessage(PushNotificationDTO notification) {
+        return Message.builder()
+            .setTopic(notification.getTopic())
+            .setNotification(buildNotification(notification))
+            .putAllData(notification.getData())
+            .setAndroidConfig(buildAndroidConfig(notification))
+            .setApnsConfig(buildApnsConfig(notification))
+            .setWebpushConfig(buildWebpushConfig(notification))
+            .build();
+    }
+
+    /**
+     * Construit l'objet notification FCM.
+     *
+     * @param notification les détails de la notification
+     * @return l'objet notification FCM construit
+     */
+    private Notification buildNotification(PushNotificationDTO notification) {
+        return Notification.builder()
+            .setTitle(notification.getTitle())
+            .setBody(notification.getBody())
+            .setImage(notification.getImageUrl())
+            .build();
+    }
+
+    /**
+     * Construit la configuration Android pour FCM.
+     *
+     * @param notification les détails de la notification
+     * @return la configuration Android construite
+     */
+    private AndroidConfig buildAndroidConfig(PushNotificationDTO notification) {
+        return AndroidConfig.builder()
+            .setTtl(notification.getTimeToLive() * 1000L) // FCM utilise des millisecondes
+            .setPriority(notification.getPriority().equals("high") ?
+                         AndroidConfig.Priority.HIGH : AndroidConfig.Priority.NORMAL)
+            .setNotification(AndroidNotification.builder()
+                .setTitle(notification.getTitle())
+                .setBody(notification.getBody())
+                .setIcon("ic_notification")
+                .setSound("default")
+                .setClickAction(notification.getClickAction())
+                .build())
+            .build();
+    }
+
+    /**
+     * Construit la configuration APNS (iOS) pour FCM.
+     *
+     * @param notification les détails de la notification
+     * @return la configuration APNS construite
+     */
+    private ApnsConfig buildApnsConfig(PushNotificationDTO notification) {
+        return ApnsConfig.builder()
+            .setAps(Aps.builder()
+                .setAlert(ApsAlert.builder()
+                    .setTitle(notification.getTitle())
+                    .setBody(notification.getBody())
+                    .build())
+                .setSound("default")
+                .build())
+            .build();
+    }
+
+    /**
+     * Construit la configuration Webpush pour FCM.
+     *
+     * @param notification les détails de la notification
+     * @return la configuration Webpush construite
+     */
+    private WebpushConfig buildWebpushConfig(PushNotificationDTO notification) {
+        return WebpushConfig.builder()
+            .setNotification(WebpushNotification.builder()
+                .setTitle(notification.getTitle())
+                .setBody(notification.getBody())
+                .setIcon(notification.getImageUrl())
+                .build())
+            .build();
+    }
+}

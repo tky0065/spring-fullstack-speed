@@ -1,0 +1,77 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.dto.SearchDTO;
+import <%= packageName %>.dto.SearchResultDTO;
+
+import org.springframework.stereotype.Service;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.core.query.Query;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.HashMap;
+
+/**
+ * Service principal pour les fonctionnalités de recherche globales.
+ */
+@Service
+public class SearchService {
+
+    private final ElasticsearchOperations elasticsearchOperations;
+
+    public SearchService(ElasticsearchOperations elasticsearchOperations) {
+        this.elasticsearchOperations = elasticsearchOperations;
+    }
+
+    /**
+     * Effectue une recherche globale sur plusieurs indices Elasticsearch.
+     *
+     * @param searchDTO DTO contenant les paramètres de recherche
+     * @return résultats de recherche agrégés
+     */
+    public Map<String, SearchResultDTO> globalSearch(SearchDTO searchDTO) {
+        Map<String, SearchResultDTO> results = new HashMap<>();
+
+        // Ajouter ici la logique pour rechercher dans différents indices
+        // Ce code est à adapter selon les entités disponibles dans le projet
+
+        return results;
+    }
+
+    /**
+     * Recherche générique sur une seule classe.
+     *
+     * @param searchTerm terme de recherche
+     * @param fields champs sur lesquels effectuer la recherche
+     * @param entityClass classe de l'entité cible
+     * @param <T> type de l'entité
+     * @return liste des résultats trouvés
+     */
+    public <T> List<T> searchEntity(String searchTerm, String[] fields, Class<T> entityClass) {
+        Query query = new NativeSearchQueryBuilder()
+            .withQuery(QueryBuilders.multiMatchQuery(searchTerm, fields))
+            .build();
+
+        SearchHits<T> searchHits = elasticsearchOperations.search(query, entityClass);
+
+        return searchHits.stream()
+            .map(SearchHit::getContent)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Analyse les statistiques des indices Elasticsearch.
+     *
+     * @return map des statistiques d'indexation
+     */
+    public Map<String, Object> getSearchStats() {
+        Map<String, Object> stats = new HashMap<>();
+        // Implémentation pour récupérer les statistiques Elasticsearch
+        return stats;
+    }
+}

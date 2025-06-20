@@ -1,0 +1,61 @@
+#!/bin/bash
+# Script de construction d'image Docker pour <%= applicationName %>
+
+set -e
+
+# Couleurs pour les messages
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Variables
+IMAGE_NAME="<%= applicationName %>"
+VERSION=$(grep -oP 'version[\s=:"]*\K[0-9]+\.[0-9]+\.[0-9]+' pom.xml || echo "1.0.0")
+REGISTRY="${DOCKER_REGISTRY:-<%= dockerRegistry %>}"
+TAG="${VERSION}"
+LATEST_TAG="latest"
+
+echo -e "${YELLOW}Building Docker image for $IMAGE_NAME:$TAG${NC}"
+
+# Vérifier que Dockerfile existe
+if [ ! -f "Dockerfile" ]; then
+    echo -e "${RED}Erreur: Dockerfile non trouvé${NC}"
+    exit 1
+fi
+
+# Construction de l'application
+if [ -f "mvnw" ]; then
+    echo -e "${YELLOW}Construction du projet avec Maven...${NC}"
+    ./mvnw clean package -DskipTests
+elif [ -f "gradlew" ]; then
+    echo -e "${YELLOW}Construction du projet avec Gradle...${NC}"
+    ./gradlew clean build -x test
+else
+    echo -e "${RED}Erreur: Ni Maven ni Gradle n'ont été détectés${NC}"
+    exit 1
+fi
+
+# Construction de l'image Docker
+echo -e "${YELLOW}Construction de l'image Docker...${NC}"
+docker build -t $IMAGE_NAME:$TAG .
+
+# Tagger avec latest
+echo -e "${YELLOW}Tagging avec latest...${NC}"
+docker tag $IMAGE_NAME:$TAG $IMAGE_NAME:$LATEST_TAG
+
+# Si un registry est spécifié, on pousse l'image
+if [ "$REGISTRY" != "localhost" ]; then
+    # Tagger pour le registry
+    echo -e "${YELLOW}Tagging pour le registry $REGISTRY...${NC}"
+    docker tag $IMAGE_NAME:$TAG $REGISTRY/$IMAGE_NAME:$TAG
+    docker tag $IMAGE_NAME:$LATEST_TAG $REGISTRY/$IMAGE_NAME:$LATEST_TAG
+
+    # Pousser vers le registry
+    echo -e "${YELLOW}Pushing vers le registry $REGISTRY...${NC}"
+    docker push $REGISTRY/$IMAGE_NAME:$TAG
+    docker push $REGISTRY/$IMAGE_NAME:$LATEST_TAG
+fi
+
+echo -e "${GREEN}Image Docker $IMAGE_NAME:$TAG construite avec succès!${NC}"
+echo -e "${GREEN}Pour lancer le container: ./docker/run.sh${NC}"
