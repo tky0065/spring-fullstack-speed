@@ -1,0 +1,299 @@
+pipeline {
+    agent any
+
+    environment {
+        JAVA_HOME = tool 'JDK17'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+        APP_NAME = "${env.JOB_NAME.split('/')[0]}"
+<% if (dockerRegistry) { %>
+        DOCKER_REGISTRY = '<%= dockerRegistry %>'
+<% } %>
+    }
+
+    tools {
+        maven 'Maven 3.8'
+        jdk 'JDK17'
+    }
+
+<% if (caching) { %>
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        skipStagesAfterUnstable()
+    }
+<% } %>
+
+    stages {
+<% if (stages.includes('static-analysis')) { %>
+        stage('Static Analysis') {
+            steps {
+                echo 'Running static code analysis...'
+                sh 'mvn -B clean checkstyle:check spotless:check'
+<% if (sonarqube) { %>
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B verify sonar:sonar -Dsonar.projectKey=${APP_NAME} -Dsonar.qualitygate.wait=true'
+                }
+<% } %>
+            }
+        }
+<% } %>
+
+<% if (stages.includes('tests')) { %>
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                sh 'mvn -B test'
+<% if (qualityGates.includes('test-coverage')) { %>
+                sh 'mvn -B verify -Pcoverage'
+                script {
+                    def jacocoReport = readFile file: 'target/site/jacoco/index.html'
+                    def coverageMatch = jacocoReport =~ /Total[^%]*?([0-9]+)%/
+                    def coverage = coverageMatch ? coverageMatch[0][1] as int : 0
+
+                    if (coverage < 80) {
+                        error "Test coverage is below 80%: ${coverage}%"
+                    } else {
+                        echo "Test coverage is ${coverage}%"
+                    }
+                }
+<% } %>
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/**/*.xml'
+                }
+            }
+        }
+<% } %>
+
+<% if (stages.includes('build')) { %>
+        stage('Build') {
+            steps {
+                echo 'Building application...'
+                sh 'mvn -B clean package -DskipTests'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+<% } %>
+
+<% if (stages.includes('docker')) { %>
+        stage('Docker Build') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    def dockerImage
+<% if (dockerRegistry) { %>
+                    dockerImage = docker.build("${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}")
+<% } else { %>
+                    dockerImage = docker.build("${APP_NAME}:${env.BUILD_NUMBER}")
+<% } %>
+
+                    // Tagger également avec latest pour la branche principale
+                    if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
+<% if (dockerRegistry) { %>
+                        dockerImage.tag("${DOCKER_REGISTRY}/${APP_NAME}:latest")
+<% } else { %>
+                        dockerImage.tag("${APP_NAME}:latest")
+<% } %>
+                    }
+
+                    // Push de l'image
+                    docker.withRegistry(<% if (dockerRegistry) { %>'https://${DOCKER_REGISTRY}'<% } else { %>''<% } %>, 'docker-credentials') {
+                        dockerImage.push("${env.BUILD_NUMBER}")
+
+                        if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
+                            dockerImage.push('latest')
+                        }
+                    }
+                }
+            }
+        }
+<% } %>
+
+<% if (stages.includes('deploy')) { %>
+<% environments.forEach(function(env, index) { %>
+        stage('Deploy to <%= env %>') {
+            when {
+<% if (env === 'prod') { %>
+                branch 'main'
+<% } else if (env === 'staging') { %>
+                branch 'master'
+<% } else { %>
+                branch 'develop'
+<% } %>
+            }
+            steps {
+                echo 'Deploying to <%= env %>...'
+<% if (deploymentStrategy === 'blue-green') { %>
+                script {
+                    def remote = [:]
+                    remote.name = '<%= env %>'
+                    remote.host = "${<%= env.toUpperCase() %>_DEPLOY_HOST}"
+                    remote.user = "${<%= env.toUpperCase() %>_DEPLOY_USER}"
+                    remote.allowAnyHosts = true
+                    remote.identityFile = '/var/jenkins_home/.ssh/id_rsa'
+
+                    // Copier les fichiers de déploiement
+                    sshPut remote: remote, from: 'ci/jenkins/blue-green-deploy.sh', into: '/tmp'
+                    sshPut remote: remote, from: "k8s/<%= env %>", into: '/tmp'
+
+                    // Exécuter le déploiement Blue/Green
+<% if (dockerRegistry) { %>
+                    sshCommand remote: remote, command: "bash /tmp/blue-green-deploy.sh <%= env %> ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}"
+<% } else { %>
+                    sshCommand remote: remote, command: "bash /tmp/blue-green-deploy.sh <%= env %> ${APP_NAME}:${env.BUILD_NUMBER}"
+<% } %>
+                }
+<% } else if (deploymentStrategy === 'canary') { %>
+                script {
+                    def remote = [:]
+                    remote.name = '<%= env %>'
+                    remote.host = "${<%= env.toUpperCase() %>_DEPLOY_HOST}"
+                    remote.user = "${<%= env.toUpperCase() %>_DEPLOY_USER}"
+                    remote.allowAnyHosts = true
+                    remote.identityFile = '/var/jenkins_home/.ssh/id_rsa'
+
+                    // Copier les fichiers de déploiement
+                    sshPut remote: remote, from: 'ci/jenkins/canary-deploy.sh', into: '/tmp'
+                    sshPut remote: remote, from: "k8s/<%= env %>", into: '/tmp'
+
+                    // Exécuter le déploiement Canary (10% du trafic)
+<% if (dockerRegistry) { %>
+                    sshCommand remote: remote, command: "bash /tmp/canary-deploy.sh <%= env %> ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}"
+<% } else { %>
+                    sshCommand remote: remote, command: "bash /tmp/canary-deploy.sh <%= env %> ${APP_NAME}:${env.BUILD_NUMBER}"
+<% } %>
+
+                    // Demande de promotion manuelle
+                    def userInput = input(
+                        id: 'userInput',
+                        message: 'Voulez-vous promouvoir le déploiement Canary?',
+                        parameters: [
+                            booleanParam(defaultValue: false, description: 'Promouvoir à 100%?', name: 'promote')
+                        ]
+                    )
+
+                    if (userInput) {
+                        // Promouvoir le déploiement Canary à 100%
+<% if (dockerRegistry) { %>
+                        sshCommand remote: remote, command: "bash /tmp/promote-canary.sh <%= env %> ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}"
+<% } else { %>
+                        sshCommand remote: remote, command: "bash /tmp/promote-canary.sh <%= env %> ${APP_NAME}:${env.BUILD_NUMBER}"
+<% } %>
+                    }
+                }
+<% } else { %>
+                script {
+                    def remote = [:]
+                    remote.name = '<%= env %>'
+                    remote.host = "${<%= env.toUpperCase() %>_DEPLOY_HOST}"
+                    remote.user = "${<%= env.toUpperCase() %>_DEPLOY_USER}"
+                    remote.allowAnyHosts = true
+                    remote.identityFile = '/var/jenkins_home/.ssh/id_rsa'
+
+<% if (dockerRegistry) { %>
+                    def deployCommand = """
+                        docker pull ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}
+                        docker stop ${APP_NAME}-<%= env %> || true
+                        docker rm ${APP_NAME}-<%= env %> || true
+                        docker run -d --name ${APP_NAME}-<%= env %> \\
+                          --restart unless-stopped \\
+                          -p \${<%= env.toUpperCase() %>_APP_PORT}:8080 \\
+                          -e SPRING_PROFILES_ACTIVE=<%= env %> \\
+                          ${DOCKER_REGISTRY}/${APP_NAME}:${env.BUILD_NUMBER}
+                    """
+<% } else { %>
+                    def deployCommand = """
+                        docker pull ${APP_NAME}:${env.BUILD_NUMBER}
+                        docker stop ${APP_NAME}-<%= env %> || true
+                        docker rm ${APP_NAME}-<%= env %> || true
+                        docker run -d --name ${APP_NAME}-<%= env %> \\
+                          --restart unless-stopped \\
+                          -p \${<%= env.toUpperCase() %>_APP_PORT}:8080 \\
+                          -e SPRING_PROFILES_ACTIVE=<%= env %> \\
+                          ${APP_NAME}:${env.BUILD_NUMBER}
+                    """
+<% } %>
+                    sshCommand remote: remote, command: deployCommand
+                }
+<% } %>
+            }
+        }
+<% }); %>
+<% } %>
+
+<% if (stages.includes('release')) { %>
+        stage('Release') {
+            when {
+                expression { return env.TAG_NAME != null && env.TAG_NAME =~ /^v\d+\.\d+\.\d+$/ }
+            }
+            steps {
+                echo "Creating release ${env.TAG_NAME}..."
+                sh "mvn -B versions:set -DnewVersion=${env.TAG_NAME.substring(1)} -DgenerateBackupPoms=false"
+
+                // Créer le changelog
+                script {
+                    def lastTag = sh(script: 'git describe --tags --abbrev=0 HEAD^ || git rev-list --max-parents=0 HEAD', returnStdout: true).trim()
+                    def changelog = sh(script: "git log ${lastTag}..HEAD --pretty=format:'- %s (%h)' --no-merges", returnStdout: true).trim()
+
+                    // Créer la release dans GitHub en utilisant l'API REST GitHub
+                    def response = httpRequest(
+                        url: "https://api.github.com/repos/${env.GITHUB_REPO}/releases",
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        customHeaders: [[name: 'Authorization', value: "token ${env.GITHUB_TOKEN}"]],
+                        requestBody: """{
+                            "tag_name": "${env.TAG_NAME}",
+                            "name": "Release ${env.TAG_NAME}",
+                            "body": "${changelog.replaceAll('"', '\\"')}",
+                            "draft": false,
+                            "prerelease": false
+                        }"""
+                    )
+
+                    echo "Release created: ${response.content}"
+                }
+            }
+        }
+<% } %>
+    }
+
+    post {
+        success {
+            echo 'CI/CD Pipeline completed successfully!'
+<% if (stages.includes('notify') && notifications && notifications.includes('slack')) { %>
+            slackSend(
+                color: 'good',
+                message: "Build succeeded: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+            )
+<% } %>
+<% if (stages.includes('notify') && notifications && notifications.includes('email')) { %>
+            emailext(
+                subject: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+                body: """<p>Build succeeded: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'</p>
+                <p>Check console output at <a href='${env.BUILD_URL}'>${env.BUILD_URL}</a></p>""",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']]
+            )
+<% } %>
+        }
+        failure {
+            echo 'CI/CD Pipeline failed!'
+<% if (stages.includes('notify') && notifications && notifications.includes('slack')) { %>
+            slackSend(
+                color: 'danger',
+                message: "Build failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+            )
+<% } %>
+<% if (stages.includes('notify') && notifications && notifications.includes('email')) { %>
+            emailext(
+                subject: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+                body: """<p>Build failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'</p>
+                <p>Check console output at <a href='${env.BUILD_URL}'>${env.BUILD_URL}</a></p>""",
+                recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']]
+            )
+<% } %>
+        }
+    }
+}

@@ -1,0 +1,290 @@
+stages:
+<% if (stages.includes('static-analysis')) { %>
+  - static-analysis
+<% } %>
+<% if (stages.includes('tests')) { %>
+  - test
+<% } %>
+<% if (stages.includes('build')) { %>
+  - build
+<% } %>
+<% if (stages.includes('docker')) { %>
+  - docker
+<% } %>
+<% if (stages.includes('deploy')) { %>
+  - deploy
+<% } %>
+<% if (stages.includes('release')) { %>
+  - release
+<% } %>
+<% if (stages.includes('notify')) { %>
+  - notify
+<% } %>
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+<% if (caching) { %>
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
+<% } else { %>
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+<% } %>
+  APP_NAME: ${CI_PROJECT_NAME}
+
+<% if (caching) { %>
+cache:
+  paths:
+    - .m2/repository/
+    - .gradle/
+<% } %>
+
+<% if (stages.includes('static-analysis')) { %>
+code-quality:
+  stage: static-analysis
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B clean checkstyle:check spotless:check
+<% if (sonarqube) { %>
+    - mvn -B verify sonar:sonar -Dsonar.projectKey=${CI_PROJECT_NAME} -Dsonar.qualitygate.wait=true
+<% } %>
+  artifacts:
+    reports:
+      junit: target/surefire-reports/TEST-*.xml
+
+linting:
+  stage: static-analysis
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B pmd:check pmd:cpd-check
+<% } %>
+
+<% if (stages.includes('tests')) { %>
+unit-tests:
+  stage: test
+<% if (stages.includes('static-analysis')) { %>
+  needs:
+    - code-quality
+<% } %>
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B test
+  artifacts:
+    paths:
+      - target/surefire-reports/
+    reports:
+      junit: target/surefire-reports/TEST-*.xml
+
+<% if (qualityGates.includes('test-coverage')) { %>
+coverage:
+  stage: test
+  needs:
+    - unit-tests
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B verify -Pcoverage
+    - |
+      COVERAGE=$(cat target/site/jacoco/index.html | grep -o 'Total[^%]*%' | grep -o '[0-9]*%' | grep -o '[0-9]*')
+      if [ "$COVERAGE" -lt "80" ]; then
+        echo "Test coverage is below 80%: $COVERAGE%"
+        exit 1
+      else
+        echo "Test coverage is $COVERAGE%"
+      fi
+  artifacts:
+    paths:
+      - target/site/jacoco/
+<% } %>
+
+<% if (qualityGates.includes('vulnerability')) { %>
+security-scan:
+  stage: test
+  needs:
+    - unit-tests
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B org.owasp:dependency-check-maven:check -DfailOnCVSS=7
+  artifacts:
+    paths:
+      - target/dependency-check-report.html
+<% } %>
+<% } %>
+
+<% if (stages.includes('build')) { %>
+build:
+  stage: build
+<% if (stages.includes('tests')) { %>
+  needs:
+    - unit-tests
+<% } else if (stages.includes('static-analysis')) { %>
+  needs:
+    - code-quality
+<% } %>
+  image: maven:3.8-eclipse-temurin-17
+  script:
+    - mvn -B clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
+<% } %>
+
+<% if (stages.includes('docker')) { %>
+docker-build:
+  stage: docker
+<% if (stages.includes('build')) { %>
+  needs:
+    - build
+<% } else if (stages.includes('tests')) { %>
+  needs:
+    - unit-tests
+<% } else if (stages.includes('static-analysis')) { %>
+  needs:
+    - code-quality
+<% } %>
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+<% if (dockerRegistry) { %>
+    DOCKER_REGISTRY: "<%= dockerRegistry %>"
+<% } %>
+  before_script:
+    - echo -n $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
+<% if (dockerRegistry) { %>
+    - echo -n $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin $DOCKER_REGISTRY
+<% } %>
+  script:
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "main" || "$CI_COMMIT_BRANCH" == "master" ]]; then
+        export TAG="latest"
+      else
+        export TAG=$CI_COMMIT_REF_SLUG
+      fi
+    - docker build -t $CI_REGISTRY_IMAGE:$TAG .
+    - docker push $CI_REGISTRY_IMAGE:$TAG
+<% if (dockerRegistry) { %>
+    - docker tag $CI_REGISTRY_IMAGE:$TAG $DOCKER_REGISTRY/${APP_NAME}:$TAG
+    - docker push $DOCKER_REGISTRY/${APP_NAME}:$TAG
+<% } %>
+<% } %>
+
+<% if (stages.includes('deploy')) { %>
+<% environments.forEach(function(env) { %>
+deploy-to-<%= env %>:
+  stage: deploy
+<% if (stages.includes('docker')) { %>
+  needs:
+    - docker-build
+<% } else if (stages.includes('build')) { %>
+  needs:
+    - build
+<% } else if (stages.includes('tests')) { %>
+  needs:
+    - unit-tests
+<% } else if (stages.includes('static-analysis')) { %>
+  needs:
+    - code-quality
+<% } %>
+  image: alpine:3.16
+  before_script:
+    - apk add --no-cache openssh-client bash curl
+    - eval $(ssh-agent -s)
+    - echo "$DEPLOY_SSH_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+<% if (deploymentStrategy === 'blue-green') { %>
+    - echo "Déploiement de l'application en <%= env %> avec stratégie Blue/Green..."
+    - chmod +x ci/gitlab/blue-green-deploy.sh
+    - ./ci/gitlab/blue-green-deploy.sh $DEPLOY_HOST_<%= env.toUpperCase() %> $DEPLOY_USER_<%= env.toUpperCase() %> <%= env %> $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+<% } else if (deploymentStrategy === 'canary') { %>
+    - echo "Déploiement de l'application en <%= env %> avec stratégie Canary..."
+    - chmod +x ci/gitlab/canary-deploy.sh
+    - ./ci/gitlab/canary-deploy.sh $DEPLOY_HOST_<%= env.toUpperCase() %> $DEPLOY_USER_<%= env.toUpperCase() %> <%= env %> $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+<% } else { %>
+    - echo "Déploiement de l'application en <%= env %>..."
+    - |
+      ssh $DEPLOY_USER_<%= env.toUpperCase() %>@$DEPLOY_HOST_<%= env.toUpperCase() %> "
+        docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+        docker stop ${APP_NAME}-<%= env %> || true
+        docker rm ${APP_NAME}-<%= env %> || true
+        docker run -d --name ${APP_NAME}-<%= env %> \
+          --restart unless-stopped \
+          -p ${APP_PORT_<%= env.toUpperCase() %>}:8080 \
+          -e SPRING_PROFILES_ACTIVE=<%= env %> \
+          $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+      "
+<% } %>
+  environment:
+    name: <%= env %>
+    url: https://${APP_URL_<%= env.toUpperCase() %>}
+  rules:
+    - if: $CI_COMMIT_BRANCH == "<%= env === 'prod' ? 'main' : env === 'staging' ? 'master' : 'develop' %>"
+      when: on_success
+    - if: $CI_PIPELINE_SOURCE == "web" && $DEPLOY_TO_<%= env.toUpperCase() %> == "true"
+      when: manual
+<% }); %>
+<% } %>
+
+<% if (stages.includes('release')) { %>
+create-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    name: 'Release $CI_COMMIT_TAG'
+    description: './CHANGELOG.md'
+    tag_name: '$CI_COMMIT_TAG'
+    assets:
+      links:
+        - name: 'JAR Package'
+          url: '${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/raw/target/${APP_NAME}.jar?job=build'
+<% } %>
+
+<% if (stages.includes('notify')) { %>
+<% if (notifications && notifications.includes('slack')) { %>
+slack-notification:
+  stage: notify
+  image: curlimages/curl:7.84.0
+  script:
+    - |
+      curl -X POST -H 'Content-type: application/json' \
+      --data '{
+        "text": "*Pipeline $CI_PIPELINE_ID ${CI_PIPELINE_STATUS}*\nProject: $CI_PROJECT_NAME\nBranch: $CI_COMMIT_REF_NAME\nCommit: $CI_COMMIT_MESSAGE\nAuthor: $CI_COMMIT_AUTHOR\n<$CI_PIPELINE_URL|View pipeline>"
+      }' \
+      $SLACK_WEBHOOK_URL
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web"
+      when: always
+<% } %>
+
+<% if (notifications && notifications.includes('email')) { %>
+email-notification:
+  stage: notify
+  image: alpine:3.16
+  before_script:
+    - apk add --no-cache msmtp ca-certificates
+  script:
+    - |
+      cat > /etc/msmtprc << EOF
+      defaults
+      auth on
+      tls on
+      tls_trust_file /etc/ssl/certs/ca-certificates.crt
+      account default
+      host $MAIL_SERVER
+      port $MAIL_PORT
+      user $MAIL_USERNAME
+      password $MAIL_PASSWORD
+      from $MAIL_USERNAME
+      EOF
+      echo -e "Subject: GitLab CI - $CI_PROJECT_NAME - Pipeline $CI_PIPELINE_ID ${CI_PIPELINE_STATUS}\n\nProject: $CI_PROJECT_NAME\nBranch: $CI_COMMIT_REF_NAME\nCommit: $CI_COMMIT_MESSAGE\nAuthor: $CI_COMMIT_AUTHOR\nStatus: ${CI_PIPELINE_STATUS}\n\nView pipeline: $CI_PIPELINE_URL" | msmtp $MAIL_RECIPIENTS
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web"
+      when: always
+<% } %>
+<% } %>

@@ -1,11 +1,31 @@
-import { BaseGenerator } from '../base-generator';
-import { GeneratorOptions } from '../types';
+import { BaseGenerator } from '../base-generator.js';
+import { SFSOptions } from '../types.js';
+
+/**
+ * Options spécifiques au générateur de recherche
+ */
+export interface SearchGeneratorOptions extends SFSOptions {
+  elasticsearchCluster?: boolean;
+  elasticsearchHost?: string;
+  elasticsearchPort?: string;
+  elasticsearchSecurity?: boolean;
+  [key: string]: any;
+}
 
 /**
  * Générateur pour l'intégration d'Elasticsearch et des fonctionnalités de recherche avancée
  */
 export default class ElasticsearchGenerator extends BaseGenerator {
-  constructor(args: string | string[], options: GeneratorOptions) {
+  // Déclarer les méthodes et propriétés héritées
+  declare answers: any;
+  declare prompt: (questions: any) => Promise<any>;
+  declare fs: any;
+  declare destinationPath: (destPath?: string) => string;
+  declare templatePath: (tempPath?: string) => string;
+  declare packageFolder: string;
+  declare packageName: string;
+
+  constructor(args: string | string[], options: SearchGeneratorOptions) {
     super(args, options);
 
     this.desc("Générateur pour l'intégration d'Elasticsearch et des fonctionnalités de recherche");

@@ -284,18 +284,18 @@ Architecture Générale
 - [x] Tester la containerisation
 
 ### Module 6.2 : CI/CD Pipeline
-- [ ] Créer les workflows GitHub Actions
-- [ ] Générer les pipelines GitLab CI
-- [ ] Configurer Jenkins pipelines
-- [ ] Implémenter les tests automatisés
-- [ ] Créer les stages de déploiement
-- [ ] Configurer les environnements
-- [ ] Implémenter blue-green deployment
-- [ ] Créer les rollback strategies
-- [ ] Configurer les notifications CI/CD
-- [ ] Implémenter quality gates
-- [ ] Créer les rapports de build
-- [ ] Tester les pipelines
+- [x] Créer les workflows GitHub Actions
+- [x] Générer les pipelines GitLab CI
+- [x] Configurer Jenkins pipelines
+- [x] Implémenter les tests automatisés
+- [x] Créer les stages de déploiement
+- [x] Configurer les environnements
+- [x] Implémenter blue-green deployment
+- [x] Créer les rollback strategies
+- [x] Configurer les notifications CI/CD
+- [x] Implémenter quality gates
+- [x] Créer les rapports de build
+- [x] Tester les pipelines
 
 ### Module 6.3 : Kubernetes Support
 - [ ] Créer les manifests Kubernetes

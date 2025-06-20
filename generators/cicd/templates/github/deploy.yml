@@ -1,0 +1,241 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+<% environments.forEach(function(env) { %>
+          - <%= env %>
+<% }); %>
+      version:
+        description: 'Version to deploy (default: latest from selected environment)'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+<% if (dockerRegistry) { %>
+          registry: <%= dockerRegistry %>
+<% } %>
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+<% if (deploymentStrategy === 'blue-green') { %>
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Get image tag or use latest
+        id: image
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            # Obtenir le dernier tag déployé dans l'environnement
+            echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+            export KUBECONFIG=kubeconfig
+            
+            LATEST_TAG=$(kubectl get deployment -n ${{ github.event.inputs.environment }} -o=jsonpath='{.items[0].spec.template.spec.containers[0].image}' | awk -F ":" '{print $2}')
+            
+            if [ -z "$LATEST_TAG" ]; then
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            else
+              echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Blue/Green Deployment
+        run: |
+          # Configurer kubeconfig
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          
+          # Variables
+          ENV="${{ github.event.inputs.environment }}"
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            IMAGE="<% if (dockerRegistry) { %><%= dockerRegistry %>/<% } %>${{ github.repository }}:${{ github.event.inputs.version }}"
+          else
+            IMAGE="<% if (dockerRegistry) { %><%= dockerRegistry %>/<% } %>${{ github.repository }}:${{ steps.image.outputs.tag }}"
+          fi
+          
+          # Déterminer le slot actif (blue ou green)
+          CURRENT_SLOT=$(kubectl get service app-service -n $ENV -o jsonpath='{.spec.selector.slot}' || echo "none")
+          
+          if [ "$CURRENT_SLOT" == "blue" ] || [ "$CURRENT_SLOT" == "none" ]; then
+            NEW_SLOT="green"
+            echo "Déploiement vers le slot GREEN (slot actuel: $CURRENT_SLOT)"
+          else
+            NEW_SLOT="blue"
+            echo "Déploiement vers le slot BLUE (slot actuel: $CURRENT_SLOT)"
+          fi
+          
+          # Appliquer configuration au nouveau slot
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/$ENV/deployment-$NEW_SLOT.yaml
+          kubectl apply -f k8s/$ENV/deployment-$NEW_SLOT.yaml
+          
+          # Attendre que le déploiement soit prêt
+          kubectl rollout status deployment/app-$NEW_SLOT -n $ENV
+          
+          # Basculer le trafic
+          kubectl apply -f k8s/$ENV/service-switch-to-$NEW_SLOT.yaml
+          
+          echo "Déploiement terminé avec succès sur le slot $NEW_SLOT"
+<% } else if (deploymentStrategy === 'canary') { %>
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Get image tag or use latest
+        id: image
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Canary Deployment
+        run: |
+          # Configurer kubeconfig
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          
+          # Variables
+          ENV="${{ github.event.inputs.environment }}"
+          IMAGE="<% if (dockerRegistry) { %><%= dockerRegistry %>/<% } %>${{ github.repository }}:${{ steps.image.outputs.tag }}"
+          
+          # Déployer la version canary (10% du trafic)
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/$ENV/deployment-canary.yaml
+          kubectl apply -f k8s/$ENV/deployment-canary.yaml
+          kubectl apply -f k8s/$ENV/service-canary.yaml
+          
+          echo "Déploiement canary effectué (10% du trafic). Surveillez les métriques et exécutez la promotion manuelle si tout va bien."
+
+      - name: Promote Canary (Manual Step)
+        if: ${{ github.event.inputs.promote == 'true' }}
+        run: |
+          # Configurer kubeconfig
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+          
+          # Variables
+          ENV="${{ github.event.inputs.environment }}"
+          IMAGE="<% if (dockerRegistry) { %><%= dockerRegistry %>/<% } %>${{ github.repository }}:${{ steps.image.outputs.tag }}"
+          
+          # Promouvoir canary à la production complète
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/$ENV/deployment-production.yaml
+          kubectl apply -f k8s/$ENV/deployment-production.yaml
+          kubectl apply -f k8s/$ENV/service-production.yaml
+          
+          # Supprimer la version canary
+          kubectl delete -f k8s/$ENV/deployment-canary.yaml
+          
+          echo "Promotion canary terminée avec succès!"
+<% } else { %>
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Get image tag or use latest
+        id: image
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Simple Deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          # Préparer config de déploiement
+          ENV="${{ github.event.inputs.environment }}"
+          IMAGE="<% if (dockerRegistry) { %><%= dockerRegistry %>/<% } %>${{ github.repository }}:${{ steps.image.outputs.tag }}"
+          
+          # Déployer via SSH
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST << EOF
+            # Tirer la nouvelle image
+            docker pull $IMAGE
+            
+            # Stopper le container actuel s'il existe
+            docker stop app-$ENV || true
+            docker rm app-$ENV || true
+            
+            # Démarrer le nouveau container
+            docker run -d --name app-$ENV \\
+              --restart unless-stopped \\
+              -p 8080:8080 \\
+              -e SPRING_PROFILES_ACTIVE=$ENV \\
+              $IMAGE
+          EOF
+<% } %>
+
+      - name: Verify deployment
+        run: |
+          # Attendre que l'application démarre
+          sleep 30
+          
+          # Vérifier que l'application répond
+          curl -f https://${{ secrets.APP_URL }}/actuator/health || exit 1
+
+      - name: Send deployment notification
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "✅ Déploiement terminé avec succès",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Déploiement terminé avec succès*\n${{ github.repository }} déployé en *${{ github.event.inputs.environment }}* version: *${{ steps.image.outputs.tag }}*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Déployé par:*\n${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*URL:*\nhttps://${{ secrets.APP_URL }}/"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

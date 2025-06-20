@@ -1,0 +1,212 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+<% if (stages.includes('static-analysis')) { %>
+  static-analysis:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          <% if (caching) { %>cache: maven<% } %>
+  <% if (sonarqube) { %>
+      - name: Cache SonarQube packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: SonarQube Scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=${GITHUB_REPOSITORY##*/} -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} -Dsonar.pullrequest.branch=${{ github.head_ref }} -Dsonar.pullrequest.base=${{ github.base_ref }}
+  <% } else { %>
+      - name: Run code quality checks
+        run: mvn -B clean verify
+  <% } %>
+
+      - name: Check code style
+        run: |
+          mvn -B checkstyle:check
+          mvn -B spotless:check
+<% } %>
+
+<% if (stages.includes('tests')) { %>
+  test:
+    name: Tests
+    <% if (stages.includes('static-analysis')) { %>
+    needs: static-analysis
+    <% } %>
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          <% if (caching) { %>cache: maven<% } %>
+
+      - name: Run tests
+        run: mvn -B test
+
+      <% if (qualityGates.includes('test-coverage')) { %>
+      - name: Generate test coverage report
+        run: mvn -B verify -Pcoverage
+
+      - name: Check test coverage threshold
+        run: |
+          COVERAGE=$(cat target/site/jacoco/index.html | grep -o 'Total[^%]*%' | grep -o '[0-9]*%' | grep -o '[0-9]*')
+          if [ "$COVERAGE" -lt "80" ]; then
+            echo "Test coverage is below 80%: $COVERAGE%"
+            exit 1
+          else
+            echo "Test coverage is $COVERAGE%"
+          fi
+
+      - name: Add Coverage Comment to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: test-coverage
+          message: |
+            ## Test Coverage Report: $COVERAGE%
+            
+            <details>
+            <summary>Details</summary>
+            
+            ```
+            $(cat target/site/jacoco/index.html | grep -o 'Total.*%' | sed 's/<[^>]*>//g')
+            ```
+            </details>
+      <% } %>
+<% } %>
+
+<% if (stages.includes('build')) { %>
+  build:
+    name: Build
+    <% if (stages.includes('tests')) { %>
+    needs: test
+    <% } else if (stages.includes('static-analysis')) { %>
+    needs: static-analysis
+    <% } %>
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          <% if (caching) { %>cache: maven<% } %>
+
+      - name: Build with Maven
+        run: mvn -B clean package -DskipTests
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-jar-pr
+          path: target/*.jar
+          retention-days: 1
+<% } %>
+
+<% if (qualityGates.includes('vulnerability')) { %>
+  security-scan:
+    name: Security Vulnerability Scan
+    <% if (stages.includes('build')) { %>
+    needs: build
+    <% } else if (stages.includes('tests')) { %>
+    needs: test
+    <% } else if (stages.includes('static-analysis')) { %>
+    needs: static-analysis
+    <% } %>
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: ${{ github.repository }}
+          path: '.'
+          format: 'HTML'
+          args: >
+            --failOnCVSS 7
+            --enableRetired
+
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: ${{github.workspace}}/dependency-check-report.html
+
+      - name: Comment PR with Dependency Check Results
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: always()
+        with:
+          header: vulnerability-scan
+          message: |
+            ## Vulnerability Scan Results
+            
+            <details>
+            <summary>See scan results</summary>
+            
+            ```
+            Summary:
+            - High severity vulnerabilities: $(grep -c 'Severity: High' dependency-check-report.html || echo 0)
+            - Medium severity vulnerabilities: $(grep -c 'Severity: Medium' dependency-check-report.html || echo 0)
+            - Low severity vulnerabilities: $(grep -c 'Severity: Low' dependency-check-report.html || echo 0)
+            ```
+            
+            Please download the full report from the workflow artifacts.
+            </details>
+<% } %>
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    <% if (stages.includes('build') && qualityGates.includes('vulnerability')) { %>
+    needs: [build, security-scan]
+    <% } else if (stages.includes('build')) { %>
+    needs: build
+    <% } else if (qualityGates.includes('vulnerability')) { %>
+    needs: security-scan
+    <% } else if (stages.includes('tests')) { %>
+    needs: test
+    <% } else if (stages.includes('static-analysis')) { %>
+    needs: static-analysis
+    <% } %>
+    if: always()
+    steps:
+      - name: PR Checks Summary
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-summary
+          message: |
+            ## Pull Request Quality Check Summary
+            
+            | Check | Status |
+            | ----- | ------ |
+            <% if (stages.includes('static-analysis')) { %>| Static Analysis | ${{ needs.static-analysis.result == 'success' && '✅' || '❌' }} |<% } %>
+            <% if (stages.includes('tests')) { %>| Tests | ${{ needs.test.result == 'success' && '✅' || '❌' }} |<% } %>
+            <% if (stages.includes('build')) { %>| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |<% } %>
+            <% if (qualityGates.includes('vulnerability')) { %>| Security Scan | ${{ needs.security-scan.result == 'success' && '✅' || '❌' }} |<% } %>
+            
+            ${{ (needs.static-analysis.result == 'success' || 'true') && (needs.test.result == 'success' || 'true') && (needs.build.result == 'success' || 'true') && (needs.security-scan.result == 'success' || 'true') && '✅ All checks passed!' || '❌ Some checks failed. Please review the issues above.' }}

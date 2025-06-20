@@ -1,21 +1,79 @@
-import { BaseGenerator } from '../base-generator';
-import { GeneratorOptions } from '../types';
+import { BaseGenerator } from '../base-generator.js';
+import { SFSOptions } from '../types.js';
 import chalk from 'chalk';
 import path from 'path';
+import fs from 'fs';
 
 /**
  * Générateur pour les tests d'intégration frontend
+ * Permet de configurer et d'ajouter des tests pour les frameworks frontend
  */
+
+// Styles visuels constants
+const STEP_PREFIX = chalk.bold.blue("➤ ");
+const SECTION_DIVIDER = chalk.gray("────────────────────────────────────────────");
+const INFO_COLOR = chalk.yellow;
+const SUCCESS_COLOR = chalk.green;
+const ERROR_COLOR = chalk.red;
+const HELP_COLOR = chalk.gray.italic;
+
+/**
+ * Options spécifiques au générateur de tests frontend
+ */
+export interface FrontendTestGeneratorOptions extends SFSOptions {
+  testLibraries?: string[];
+  setupCI?: boolean;
+  [key: string]: any;
+}
+
 export default class FrontendTestGenerator extends BaseGenerator {
-  constructor(args: string | string[], options: GeneratorOptions) {
-    super(args, options);
+  // Utiliser une approche différente pour la déclaration des options
+  declare options: any; // Type any pour contourner le problème de compatibilité
+  declare answers: any;
+
+  constructor(args: string | string[], opts: any) {
+    super(args, opts);
 
     this.desc('Générateur pour les tests d\'intégration des frameworks frontend');
   }
 
   initializing() {
-    this.log(chalk.blue('Initialisation du générateur de tests frontend...'));
-    this.log(chalk.yellow('Ce générateur va ajouter des tests pour les frameworks frontend configurés.'));
+    this.log(SECTION_DIVIDER);
+    this.log(chalk.bold.blue('🧪 GÉNÉRATEUR DE TESTS FRONTEND'));
+    this.log(SECTION_DIVIDER);
+    this.log(HELP_COLOR('Ce générateur va ajouter des tests pour les frameworks frontend configurés.'));
+    this.log("");
+  }
+
+  /**
+   * Affiche un message d'aide contextuelle
+   */
+  displayHelpMessage(message: string) {
+    this.log(HELP_COLOR(`💡 ${message}`));
+  }
+
+  /**
+   * Affiche un message de succès
+   */
+  displaySuccess(message: string) {
+    this.log(SUCCESS_COLOR(`✅ ${message}`));
+  }
+
+  /**
+   * Affiche un message d'erreur
+   */
+  displayError(message: string) {
+    this.log(ERROR_COLOR(`❌ ${message}`));
+  }
+
+  /**
+   * Créer un répertoire s'il n'existe pas
+   * @param dirPath Chemin du répertoire à créer
+   */
+  createDirectory(dirPath: string): void {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
   }
 
   async prompting() {
@@ -23,11 +81,15 @@ export default class FrontendTestGenerator extends BaseGenerator {
     const config = this.config.getAll();
     const frontendFramework = config.frontendFramework || 'react';
 
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.bold("CONFIGURATION DES TESTS"));
+    this.log(SECTION_DIVIDER);
+
     this.answers = await this.prompt([
       {
         type: 'checkbox',
         name: 'testLibraries',
-        message: 'Quelles bibliothèques de test souhaitez-vous utiliser?',
+        message: chalk.cyan('Quelles bibliothèques de test souhaitez-vous utiliser?'),
         choices: () => {
           const choices = [
             { name: 'Jest (Tests unitaires/d\'intégration)', value: 'jest', checked: true },
@@ -35,7 +97,7 @@ export default class FrontendTestGenerator extends BaseGenerator {
             { name: 'Vue Testing Library (Pour les composants Vue)', value: 'vtl', checked: frontendFramework === 'vue' },
             { name: 'Cypress (Tests E2E)', value: 'cypress', checked: true },
             { name: 'Playwright (Tests E2E alternatifs)', value: 'playwright' },
-            { name: 'Vitest (Alternative à Jest pour Vite)', value: 'vitest', checked: ['react', 'vue'].includes(frontendFramework) }
+            { name: 'Vitest (Alternative à Jest pour Vite)', value: 'vitest', checked: (frontendFramework === 'react' || frontendFramework === 'vue') }
           ];
           return choices;
         }
@@ -43,34 +105,39 @@ export default class FrontendTestGenerator extends BaseGenerator {
       {
         type: 'confirm',
         name: 'setupCI',
-        message: 'Voulez-vous configurer les tests pour l\'intégration continue?',
+        message: chalk.cyan('Voulez-vous configurer les tests pour l\'intégration continue?'),
         default: true
       }
     ]);
   }
 
   configuring() {
-    this.log(chalk.blue('Configuration des tests frontend...'));
+    this.log(STEP_PREFIX + chalk.bold('ENREGISTREMENT DE LA CONFIGURATION...'));
 
     // Stocker la configuration pour une utilisation ultérieure
     this.config.set('testLibraries', this.answers.testLibraries);
     this.config.set('setupCI', this.answers.setupCI);
+
+    this.displaySuccess('Configuration enregistrée');
   }
 
   writing() {
     const config = this.config.getAll();
     const frontendFramework = config.frontendFramework || 'react';
 
-    this.log(chalk.blue(`Génération des tests pour le framework ${frontendFramework}...`));
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES FICHIERS DE TEST"));
+    this.log(SECTION_DIVIDER);
+    this.displayHelpMessage(`Génération des tests pour le framework ${frontendFramework}...`);
 
     // Détecter les dossiers frontend disponibles
     const frontendPath = this._detectFrontendPath();
     if (!frontendPath) {
-      this.log(chalk.red('Aucun dossier frontend détecté! Les tests ne peuvent pas être générés.'));
+      this.displayError('Aucun dossier frontend détecté! Les tests ne peuvent pas être générés.');
       return;
     }
 
-    this.log(chalk.green(`Dossier frontend détecté: ${frontendPath}`));
+    this.displaySuccess(`Dossier frontend détecté: ${frontendPath}`);
 
     // Génération des fichiers de configuration et des tests selon le framework
     if (frontendFramework === 'react') {
@@ -99,7 +166,10 @@ export default class FrontendTestGenerator extends BaseGenerator {
   }
 
   install() {
-    this.log(chalk.blue('Installation des dépendances de test...'));
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("INSTALLATION DES DÉPENDANCES"));
+    this.log(SECTION_DIVIDER);
+    this.displayHelpMessage('Installation des dépendances de test...');
 
     const config = this.config.getAll();
     const frontendPath = this._detectFrontendPath();
@@ -115,7 +185,7 @@ export default class FrontendTestGenerator extends BaseGenerator {
     if (Object.keys(dependencies).length > 0) {
       const packageManager = this.config.get('packageManager') || 'npm';
 
-      this.log(chalk.green(`Installation des dépendances avec ${packageManager}...`));
+      this.displayHelpMessage(`Installation avec ${packageManager}...`);
 
       if (packageManager === 'npm') {
         this.spawnCommandSync('npm', ['install', '--save-dev', ...Object.keys(dependencies).map(dep => `${dep}@${dependencies[dep]}`)], { cwd: frontendPath });
@@ -128,7 +198,10 @@ export default class FrontendTestGenerator extends BaseGenerator {
   }
 
   end() {
-    this.log(chalk.green('Configuration des tests frontend terminée!'));
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("CONFIGURATION TERMINÉE"));
+    this.log(SECTION_DIVIDER);
+    this.displaySuccess('Configuration des tests frontend terminée!');
     this.log(chalk.yellow('Vous pouvez maintenant exécuter les tests avec la commande appropriée:'));
 
     const frontendPath = this._detectFrontendPath();
@@ -169,7 +242,7 @@ export default class FrontendTestGenerator extends BaseGenerator {
     ];
 
     for (const dir of possiblePaths) {
-      if (this.fs.exists(dir)) {
+      if (fs.existsSync(dir)) {
         return dir;
       }
     }
@@ -178,24 +251,28 @@ export default class FrontendTestGenerator extends BaseGenerator {
   }
 
   private _setupReactTests(frontendPath: string) {
+    this.displayHelpMessage('Configuration des tests React...');
+
     // 1. Configuration de Jest/Vitest
     if (this.answers.testLibraries.includes('jest')) {
       this.fs.copyTpl(
         this.templatePath('react/jest.config.js'),
         path.join(frontendPath, 'jest.config.js'),
-        { useTypeScript: this.fs.exists(path.join(frontendPath, 'tsconfig.json')) }
+        { useTypeScript: fs.existsSync(path.join(frontendPath, 'tsconfig.json')) }
       );
 
       // Ajouter les scripts au package.json
       const pkgPath = path.join(frontendPath, 'package.json');
-      if (this.fs.exists(pkgPath)) {
-        const pkg = this.fs.readJSON(pkgPath);
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
         pkg.scripts = pkg.scripts || {};
         pkg.scripts.test = 'jest';
         pkg.scripts['test:watch'] = 'jest --watch';
         pkg.scripts['test:coverage'] = 'jest --coverage';
-        this.fs.writeJSON(pkgPath, pkg);
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
       }
+
+      this.displaySuccess('Configuration Jest ajoutée');
     } else if (this.answers.testLibraries.includes('vitest')) {
       this.fs.copyTpl(
         this.templatePath('react/vitest.config.ts'),
@@ -205,21 +282,23 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
       // Ajouter les scripts au package.json
       const pkgPath = path.join(frontendPath, 'package.json');
-      if (this.fs.exists(pkgPath)) {
-        const pkg = this.fs.readJSON(pkgPath);
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
         pkg.scripts = pkg.scripts || {};
         pkg.scripts['test:unit'] = 'vitest run';
         pkg.scripts['test:unit:watch'] = 'vitest';
         pkg.scripts['test:unit:coverage'] = 'vitest run --coverage';
-        this.fs.writeJSON(pkgPath, pkg);
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
       }
+
+      this.displaySuccess('Configuration Vitest ajoutée');
     }
 
     // 2. Tests pour composants React avec React Testing Library
     if (this.answers.testLibraries.includes('rtl')) {
       // Créer un répertoire de tests s'il n'existe pas
       const testDir = path.join(frontendPath, 'src/__tests__');
-      this.fs.mkdirp(testDir);
+      this.createDirectory(testDir);
 
       // Exemples de tests pour les composants
       this.fs.copyTpl(
@@ -241,50 +320,60 @@ export default class FrontendTestGenerator extends BaseGenerator {
         path.join(frontendPath, 'src/setupTests.js'),
         {}
       );
+
+      this.displaySuccess('Tests de composants React ajoutés');
     }
 
     // 3. Tests pour les hooks personnalisés
     if (this.answers.testLibraries.includes('rtl')) {
       const testDir = path.join(frontendPath, 'src/hooks/__tests__');
-      this.fs.mkdirp(testDir);
+      this.createDirectory(testDir);
 
       this.fs.copyTpl(
         this.templatePath('react/hook.test.tsx'),
         path.join(testDir, 'useCounter.test.tsx'),
         { hookName: 'useCounter' }
       );
+
+      this.displaySuccess('Tests de hooks React ajoutés');
     }
 
     // 4. Tests pour les utilitaires
     const utilsTestDir = path.join(frontendPath, 'src/utils/__tests__');
-    this.fs.mkdirp(utilsTestDir);
+    this.createDirectory(utilsTestDir);
 
     this.fs.copyTpl(
       this.templatePath('react/util.test.ts'),
       path.join(utilsTestDir, 'format.test.ts'),
       { utilName: 'format' }
     );
+
+    this.displaySuccess('Tests d\'utilitaires ajoutés');
   }
 
   private _setupVueTests(frontendPath: string) {
+    this.displayHelpMessage('Configuration des tests Vue...');
+
     // 1. Configuration de Jest/Vitest
     if (this.answers.testLibraries.includes('jest')) {
       this.fs.copyTpl(
         this.templatePath('vue/jest.config.js'),
         path.join(frontendPath, 'jest.config.js'),
-        { useTypeScript: this.fs.exists(path.join(frontendPath, 'tsconfig.json')) }
+        { useTypeScript: fs.existsSync(path.join(frontendPath, 'tsconfig.json')) }
       );
 
       // Ajouter les scripts au package.json
       const pkgPath = path.join(frontendPath, 'package.json');
-      if (this.fs.exists(pkgPath)) {
-        const pkg = this.fs.readJSON(pkgPath);
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
         pkg.scripts = pkg.scripts || {};
         pkg.scripts.test = 'jest';
         pkg.scripts['test:watch'] = 'jest --watch';
         pkg.scripts['test:coverage'] = 'jest --coverage';
-        this.fs.writeJSON(pkgPath, pkg);
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
       }
+
+      this.displaySuccess('Configuration Jest ajoutée');
     } else if (this.answers.testLibraries.includes('vitest')) {
       this.fs.copyTpl(
         this.templatePath('vue/vitest.config.ts'),
@@ -294,21 +383,23 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
       // Ajouter les scripts au package.json
       const pkgPath = path.join(frontendPath, 'package.json');
-      if (this.fs.exists(pkgPath)) {
-        const pkg = this.fs.readJSON(pkgPath);
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
         pkg.scripts = pkg.scripts || {};
         pkg.scripts['test:unit'] = 'vitest run';
         pkg.scripts['test:unit:watch'] = 'vitest';
         pkg.scripts['test:unit:coverage'] = 'vitest run --coverage';
-        this.fs.writeJSON(pkgPath, pkg);
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
       }
+
+      this.displaySuccess('Configuration Vitest ajoutée');
     }
 
     // 2. Tests pour composants Vue avec Vue Testing Library
     if (this.answers.testLibraries.includes('vtl')) {
       // Créer un répertoire de tests s'il n'existe pas
       const testDir = path.join(frontendPath, 'src/__tests__');
-      this.fs.mkdirp(testDir);
+      this.createDirectory(testDir);
 
       // Exemples de tests pour les composants
       this.fs.copyTpl(
@@ -323,38 +414,47 @@ export default class FrontendTestGenerator extends BaseGenerator {
         path.join(testDir, 'UserList.test.ts'),
         { componentName: 'UserList' }
       );
+
+      this.displaySuccess('Tests de composants Vue ajoutés');
     }
 
     // 3. Tests pour les composables (hooks Vue)
     if (this.answers.testLibraries.includes('vtl')) {
       const testDir = path.join(frontendPath, 'src/composables/__tests__');
-      this.fs.mkdirp(testDir);
+      this.createDirectory(testDir);
 
       this.fs.copyTpl(
         this.templatePath('vue/composable.test.ts'),
         path.join(testDir, 'useCounter.test.ts'),
         { composableName: 'useCounter' }
       );
+
+      this.displaySuccess('Tests de composables Vue ajoutés');
     }
 
     // 4. Tests pour les utilitaires
     const utilsTestDir = path.join(frontendPath, 'src/utils/__tests__');
-    this.fs.mkdirp(utilsTestDir);
+    this.createDirectory(utilsTestDir);
 
     this.fs.copyTpl(
       this.templatePath('vue/util.test.ts'),
       path.join(utilsTestDir, 'format.test.ts'),
       { utilName: 'format' }
     );
+
+    this.displaySuccess('Tests d\'utilitaires ajoutés');
   }
 
   private _setupAngularTests(frontendPath: string) {
+    this.displayHelpMessage('Configuration des tests Angular...');
+
     // Les projets Angular ont déjà une configuration de test par défaut avec le CLI
     // Nous pouvons ajouter des exemples de tests pour les composants/services
 
     // 1. Exemples de tests pour les composants
     const componentTestDir = path.join(frontendPath, 'src/app/components');
-    this.fs.mkdirp(componentTestDir);
+    this.createDirectory(componentTestDir);
+    this.createDirectory(path.join(componentTestDir, 'button'));
 
     this.fs.copyTpl(
       this.templatePath('angular/component.spec.ts'),
@@ -362,9 +462,11 @@ export default class FrontendTestGenerator extends BaseGenerator {
       { componentName: 'Button' }
     );
 
+    this.displaySuccess('Tests de composants Angular ajoutés');
+
     // 2. Exemples de tests pour les services
     const serviceTestDir = path.join(frontendPath, 'src/app/services');
-    this.fs.mkdirp(serviceTestDir);
+    this.createDirectory(serviceTestDir);
 
     this.fs.copyTpl(
       this.templatePath('angular/service.spec.ts'),
@@ -372,9 +474,11 @@ export default class FrontendTestGenerator extends BaseGenerator {
       { serviceName: 'User' }
     );
 
+    this.displaySuccess('Tests de services Angular ajoutés');
+
     // 3. Tests pour les guards
     const guardTestDir = path.join(frontendPath, 'src/app/guards');
-    this.fs.mkdirp(guardTestDir);
+    this.createDirectory(guardTestDir);
 
     this.fs.copyTpl(
       this.templatePath('angular/guard.spec.ts'),
@@ -382,9 +486,11 @@ export default class FrontendTestGenerator extends BaseGenerator {
       { guardName: 'Auth' }
     );
 
+    this.displaySuccess('Tests de guards Angular ajoutés');
+
     // 4. Tests pour les pipes
     const pipeTestDir = path.join(frontendPath, 'src/app/pipes');
-    this.fs.mkdirp(pipeTestDir);
+    this.createDirectory(pipeTestDir);
 
     this.fs.copyTpl(
       this.templatePath('angular/pipe.spec.ts'),
@@ -392,18 +498,24 @@ export default class FrontendTestGenerator extends BaseGenerator {
       { pipeName: 'FormatDate' }
     );
 
+    this.displaySuccess('Tests de pipes Angular ajoutés');
+
     // 5. Tests pour les directives
     const directiveTestDir = path.join(frontendPath, 'src/app/directives');
-    this.fs.mkdirp(directiveTestDir);
+    this.createDirectory(directiveTestDir);
 
     this.fs.copyTpl(
       this.templatePath('angular/directive.spec.ts'),
       path.join(directiveTestDir, 'highlight.directive.spec.ts'),
       { directiveName: 'Highlight' }
     );
+
+    this.displaySuccess('Tests de directives Angular ajoutés');
   }
 
   private _setupTemplateEngineTests(frontendPath: string, engine: string) {
+    this.displayHelpMessage('Configuration des tests pour le moteur de templates ' + engine);
+
     // Pour les moteurs de template comme Thymeleaf ou JTE, on utilise des tests d'intégration
     // Ces tests sont généralement côté serveur avec Spring Boot
 
@@ -413,12 +525,12 @@ export default class FrontendTestGenerator extends BaseGenerator {
     // Trouver le package principal
     const packageDir = this._findJavaPackageDir(integrationTestDir);
     if (!packageDir) {
-      this.log(chalk.red('Impossible de trouver le package principal Java.'));
+      this.displayError('Impossible de trouver le package principal Java.');
       return;
     }
 
     const templateTestDir = path.join(packageDir, 'web');
-    this.fs.mkdirp(templateTestDir);
+    this.createDirectory(templateTestDir);
 
     // Test d'intégration pour les templates
     this.fs.copyTpl(
@@ -429,16 +541,20 @@ export default class FrontendTestGenerator extends BaseGenerator {
         engineName: this._capitalize(engine),
       }
     );
+
+    this.displaySuccess('Tests d\'intégration pour le moteur de templates ajoutés');
   }
 
   private _setupCypressTests(frontendPath: string) {
+    this.displayHelpMessage('Configuration des tests Cypress...');
+
     // Créer la structure de base pour Cypress
     const cypressDir = path.join(frontendPath, 'cypress');
-    this.fs.mkdirp(cypressDir);
-    this.fs.mkdirp(path.join(cypressDir, 'fixtures'));
-    this.fs.mkdirp(path.join(cypressDir, 'integration'));
-    this.fs.mkdirp(path.join(cypressDir, 'plugins'));
-    this.fs.mkdirp(path.join(cypressDir, 'support'));
+    this.createDirectory(cypressDir);
+    this.createDirectory(path.join(cypressDir, 'fixtures'));
+    this.createDirectory(path.join(cypressDir, 'integration'));
+    this.createDirectory(path.join(cypressDir, 'plugins'));
+    this.createDirectory(path.join(cypressDir, 'support'));
 
     // Configuration de base
     this.fs.copyTpl(
@@ -475,20 +591,24 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
     // Ajouter les scripts au package.json
     const pkgPath = path.join(frontendPath, 'package.json');
-    if (this.fs.exists(pkgPath)) {
-      const pkg = this.fs.readJSON(pkgPath);
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       pkg.scripts = pkg.scripts || {};
       pkg.scripts['test:e2e'] = 'cypress run';
       pkg.scripts['cypress:open'] = 'cypress open';
-      this.fs.writeJSON(pkgPath, pkg);
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
     }
+
+    this.displaySuccess('Configuration Cypress ajoutée');
   }
 
   private _setupPlaywrightTests(frontendPath: string) {
+    this.displayHelpMessage('Configuration des tests Playwright...');
+
     // Créer la structure de base pour Playwright
     const playwrightDir = path.join(frontendPath, 'playwright');
-    this.fs.mkdirp(playwrightDir);
-    this.fs.mkdirp(path.join(playwrightDir, 'tests'));
+    this.createDirectory(playwrightDir);
+    this.createDirectory(path.join(playwrightDir, 'tests'));
 
     // Configuration de base
     this.fs.copyTpl(
@@ -512,27 +632,36 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
     // Ajouter les scripts au package.json
     const pkgPath = path.join(frontendPath, 'package.json');
-    if (this.fs.exists(pkgPath)) {
-      const pkg = this.fs.readJSON(pkgPath);
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       pkg.scripts = pkg.scripts || {};
       pkg.scripts['test:e2e:playwright'] = 'playwright test';
       pkg.scripts['playwright:ui'] = 'playwright test --ui';
-      this.fs.writeJSON(pkgPath, pkg);
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
     }
+
+    this.displaySuccess('Configuration Playwright ajoutée');
   }
 
   private _setupCIConfiguration() {
+    this.displayHelpMessage('Configuration CI pour les tests...');
+
     // Créer des fichiers de configuration CI basés sur les choix de l'utilisateur
     if (this.answers.testLibraries.includes('jest') || this.answers.testLibraries.includes('vitest')) {
       // GitHub Actions configuration
+      const workflowsDir = path.join(this.destinationPath(), '.github/workflows');
+      this.createDirectory(workflowsDir);
+
       this.fs.copyTpl(
         this.templatePath('ci/github-actions-test.yml'),
-        path.join(this.destinationPath(), '.github/workflows/test.yml'),
+        path.join(workflowsDir, 'test.yml'),
         {
           testLibraries: this.answers.testLibraries,
           hasE2E: this.answers.testLibraries.includes('cypress') || this.answers.testLibraries.includes('playwright')
         }
       );
+
+      this.displaySuccess('Configuration CI GitHub Actions ajoutée');
     }
   }
 
@@ -540,7 +669,8 @@ export default class FrontendTestGenerator extends BaseGenerator {
     const deps: Record<string, string> = {};
     const config = this.config.getAll();
     const frontendFramework = config.frontendFramework || 'react';
-    const useTypeScript = this.fs.exists(path.join(this._detectFrontendPath() || '', 'tsconfig.json'));
+    const frontendPath = this._detectFrontendPath();
+    const useTypeScript = frontendPath && fs.existsSync(path.join(frontendPath, 'tsconfig.json'));
 
     if (this.answers.testLibraries.includes('jest')) {
       deps['jest'] = '^29.6.0';
@@ -584,16 +714,16 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
   private _findJavaPackageDir(baseDir: string): string | null {
     // Cette méthode trouve récursivement le premier dossier package Java
-    if (!this.fs.exists(baseDir)) {
+    if (!fs.existsSync(baseDir)) {
       return null;
     }
 
     try {
-      const entries = this.fs.readdirSync(baseDir);
+      const entries = fs.readdirSync(baseDir);
 
       for (const entry of entries) {
         const fullPath = path.join(baseDir, entry);
-        const stats = this.fs.statSync(fullPath);
+        const stats = fs.statSync(fullPath);
 
         if (stats.isDirectory()) {
           // C'est peut-être un dossier package?
@@ -618,7 +748,7 @@ export default class FrontendTestGenerator extends BaseGenerator {
   private _isJavaPackageDir(dirPath: string): boolean {
     // Vérifier si ce dossier contient des fichiers Java
     try {
-      const entries = this.fs.readdirSync(dirPath);
+      const entries = fs.readdirSync(dirPath);
       return entries.some(entry => entry.endsWith('.java'));
     } catch (e) {
       return false;

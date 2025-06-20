@@ -1,11 +1,29 @@
-import { BaseGenerator } from '../base-generator';
-import { GeneratorOptions } from '../types';
+import { BaseGenerator } from '../base-generator.js';
+import { SFSOptions } from '../types.js';
+
+/**
+ * Options spécifiques au générateur de notification
+ */
+export interface NotificationGeneratorOptions extends SFSOptions {
+  notificationTypes?: string[];
+  emailProvider?: string;
+  [key: string]: any;
+}
 
 /**
  * Générateur pour l'intégration des fonctionnalités de notification et communication (Email, WebSocket, Push)
  */
 export default class NotificationGenerator extends BaseGenerator {
-  constructor(args: string | string[], options: GeneratorOptions) {
+  // Déclarer les méthodes et propriétés héritées
+  declare answers: any;
+  declare prompt: (questions: any) => Promise<any>;
+  declare fs: any;
+  declare destinationPath: (destPath?: string) => string;
+  declare templatePath: (tempPath?: string) => string;
+  declare packageFolder: string;
+  declare packageName: string;
+
+  constructor(args: string | string[], options: NotificationGeneratorOptions) {
     super(args, options);
     
     this.desc('Générateur pour l\'intégration des fonctionnalités de notification et communication');

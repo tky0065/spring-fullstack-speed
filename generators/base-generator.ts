@@ -19,7 +19,7 @@ import {
   BUILD_TOOL_OPTIONS,
   ADDITIONAL_FEATURES,
 } from "../utils/config.js";
-import { SFSBaseOptions } from "./types.js";
+
 
 /**
  * Classe de base pour tous les générateurs SFS (Spring-Fullstack-Speed)

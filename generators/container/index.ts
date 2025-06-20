@@ -1,14 +1,31 @@
-import { BaseGenerator } from '../base-generator';
-import { GeneratorOptions } from '../types';
+import { BaseGenerator } from '../base-generator.js';
+import { SFSOptions } from '../types.js';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
 
 /**
+ * Options spécifiques au générateur de containerisation
+ */
+export interface ContainerGeneratorOptions extends SFSOptions {
+  multiStage?: boolean;
+  baseImage?: string;
+  healthcheck?: boolean;
+  [key: string]: any;
+}
+
+/**
  * Générateur pour la containerisation Docker
  */
 export default class ContainerizationGenerator extends BaseGenerator {
-  constructor(args: string | string[], options: GeneratorOptions) {
+  // Déclarer les méthodes et propriétés héritées
+  declare answers: any;
+  declare prompt: (questions: any) => Promise<any>;
+  declare fs: any;
+  declare destinationPath: (destPath?: string) => string;
+  declare templatePath: (tempPath?: string) => string;
+
+  constructor(args: string | string[], options: ContainerGeneratorOptions) {
     super(args, options);
 
 
@@ -381,7 +398,7 @@ export default class ContainerizationGenerator extends BaseGenerator {
       username: '',
       password: '',
       database: '',
-      dependencies: []
+      dependencies: [] as string[]
     };
 
     try {
