@@ -432,8 +432,8 @@ Architecture Générale
 - [x] Créer `sfs deploy` (déploiement)
 - [x] Implémenter `sfs migrate` (DB)
 - [X] Créer `sfs doctor` (diagnostic)
-- [ ] Implémenter `sfs upgrade` (projet)
-- [ ] Créer `sfs plugins` (extensions)
+- [X] Implémenter `sfs upgrade` (projet)
+- [X] Créer `sfs plugins` (extensions)
 - [ ] Configurer les aliases
 - [ ] Tester toutes les commandes
 
