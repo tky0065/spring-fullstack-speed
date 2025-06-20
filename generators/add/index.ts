@@ -7,10 +7,128 @@ import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
 import path from "path";
 import fs from "fs";
+import { showAddComponentsMenu } from "../app/menus.js";
+
+// Styles visuels constants
+const STEP_PREFIX = chalk.bold.blue("➤ ");
+const SECTION_DIVIDER = chalk.gray("────────────────────────────────────────────");
+const INFO_COLOR = chalk.yellow;
+const SUCCESS_COLOR = chalk.green;
+const ERROR_COLOR = chalk.red;
+const HELP_COLOR = chalk.gray.italic;
+
+// Types de composants disponibles
+const AVAILABLE_COMPONENTS = {
+  security: {
+    name: "security",
+    description: "Spring Security avec JWT et configurations d'authentification",
+    dependencies: [
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-security" },
+      { groupId: "io.jsonwebtoken", artifactId: "jjwt-api", version: "0.11.5" },
+      { groupId: "io.jsonwebtoken", artifactId: "jjwt-impl", version: "0.11.5", scope: "runtime" },
+      { groupId: "io.jsonwebtoken", artifactId: "jjwt-jackson", version: "0.11.5", scope: "runtime" }
+    ],
+    files: [
+      "security/SecurityConfig.java",
+      "security/JwtAuthenticationFilter.java",
+      "security/JwtTokenProvider.java",
+      "security/UserDetailsServiceImpl.java",
+      "security/CustomUserDetails.java",
+      "auth/AuthController.java",
+      "auth/LoginRequest.java",
+      "auth/SignupRequest.java",
+      "auth/TokenResponse.java"
+    ]
+  },
+  swagger: {
+    name: "swagger",
+    description: "Swagger UI pour la documentation API",
+    dependencies: [
+      { groupId: "org.springdoc", artifactId: "springdoc-openapi-starter-webmvc-ui", version: "2.2.0" }
+    ],
+    files: [
+      "config/OpenApiConfig.java"
+    ]
+  },
+  redis: {
+    name: "redis",
+    description: "Support de cache Redis",
+    dependencies: [
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-data-redis" },
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-cache" }
+    ],
+    files: [
+      "config/RedisConfig.java",
+      "config/CacheConfig.java"
+    ]
+  },
+  websocket: {
+    name: "websocket",
+    description: "Support WebSocket pour la communication en temps réel",
+    dependencies: [
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-websocket" }
+    ],
+    files: [
+      "config/WebSocketConfig.java",
+      "websocket/WebSocketController.java",
+      "websocket/WebSocketMessage.java"
+    ]
+  },
+  fileupload: {
+    name: "fileupload",
+    description: "Service de téléchargement de fichiers",
+    dependencies: [],
+    files: [
+      "service/FileStorageService.java",
+      "controller/FileUploadController.java",
+      "config/FileStorageProperties.java",
+      "exception/FileStorageException.java"
+    ]
+  },
+  email: {
+    name: "email",
+    description: "Service d'envoi d'emails",
+    dependencies: [
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-mail" },
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-thymeleaf" }
+    ],
+    files: [
+      "service/EmailService.java",
+      "config/EmailConfig.java",
+      "model/EmailDetails.java"
+    ]
+  },
+  monitoring: {
+    name: "monitoring",
+    description: "Monitoring avec Spring Actuator et Prometheus",
+    dependencies: [
+      { groupId: "org.springframework.boot", artifactId: "spring-boot-starter-actuator" },
+      { groupId: "io.micrometer", artifactId: "micrometer-registry-prometheus" }
+    ],
+    files: [
+      "config/ActuatorConfig.java"
+    ]
+  },
+  i18n: {
+    name: "i18n",
+    description: "Internationalisation avec support multilingue",
+    dependencies: [],
+    files: [
+      "config/LocaleConfig.java",
+      "util/LocaleUtils.java"
+    ]
+  },
+};
 
 export default class AddGenerator extends BaseGenerator {
+  declare options: any;
   declare answers: any;
   declare projectConfig: any;
+  mainJavaDir: string = "";
+  mainResourcesDir: string = "";
+  buildTool: string = "maven";
+  basePackage: string = "";
+  selectedComponents: string[] = [];
 
   constructor(args: string | string[], options: any) {
     super(args, options);
@@ -19,756 +137,556 @@ export default class AddGenerator extends BaseGenerator {
     this.argument("componentType", {
       type: String,
       required: false,
-      description: "Type de composant à ajouter (controller, service, repository, etc.)",
+      description: "Type de composant à ajouter (security, swagger, redis, etc.)",
     });
-    
-    this.argument("componentName", {
-      type: String,
-      required: false,
-      description: "Nom du composant à ajouter",
+
+    this.option("interactive", {
+      type: Boolean,
+      default: true,
+      description: "Mode interactif avec questions",
     });
   }
 
   initializing() {
-    this.log(chalk.blue("SFS Add - Ajout de composants à un projet existant"));
+    this.log(SECTION_DIVIDER);
+    this.log(chalk.bold.blue("🔧 SFS ADD - AJOUT DE COMPOSANTS"));
+    this.log(SECTION_DIVIDER);
+    this.log(HELP_COLOR("Ce générateur va ajouter des composants à votre projet Spring Boot existant"));
+    this.log("");
 
-    // Vérifier si nous sommes dans un projet Spring-Fullstack
+    // Vérifier si nous sommes dans un projet Spring-Fullstack ou un projet Spring Boot standard
     try {
-      if (fs.existsSync('.sfs-config.json')) {
-        this.projectConfig = JSON.parse(fs.readFileSync('.sfs-config.json', 'utf8'));
-        this.log(chalk.green("Projet Spring-Fullstack détecté!"));
-      } else {
+      if (fs.existsSync('.yo-rc.json')) {
+        const yoConfig = JSON.parse(fs.readFileSync('.yo-rc.json', 'utf8'));
+        this.projectConfig = yoConfig['generator-spring-fullstack'] || null;
+        if (this.projectConfig) {
+          this.log(SUCCESS_COLOR("✅ Projet Spring-Fullstack détecté!"));
+          this.basePackage = this.projectConfig.packageName || 'com.example.app';
+          this.buildTool = this.projectConfig.buildTool?.toLowerCase() || 'maven';
+        }
+      }
+
+      // Détection de la structure en cas de projet non généré par notre outil
+      if (!this.projectConfig) {
         // Tentative de détection en cherchant des fichiers caractéristiques
         const hasPomXml = fs.existsSync('pom.xml');
         const hasGradle = fs.existsSync('build.gradle') || fs.existsSync('build.gradle.kts');
         const hasApplication = fs.existsSync('src/main/java');
 
         if (!(hasPomXml || hasGradle) || !hasApplication) {
-          this.log(chalk.red("⚠️ Ce répertoire ne semble pas contenir un projet Spring-Fullstack."));
-          this.log(chalk.yellow("Exécutez cette commande dans un projet généré par Spring-Fullstack-Speed."));
+          this.log(ERROR_COLOR("⚠️ Ce répertoire ne semble pas contenir un projet Spring Boot."));
+          this.log(INFO_COLOR("Exécutez cette commande à la racine d'un projet Spring Boot existant."));
           process.exit(1);
         }
 
-        // Créer une configuration minimale basée sur la détection
-        this.projectConfig = {
-          buildTool: hasPomXml ? "Maven" : "Gradle",
-          packageName: this._detectPackageName(),
-          createdWithSfs: false
-        };
+        this.buildTool = hasPomXml ? 'maven' : 'gradle';
+        this.log(SUCCESS_COLOR(`✅ Projet Spring Boot détecté! (Build tool: ${this.buildTool})`));
 
-        this.log(chalk.yellow("Projet Spring Boot détecté, mais pas de fichier de configuration SFS."));
-        this.log(chalk.yellow("Une configuration minimale sera utilisée."));
+        // Essayer de deviner le package de base
+        this.basePackage = this._detectBasePackage() || 'com.example.app';
       }
+
+      // Déterminer les chemins des dossiers source
+      this.mainJavaDir = this._findMainJavaDir();
+      this.mainResourcesDir = this._findMainResourcesDir();
+
+      this.log(INFO_COLOR(`Package de base détecté: ${this.basePackage}`));
+      this.log(INFO_COLOR(`Répertoire Java principal: ${this.mainJavaDir}`));
+
     } catch (error) {
-      this.log(chalk.red("⚠️ Erreur lors de la lecture de la configuration: " + error));
+      this.log(ERROR_COLOR(`Erreur lors de l'initialisation: ${error}`));
       process.exit(1);
     }
   }
 
   async prompting() {
-    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
-    const opts = this.options as any;
+    // Si le componentType est spécifié en ligne de commande et est valide
+    if (this.options.componentType && AVAILABLE_COMPONENTS[this.options.componentType]) {
+      this.selectedComponents = [this.options.componentType];
+      this.log(SUCCESS_COLOR(`Composant sélectionné: ${AVAILABLE_COMPONENTS[this.options.componentType].description}`));
+    }
+    // Sinon en mode interactif, afficher le menu de sélection des composants
+    else if (this.options.interactive) {
+      this.log("");
+      this.log(STEP_PREFIX + chalk.bold("SÉLECTION DES COMPOSANTS"));
+      this.log(SECTION_DIVIDER);
 
-    // Si les arguments ne sont pas fournis, demander interactivement
-    if (!opts.componentType || !opts.componentName) {
-      const questions: any[] = [];
+      const componentChoices = Object.keys(AVAILABLE_COMPONENTS).map(key => ({
+        name: `${AVAILABLE_COMPONENTS[key].description}`,
+        value: key
+      }));
 
-      if (!opts.componentType) {
-        questions.push({
-          type: "list",
-          name: "componentType",
-          message: "Quel type de composant souhaitez-vous ajouter?",
-          choices: [
-            { name: "Controller - Contrôleur REST", value: "controller" },
-            { name: "Service - Couche métier", value: "service" },
-            { name: "Repository - Accès aux données", value: "repository" },
-            { name: "Entity - Entité JPA", value: "entity" },
-            { name: "DTO - Objet de transfert de données", value: "dto" },
-            { name: "Configuration - Configuration Spring", value: "config" },
-            { name: "Exception - Classe d'exception personnalisée", value: "exception" }
-          ]
-        });
-      }
-
-      if (!opts.componentName) {
-        questions.push({
-          type: "input",
-          name: "componentName",
-          message: "Quel est le nom du composant?",
-          validate: (input: string) => {
-            if (!input || input.trim() === '') {
-              return "Le nom du composant ne peut pas être vide";
-            }
-            return true;
+      const { components } = await this.prompt({
+        type: "checkbox",
+        name: "components",
+        message: chalk.cyan("Sélectionnez les composants à ajouter:"),
+        choices: componentChoices,
+        pageSize: 10,
+        validate: (input) => {
+          if (input.length === 0) {
+            return "Vous devez sélectionner au moins un composant";
           }
-        });
+          return true;
+        }
+      });
+
+      this.selectedComponents = components;
+
+      if (this.selectedComponents.includes("security")) {
+        await this._promptSecurityConfig();
       }
 
-      this.answers = await this.prompt(questions);
+      if (this.selectedComponents.includes("redis")) {
+        await this._promptRedisConfig();
+      }
     } else {
-      this.answers = {
-        componentType: opts.componentType,
-        componentName: opts.componentName
-      };
+      this.log(ERROR_COLOR("Aucun composant valide spécifié. Utilisez --interactive pour sélectionner des composants."));
+      process.exit(1);
     }
 
-    // Questions spécifiques au type de composant
-    const specificQuestions: any[] = [];
+    // Afficher un résumé des composants sélectionnés
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("RÉSUMÉ DES COMPOSANTS SÉLECTIONNÉS"));
+    this.log(SECTION_DIVIDER);
 
-    switch (this.answers.componentType) {
-      case 'controller':
-        specificQuestions.push({
-          type: 'confirm',
-          name: 'isRestController',
-          message: 'Voulez-vous créer un RestController?',
-          default: true
-        });
-        specificQuestions.push({
-          type: 'input',
-          name: 'basePath',
-          message: 'Chemin de base pour ce contrôleur (exemple: /api/users):',
-          default: `/api/${this.answers.componentName.toLowerCase()}`
-        });
-        break;
-
-      case 'entity':
-        specificQuestions.push({
-          type: 'input',
-          name: 'tableName',
-          message: 'Nom de la table en base de données:',
-          default: this._toSnakeCase(this.answers.componentName)
-        });
-        specificQuestions.push({
-          type: 'confirm',
-          name: 'generateRepository',
-          message: 'Voulez-vous également générer un repository pour cette entité?',
-          default: true
-        });
-        break;
-
-      case 'repository':
-        specificQuestions.push({
-          type: 'input',
-          name: 'entityName',
-          message: "Nom de l'entité associée à ce repository:",
-          default: this.answers.componentName.replace(/Repository$/, '')
-        });
-        break;
-
-      case 'service':
-        specificQuestions.push({
-          type: 'confirm',
-          name: 'createInterface',
-          message: 'Voulez-vous créer une interface pour ce service?',
-          default: true
-        });
-        break;
-    }
-
-    if (specificQuestions.length > 0) {
-      const specificAnswers = await this.prompt(specificQuestions);
-      this.answers = { ...this.answers, ...specificAnswers };
-    }
-
-    // Demander le package
-    const packageQuestion: any = {
-      type: 'input',
-      name: 'packageName',
-      message: 'Dans quel package voulez-vous créer ce composant?',
-      default: this._getDefaultPackageName(this.answers.componentType)
-    };
-
-    const packageAnswer = await this.prompt(packageQuestion);
-    this.answers = { ...this.answers, ...packageAnswer };
+    this.selectedComponents.forEach((componentKey) => {
+      this.log(SUCCESS_COLOR(`✅ ${AVAILABLE_COMPONENTS[componentKey].description}`));
+    });
   }
 
-  configuring() {
-    // Formater le nom du composant selon les conventions Java
-    if (this.answers.componentType === 'controller' && !this.answers.componentName.endsWith('Controller')) {
-      this.answers.componentName = `${this.answers.componentName}Controller`;
-    } else if (this.answers.componentType === 'service' && !this.answers.componentName.endsWith('Service')) {
-      this.answers.componentName = `${this.answers.componentName}Service`;
-    } else if (this.answers.componentType === 'repository' && !this.answers.componentName.endsWith('Repository')) {
-      this.answers.componentName = `${this.answers.componentName}Repository`;
-    } else if (this.answers.componentType === 'config' && !this.answers.componentName.endsWith('Config')) {
-      this.answers.componentName = `${this.answers.componentName}Config`;
-    } else if (this.answers.componentType === 'exception' && !this.answers.componentName.endsWith('Exception')) {
-      this.answers.componentName = `${this.answers.componentName}Exception`;
+  /**
+   * Questions spécifiques pour la configuration de la sécurité
+   */
+  async _promptSecurityConfig() {
+    const securityAnswers = await this.prompt([
+      {
+        type: "confirm",
+        name: "useJwt",
+        message: chalk.cyan("Utiliser JWT pour l'authentification?"),
+        default: true
+      },
+      {
+        type: "input",
+        name: "jwtSecret",
+        message: chalk.cyan("Clé secrète pour JWT:"),
+        default: `${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+        when: (answers) => answers.useJwt
+      },
+      {
+        type: "input",
+        name: "jwtExpirationMs",
+        message: chalk.cyan("Durée de validité du token JWT (en millisecondes):"),
+        default: "86400000", // 24 heures
+        when: (answers) => answers.useJwt,
+        validate: (input) => {
+          if (isNaN(parseInt(input))) {
+            return "Veuillez entrer un nombre valide";
+          }
+          return true;
+        }
+      }
+    ]);
+
+    this.answers = { ...this.answers, ...securityAnswers };
+  }
+
+  /**
+   * Questions spécifiques pour la configuration de Redis
+   */
+  async _promptRedisConfig() {
+    const redisAnswers = await this.prompt([
+      {
+        type: "input",
+        name: "redisHost",
+        message: chalk.cyan("Hôte Redis:"),
+        default: "localhost"
+      },
+      {
+        type: "input",
+        name: "redisPort",
+        message: chalk.cyan("Port Redis:"),
+        default: "6379",
+        validate: (input) => {
+          if (isNaN(parseInt(input))) {
+            return "Veuillez entrer un nombre valide";
+          }
+          return true;
+        }
+      }
+    ]);
+
+    this.answers = { ...this.answers, ...redisAnswers };
+  }
+
+  /**
+   * Trouve le répertoire principal Java du projet
+   */
+  _findMainJavaDir(): string {
+    const possiblePaths = [
+      path.join(process.cwd(), 'src/main/java'),
+      path.join(process.cwd(), 'src/java')
+    ];
+
+    for (const dirPath of possiblePaths) {
+      if (fs.existsSync(dirPath)) {
+        return dirPath;
+      }
+    }
+
+    return path.join(process.cwd(), 'src/main/java'); // Fallback sur le chemin standard
+  }
+
+  /**
+   * Trouve le répertoire principal des ressources du projet
+   */
+  _findMainResourcesDir(): string {
+    const possiblePaths = [
+      path.join(process.cwd(), 'src/main/resources'),
+      path.join(process.cwd(), 'src/resources')
+    ];
+
+    for (const dirPath of possiblePaths) {
+      if (fs.existsSync(dirPath)) {
+        return dirPath;
+      }
+    }
+
+    return path.join(process.cwd(), 'src/main/resources'); // Fallback sur le chemin standard
+  }
+
+  /**
+   * Détecte le package de base du projet
+   */
+  _detectBasePackage(): string {
+    try {
+      const javaDir = this._findMainJavaDir();
+      if (!fs.existsSync(javaDir)) {
+        return '';
+      }
+
+      // Recherche d'un fichier Application.java ou *Application.java
+      const findAppFile = (dir: string, depth = 0): string => {
+        if (depth > 5) return ''; // Limite la profondeur de recherche
+
+        const items = fs.readdirSync(dir);
+
+        for (const item of items) {
+          const fullPath = path.join(dir, item);
+          const stats = fs.statSync(fullPath);
+
+          if (stats.isDirectory()) {
+            const result = findAppFile(fullPath, depth + 1);
+            if (result) return result;
+          } else if (item.endsWith('Application.java')) {
+            return fullPath;
+          }
+        }
+
+        return '';
+      };
+
+      const appFile = findAppFile(javaDir);
+      if (!appFile) {
+        return '';
+      }
+
+      // Extraction du package à partir du fichier
+      const content = fs.readFileSync(appFile, 'utf8');
+      const packageMatch = content.match(/package\s+([^;]+);/);
+
+      if (packageMatch && packageMatch.length > 1) {
+        return packageMatch[1].trim();
+      }
+
+      return '';
+    } catch (error) {
+      return '';
     }
   }
 
   writing() {
-    const { componentType, componentName, packageName } = this.answers;
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("AJOUT DES COMPOSANTS"));
+    this.log(SECTION_DIVIDER);
 
-    // Convertir le package en chemin de fichier
-    const packagePath = packageName.replace(/\./g, '/');
-    const javaDir = 'src/main/java';
-    const filePath = path.join(javaDir, packagePath, `${componentName}.java`);
+    // Pour chaque composant sélectionné, ajouter les fichiers et dépendances nécessaires
+    for (const componentKey of this.selectedComponents) {
+      const component = AVAILABLE_COMPONENTS[componentKey];
+      this._addComponent(component);
+    }
 
-    this.log(chalk.blue(`Génération du composant ${componentName} dans ${filePath}...`));
+    // Mettre à jour le fichier pom.xml ou build.gradle avec les dépendances
+    this._updateBuildFile();
 
-    // Générer le fichier selon le type
-    switch (componentType) {
-      case 'controller':
-        this._generateController(filePath);
-        break;
+    // Mettre à jour application.properties avec les nouvelles configurations
+    this._updateApplicationProperties();
+  }
 
-      case 'service':
-        this._generateService(filePath);
-        if (this.answers.createInterface) {
-          const interfacePath = path.join(javaDir, packagePath, `${componentName.replace(/ServiceImpl$|Service$/, '')}Service.java`);
-          this._generateServiceInterface(interfacePath);
+  /**
+   * Ajoute un composant au projet
+   */
+  _addComponent(component: any) {
+    this.log(INFO_COLOR(`Ajout du composant: ${component.description}`));
+
+    // Génération des fichiers du composant
+    for (const filePath of component.files) {
+      this._addComponentFile(component.name, filePath);
+    }
+
+    this.log(SUCCESS_COLOR(`✅ Composant ${component.name} ajouté`));
+  }
+
+  /**
+   * Ajoute un fichier de composant
+   */
+  _addComponentFile(componentName: string, filePath: string) {
+    // Préparation du contexte pour le template
+    const templateData = {
+      basePackage: this.basePackage,
+      packageName: `${this.basePackage}.${filePath.split('/')[0]}`,
+      className: path.basename(filePath, '.java'),
+      answers: this.answers || {}
+    };
+
+    // Déterminer le chemin du template source
+    const templateSourcePath = `add/${componentName}/${filePath}.ejs`;
+
+    // Déterminer le chemin de destination
+    const packagePath = this.basePackage.replace(/\./g, '/');
+    const destinationPath = path.join(
+      this.mainJavaDir,
+      packagePath,
+      filePath
+    );
+
+    // S'assurer que le dossier de destination existe
+    const destinationDir = path.dirname(destinationPath);
+    if (!fs.existsSync(destinationDir)) {
+      fs.mkdirSync(destinationDir, { recursive: true });
+    }
+
+    // Générer le fichier à partir du template
+    try {
+      this.renderEjsTemplate(templateSourcePath, destinationPath, templateData);
+      this.log(`   ${INFO_COLOR(`Fichier créé: ${filePath}`)}`);
+    } catch (error) {
+      this.log(`   ${ERROR_COLOR(`Erreur lors de la génération de ${filePath}: ${error}`)}`);
+    }
+  }
+
+  /**
+   * Met à jour le fichier de build (pom.xml ou build.gradle) avec les dépendances
+   */
+  _updateBuildFile() {
+    this.log(INFO_COLOR("Mise à jour des dépendances..."));
+
+    // Collecter toutes les dépendances nécessaires
+    const dependencies :any = [];
+    for (const componentKey of this.selectedComponents) {
+      dependencies.push(...AVAILABLE_COMPONENTS[componentKey].dependencies);
+    }
+
+    if (this.buildTool === 'maven') {
+      this._updatePomXml(dependencies);
+    } else {
+      this._updateGradleBuild(dependencies);
+    }
+
+    this.log(SUCCESS_COLOR("✅ Dépendances mises à jour"));
+  }
+
+  /**
+   * Met à jour le fichier pom.xml avec les nouvelles dépendances
+   */
+  _updatePomXml(dependencies: any[]) {
+    const pomPath = path.join(process.cwd(), 'pom.xml');
+
+    if (!fs.existsSync(pomPath)) {
+      this.log(ERROR_COLOR("Fichier pom.xml non trouvé"));
+      return;
+    }
+
+    try {
+      let pomContent = fs.readFileSync(pomPath, 'utf8');
+
+      // Vérifier si chaque dépendance est déjà présente
+      for (const dep of dependencies) {
+        const dependencyPattern = new RegExp(
+          `<dependency>[\\s\\n]*<groupId>${dep.groupId}</groupId>[\\s\\n]*<artifactId>${dep.artifactId}</artifactId>`,
+          'i'
+        );
+
+        if (!dependencyPattern.test(pomContent)) {
+          // La dépendance n'existe pas, l'ajouter
+          const dependencyXml = `\t<dependency>\n\t\t<groupId>${dep.groupId}</groupId>\n\t\t<artifactId>${dep.artifactId}</artifactId>` +
+            (dep.version ? `\n\t\t<version>${dep.version}</version>` : '') +
+            (dep.scope ? `\n\t\t<scope>${dep.scope}</scope>` : '') +
+            `\n\t</dependency>`;
+
+          // Ajouter après la dernière dépendance ou créer la section si elle n'existe pas
+          if (pomContent.includes("</dependencies>")) {
+            pomContent = pomContent.replace("</dependencies>", `${dependencyXml}\n\t</dependencies>`);
+          } else if (pomContent.includes("</project>")) {
+            pomContent = pomContent.replace(
+              "</project>",
+              `\t<dependencies>\n${dependencyXml}\n\t</dependencies>\n</project>`
+            );
+          }
         }
-        break;
+      }
 
-      case 'repository':
-        this._generateRepository(filePath);
-        break;
+      fs.writeFileSync(pomPath, pomContent);
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la mise à jour de pom.xml: ${error}`));
+    }
+  }
 
-      case 'entity':
-        this._generateEntity(filePath);
-        if (this.answers.generateRepository) {
-          const repoPath = path.join(javaDir, packageName.replace(/\.entity|\.model|\.domain/, '.repository').replace(/\./g, '/'), `${componentName}Repository.java`);
-          this._generateRepositoryForEntity(repoPath);
+  /**
+   * Met à jour le fichier build.gradle avec les nouvelles dépendances
+   */
+  _updateGradleBuild(dependencies: any[]) {
+    const gradlePath = fs.existsSync(path.join(process.cwd(), 'build.gradle.kts'))
+      ? path.join(process.cwd(), 'build.gradle.kts')
+      : path.join(process.cwd(), 'build.gradle');
+
+    if (!fs.existsSync(gradlePath)) {
+      this.log(ERROR_COLOR("Fichier build.gradle non trouvé"));
+      return;
+    }
+
+    try {
+      let gradleContent = fs.readFileSync(gradlePath, 'utf8');
+      const isKts = gradlePath.endsWith('.kts');
+      let dependenciesToAdd :any = [];
+
+      // Vérifier si chaque dépendance est déjà présente
+      for (const dep of dependencies) {
+        const dependencyPattern = new RegExp(
+          `(implementation|compile|runtime|testImplementation|testCompile)\\s*\\(['"]${dep.groupId}:${dep.artifactId}:?[^'"]*['"]\\)`,
+          'i'
+        );
+
+        if (!dependencyPattern.test(gradleContent)) {
+          const scope = dep.scope === 'runtime' ? 'runtimeOnly' :
+                       dep.scope === 'test' ? 'testImplementation' :
+                       'implementation';
+
+          // Formater la dépendance selon le format du fichier (Kotlin DSL ou Groovy)
+          const dependencyStr = isKts
+            ? `${scope}("${dep.groupId}:${dep.artifactId}${dep.version ? `:${dep.version}` : ''}")`
+            : `${scope} '${dep.groupId}:${dep.artifactId}${dep.version ? `:${dep.version}` : ''}'`;
+
+          dependenciesToAdd.push(dependencyStr);
         }
-        break;
+      }
 
-      case 'dto':
-        this._generateDTO(filePath);
-        break;
+      // Ajouter les nouvelles dépendances
+      if (dependenciesToAdd.length > 0) {
+        if (gradleContent.includes("dependencies {")) {
+          const dependenciesSection = gradleContent.indexOf("dependencies {") + "dependencies {".length;
+          gradleContent = gradleContent.slice(0, dependenciesSection) +
+                         '\n\t' + dependenciesToAdd.join('\n\t') + '\n' +
+                         gradleContent.slice(dependenciesSection);
+        } else {
+          gradleContent += '\n\ndependencies {\n\t' + dependenciesToAdd.join('\n\t') + '\n}';
+        }
+      }
 
-      case 'config':
-        this._generateConfig(filePath);
-        break;
+      fs.writeFileSync(gradlePath, gradleContent);
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la mise à jour de build.gradle: ${error}`));
+    }
+  }
 
-      case 'exception':
-        this._generateException(filePath);
-        break;
+  /**
+   * Met à jour le fichier application.properties avec les configurations des composants
+   */
+  _updateApplicationProperties() {
+    const propertiesPath = path.join(this.mainResourcesDir, 'application.properties');
+    const yamlPath = path.join(this.mainResourcesDir, 'application.yml');
+
+    // Déterminer quel fichier de configuration est utilisé
+    const configPath = fs.existsSync(yamlPath) ? yamlPath : propertiesPath;
+    const isYaml = configPath.endsWith('.yml');
+
+    try {
+      let configContent = fs.existsSync(configPath)
+        ? fs.readFileSync(configPath, 'utf8')
+        : '';
+
+      // Ajouter les configurations spécifiques aux composants
+      if (this.selectedComponents.includes('security') && this.answers?.useJwt) {
+        if (isYaml) {
+          if (!configContent.includes('app:') && !configContent.includes('app.jwt')) {
+            configContent += '\n\n# JWT Configuration\napp:\n  jwt:\n' +
+                           '    secret: ' + this.answers.jwtSecret + '\n' +
+                           '    expiration-ms: ' + this.answers.jwtExpirationMs + '\n';
+          }
+        } else {
+          if (!configContent.includes('app.jwt.secret')) {
+            configContent += '\n\n# JWT Configuration\n' +
+                           'app.jwt.secret=' + this.answers.jwtSecret + '\n' +
+                           'app.jwt.expiration-ms=' + this.answers.jwtExpirationMs + '\n';
+          }
+        }
+      }
+
+      if (this.selectedComponents.includes('redis')) {
+        if (isYaml) {
+          if (!configContent.includes('spring.data.redis')) {
+            configContent += '\n\n# Redis Configuration\nspring:\n  data:\n    redis:\n' +
+                           '      host: ' + this.answers.redisHost + '\n' +
+                           '      port: ' + this.answers.redisPort + '\n';
+          }
+        } else {
+          if (!configContent.includes('spring.data.redis.host')) {
+            configContent += '\n\n# Redis Configuration\n' +
+                           'spring.data.redis.host=' + this.answers.redisHost + '\n' +
+                           'spring.data.redis.port=' + this.answers.redisPort + '\n';
+          }
+        }
+      }
+
+      // Ajouter d'autres configurations selon les composants sélectionnés
+
+      // S'assurer que le répertoire existe
+      if (!fs.existsSync(path.dirname(configPath))) {
+        fs.mkdirSync(path.dirname(configPath), { recursive: true });
+      }
+
+      fs.writeFileSync(configPath, configContent);
+      this.log(SUCCESS_COLOR(`✅ Fichier ${path.basename(configPath)} mis à jour`));
+
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la mise à jour de la configuration: ${error}`));
     }
   }
 
   end() {
-    this.log(chalk.green.bold(`\n✅ Le composant ${this.answers.componentName} a été créé avec succès!`));
-  }
+    this.log("");
+    this.log(SECTION_DIVIDER);
+    this.log(SUCCESS_COLOR(`✅ ${this.selectedComponents.length} composant(s) ajouté(s) avec succès!`));
 
-  // Méthodes privées utilitaires
+    // Afficher un message sur les étapes suivantes
+    this.log(INFO_COLOR("\nÉtapes suivantes suggérées:"));
 
-  /**
-   * Détecte automatiquement le package principal du projet
-   * @returns Le nom du package détecté ou un package par défaut
-   */
-  _detectPackageName() {
-    try {
-      // Recherche dans les fichiers Java pour trouver le package
-      const javaFiles = this._findJavaFiles('src/main/java');
-      if (javaFiles.length > 0) {
-        const content = fs.readFileSync(javaFiles[0], 'utf8');
-        const packageMatch = content.match(/package\\s+([\\w.]+);/);
-        if (packageMatch && packageMatch[1]) {
-          return packageMatch[1].split('.').slice(0, 2).join('.');
-        }
-      }
-    } catch (error) {
-      this.log(chalk.yellow("Impossible de détecter automatiquement le package. Utilisation du package par défaut."));
-    }
-    return 'com.example.app';
-  }
-
-  /**
-   * Trouve les fichiers Java dans un répertoire
-   * @param dir Le répertoire à explorer
-   * @returns Liste des chemins de fichiers Java
-   */
-  _findJavaFiles(dir) {
-    let results: string[] = [];
-    if (!fs.existsSync(dir)) return results;
-
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
-
-      if (stat.isDirectory()) {
-        results = results.concat(this._findJavaFiles(filePath));
-      } else if (file.endsWith('.java')) {
-        results.push(filePath);
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Détermine le package par défaut selon le type de composant
-   * @param componentType Le type de composant
-   * @returns Le nom de package suggéré
-   */
-  _getDefaultPackageName(componentType) {
-    const basePackage = this.projectConfig.packageName || this._detectPackageName();
-
-    switch (componentType) {
-      case 'controller': return `${basePackage}.controller`;
-      case 'service': return `${basePackage}.service`;
-      case 'repository': return `${basePackage}.repository`;
-      case 'entity': return `${basePackage}.entity`;
-      case 'dto': return `${basePackage}.dto`;
-      case 'config': return `${basePackage}.config`;
-      case 'exception': return `${basePackage}.exception`;
-      default: return basePackage;
-    }
-  }
-
-  /**
-   * Convertit une chaîne en snake_case
-   * @param str La chaîne à convertir
-   * @returns La chaîne en snake_case
-   */
-  _toSnakeCase(str) {
-    return str
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
-      .replace(/[\s-]+/g, '_')
-      .toLowerCase();
-  }
-
-  /**
-   * Génère un contrôleur REST
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateController(filePath) {
-    const { componentName, packageName, isRestController, basePath } = this.answers;
-
-    const content = `package ${packageName};
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import lombok.RequiredArgsConstructor;
-
-/**
- * ${componentName}
- * Contrôleur pour gérer les opérations liées à ${componentName.replace('Controller', '')}
- */
-${isRestController ? '@RestController' : '@Controller'}
-${basePath ? `@RequestMapping("${basePath}")` : ''}
-@RequiredArgsConstructor
-public class ${componentName} {
-
-    // TODO: Injecter les services nécessaires
-    // private final SomeService someService;
-    
-    /**
-     * Récupère toutes les ressources
-     * @return Liste des ressources
-     */
-    @GetMapping
-    public ResponseEntity<List<Object>> getAll() {
-        // TODO: Implémenter la logique de récupération
-        return ResponseEntity.ok(List.of());
+    if (this.buildTool === 'maven') {
+      this.log(`1. Exécutez ${chalk.cyan('mvn clean install')} pour compiler le projet avec les nouvelles dépendances`);
+    } else {
+      this.log(`1. Exécutez ${chalk.cyan('./gradlew build')} pour compiler le projet avec les nouvelles dépendances`);
     }
     
-    /**
-     * Récupère une ressource par son ID
-     * @param id ID de la ressource
-     * @return La ressource trouvée
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<Object> getById(@PathVariable Long id) {
-        // TODO: Implémenter la logique de récupération par ID
-        return ResponseEntity.ok(new Object());
+    this.log(`2. Démarrez l'application avec la commande habituelle`);
+
+    // Afficher des conseils spécifiques selon les composants installés
+    if (this.selectedComponents.includes('swagger')) {
+      this.log(`3. Accédez à l'interface Swagger UI à l'adresse: ${chalk.cyan('http://localhost:8080/swagger-ui.html')}`);
     }
     
-    /**
-     * Crée une nouvelle ressource
-     * @param resource La ressource à créer
-     * @return La ressource créée
-     */
-    @PostMapping
-    public ResponseEntity<Object> create(@RequestBody Object resource) {
-        // TODO: Implémenter la logique de création
-        return ResponseEntity.ok(resource);
-    }
-    
-    /**
-     * Met à jour une ressource existante
-     * @param id ID de la ressource
-     * @param resource La ressource mise à jour
-     * @return La ressource mise à jour
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<Object> update(@PathVariable Long id, @RequestBody Object resource) {
-        // TODO: Implémenter la logique de mise à jour
-        return ResponseEntity.ok(resource);
-    }
-    
-    /**
-     * Supprime une ressource
-     * @param id ID de la ressource à supprimer
-     * @return Réponse de confirmation
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        // TODO: Implémenter la logique de suppression
-        return ResponseEntity.noContent().build();
-    }
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère une interface de service
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateServiceInterface(filePath) {
-    const { componentName, packageName } = this.answers;
-    const interfaceName = componentName.replace(/ServiceImpl$|Service$/, '') + 'Service';
-
-    const content = `package ${packageName};
-
-import java.util.List;
-import java.util.Optional;
-
-/**
- * ${interfaceName}
- * Interface pour les opérations liées à ${interfaceName.replace('Service', '')}
- */
-public interface ${interfaceName} {
-    
-    /**
-     * Récupère toutes les instances
-     * @return Liste des instances
-     */
-    List<Object> findAll();
-    
-    /**
-     * Récupère une instance par son ID
-     * @param id ID de l'instance
-     * @return L'instance trouvée, ou empty si non trouvée
-     */
-    Optional<Object> findById(Long id);
-    
-    /**
-     * Crée une nouvelle instance
-     * @param entity L'instance à créer
-     * @return L'instance créée
-     */
-    Object save(Object entity);
-    
-    /**
-     * Met à jour une instance existante
-     * @param id ID de l'instance
-     * @param entity Les nouvelles données
-     * @return L'instance mise à jour
-     */
-    Object update(Long id, Object entity);
-    
-    /**
-     * Supprime une instance
-     * @param id ID de l'instance à supprimer
-     */
-    void delete(Long id);
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère une implémentation de service
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateService(filePath) {
-    const { componentName, packageName, createInterface } = this.answers;
-    const serviceInterface = componentName.replace(/ServiceImpl$|Service$/, '') + 'Service';
-
-    let implementsClause = '';
-    if (createInterface) {
-      implementsClause = `implements ${serviceInterface}`;
+    if (this.selectedComponents.includes('redis')) {
+      this.log(`3. Assurez-vous que Redis est en cours d'exécution sur ${chalk.cyan(`${this.answers.redisHost}:${this.answers.redisPort}`)}`);
     }
 
-    const content = `package ${packageName};
-
-import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
-import java.util.List;
-import java.util.Optional;
-
-/**
- * ${componentName}
- * Service pour gérer les opérations liées à ${componentName.replace(/ServiceImpl$|Service$/, '')}
- */
-@Service
-@RequiredArgsConstructor
-public class ${componentName} ${implementsClause} {
-
-    // TODO: Injecter les repositories nécessaires
-    // private final SomeRepository repository;
-    
-    ${createInterface ? '@Override\n    ' : ''}public List<Object> findAll() {
-        // TODO: Implémenter la logique pour récupérer toutes les données
-        return List.of();
-    }
-    
-    ${createInterface ? '@Override\n    ' : ''}public Optional<Object> findById(Long id) {
-        // TODO: Implémenter la logique pour récupérer une entité par ID
-        return Optional.empty();
-    }
-    
-    ${createInterface ? '@Override\n    ' : ''}public Object save(Object entity) {
-        // TODO: Implémenter la logique pour sauvegarder une entité
-        return entity;
-    }
-    
-    ${createInterface ? '@Override\n    ' : ''}public Object update(Long id, Object entity) {
-        // TODO: Implémenter la logique pour mettre à jour une entité
-        return entity;
-    }
-    
-    ${createInterface ? '@Override\n    ' : ''}public void delete(Long id) {
-        // TODO: Implémenter la logique pour supprimer une entité
-    }
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère un repository
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateRepository(filePath) {
-    const { componentName, packageName, entityName } = this.answers;
-
-    const content = `package ${packageName};
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-/**
- * ${componentName}
- * Repository pour accéder aux données de l'entité ${entityName}
- */
-@Repository
-public interface ${componentName} extends JpaRepository<${entityName}, Long> {
-    
-    // TODO: Ajouter des méthodes de requête personnalisées
-    
-    // Exemple: 
-    // List<${entityName}> findByFieldName(String fieldName);
-    // Optional<${entityName}> findByUniqueField(String uniqueField);
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère un repository pour une entité donnée
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateRepositoryForEntity(filePath) {
-    const { componentName, packageName } = this.answers;
-    const repositoryName = `${componentName}Repository`;
-
-    const repoPackage = packageName.replace(/\.entity|\.model|\.domain/, '.repository');
-    const entityPackage = packageName;
-
-    const content = `package ${repoPackage};
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import ${entityPackage}.${componentName};
-
-/**
- * ${repositoryName}
- * Repository pour accéder aux données de l'entité ${componentName}
- */
-@Repository
-public interface ${repositoryName} extends JpaRepository<${componentName}, Long> {
-    
-    // TODO: Ajouter des méthodes de requête personnalisées
-    
-    // Exemple: 
-    // List<${componentName}> findByFieldName(String fieldName);
-    // Optional<${componentName}> findByUniqueField(String uniqueField);
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère une entité JPA
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateEntity(filePath) {
-    const { componentName, packageName, tableName } = this.answers;
-
-    const content = `package ${packageName};
-
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.io.Serializable;
-import java.time.LocalDateTime;
-
-/**
- * ${componentName}
- * Entité JPA représentant la table ${tableName}
- */
-@Entity
-@Table(name = "${tableName}")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ${componentName} implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(name = "name", nullable = false)
-    private String name;
-    
-    @Column(name = "description")
-    private String description;
-    
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-    
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère un DTO (Data Transfer Object)
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateDTO(filePath) {
-    const { componentName, packageName } = this.answers;
-
-    const content = `package ${packageName};
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.io.Serializable;
-
-/**
- * ${componentName}
- * DTO pour le transfert de données
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ${componentName} implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    private Long id;
-    private String name;
-    private String description;
-    
-    // TODO: Ajouter des champs supplémentaires selon les besoins
-    
-    // TODO: Si nécessaire, ajouter des méthodes de conversion depuis/vers les entités
-    // public static ${componentName} fromEntity(EntityClass entity) { ... }
-    // public EntityClass toEntity() { ... }
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère une classe de configuration Spring
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateConfig(filePath) {
-    const { componentName, packageName } = this.answers;
-
-    const content = `package ${packageName};
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-/**
- * ${componentName}
- * Configuration Spring pour ${componentName.replace('Config', '')}
- */
-@Configuration
-public class ${componentName} {
-    
-    /**
-     * Exemple de bean configuré
-     * @return Un bean configuré
-     */
-    @Bean
-    public ExampleBean exampleBean() {
-        return new ExampleBean();
-    }
-    
-    // TODO: Ajouter d'autres beans et configurations selon les besoins
-}
-
-// Classe d'exemple - à remplacer par vos propres classes
-class ExampleBean {
-    // Implémentation de la classe
-}`;
-
-    this.fs.write(filePath, content);
-  }
-
-  /**
-   * Génère une classe d'exception personnalisée
-   * @param filePath Chemin du fichier à créer
-   */
-  _generateException(filePath) {
-    const { componentName, packageName } = this.answers;
-
-    const content = `package ${packageName};
-
-/**
- * ${componentName}
- * Exception personnalisée pour ${componentName.replace('Exception', '')}
- */
-public class ${componentName} extends RuntimeException {
-    
-    private static final long serialVersionUID = 1L;
-    
-    public ${componentName}() {
-        super();
-    }
-    
-    public ${componentName}(String message) {
-        super(message);
-    }
-    
-    public ${componentName}(String message, Throwable cause) {
-        super(message, cause);
-    }
-    
-    public ${componentName}(Throwable cause) {
-        super(cause);
-    }
-}`;
-
-    this.fs.write(filePath, content);
+    this.log(SECTION_DIVIDER);
   }
 }

@@ -403,17 +403,17 @@ generator-spring-fullstack/
 ## 📋 PHASE 9 : CLI AVANCÉ (Priorité Haute)
 
 ### Module 9.1 : Interface CLI Interactive
-- [ ] **[PRIORITÉ]** Créer l'interface de questions interactive
-- [ ] **[PRIORITÉ]** Implémenter la validation des réponses
-- [ ] **[PRIORITÉ]** Créer les menus de sélection
+- [x] **[PRIORITÉ]** Créer l'interface de questions interactive
+- [x] **[PRIORITÉ]** Implémenter la validation des réponses
+- [x] **[PRIORITÉ]** Créer les menus de sélection
 - [ ] Implémenter l'auto-complétion
-- [ ] Créer les progress bars
-- [ ] Implémenter les confirmations
-- [ ] Créer les messages d'erreur colorés
-- [ ] Implémenter l'aide contextuelle
-- [ ] Créer les raccourcis clavier
-- [ ] Implémenter la navigation
-- [ ] Configurer les thèmes CLI
+- [x] Créer les progress bars
+- [x] Implémenter les confirmations
+- [x] Créer les messages d'erreur colorés
+- [x] Implémenter l'aide contextuelle
+- [x] Créer les raccourcis clavier
+- [x] Implémenter la navigation
+- [ ] Configurer les thèmes CLI (pas important pour le moment)
 - [ ] Tester l'interface utilisateur
 
 ### Module 9.2 : Gestion des Templates
@@ -431,10 +431,10 @@ generator-spring-fullstack/
 - [ ] Documenter le système de templates
 
 ### Module 9.3 : Commandes Utilitaires
-- [ ] **[PRIORITÉ]** Implémenter `sfs add` (composants)
+- [x] **[PRIORITÉ]** Implémenter `sfs add` (composants)
 - [ ] **[PRIORITÉ]** Créer `sfs generate` (CRUD)
-- [ ] **[PRIORITÉ]** Implémenter `sfs generate` (entity)
-- [ ] Implémenter `sfs generate` (dtos)
+- [x] **[PRIORITÉ]** Implémenter `sfs generate` (entity)
+- [x] Implémenter `sfs generate` (dtos)
 - [ ] Implémenter `sfs serve` (dev server)
 - [ ] Créer `sfs test` (tests)
 - [ ] Implémenter `sfs build` (production)
