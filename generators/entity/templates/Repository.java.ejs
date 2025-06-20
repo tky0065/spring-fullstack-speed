@@ -1,0 +1,13 @@
+package <%= packageName.replace('.domain', '.repository') %>;
+
+import <%= packageName %>.<%= entityName %>;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Spring Data JPA repository for the <%= entityName %> entity.
+ */
+@Repository
+public interface <%= entityName %>Repository extends JpaRepository<<%= entityName %>, Long> {
+    // Ajoutez ici vos méthodes de requête personnalisées
+}

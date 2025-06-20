@@ -1,0 +1,152 @@
+package <%= packageName.replace('.domain', '.controller') %>;
+
+import <%= packageName %>.<%= entityName %>;
+import <%= packageName.replace('.domain', '.service') %>.<%= entityName %>Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * REST controller for managing {@link <%= entityName %>}.
+ */
+@RestController
+@RequestMapping("/api/<%= entityName.toLowerCase() %>s")
+public class <%= entityName %>Controller {
+
+    private final Logger log = LoggerFactory.getLogger(<%= entityName %>Controller.class);
+
+    private final <%= entityName %>Service <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service;
+
+    public <%= entityName %>Controller(<%= entityName %>Service <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service) {
+        this.<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service;
+    }
+
+    /**
+     * {@code POST  /<%= entityName.toLowerCase() %>s} : Create a new <%= entityName.toLowerCase() %>.
+     *
+     * @param <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %> the <%= entityName.toLowerCase() %> to create.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new <%= entityName.toLowerCase() %>, or with status {@code 400 (Bad Request)} if the <%= entityName.toLowerCase() %> has already an ID.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PostMapping("")
+    public ResponseEntity<<%= entityName %>> create<%= entityName %>(@Valid @RequestBody <%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) throws URISyntaxException {
+        log.debug("REST request to save <%= entityName %> : {}", <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId() != null) {
+            return ResponseEntity.badRequest().header("Failure", "A new <%= entityName.toLowerCase() %> cannot already have an ID").build();
+        }
+        <%= entityName %> result = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.save(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        return ResponseEntity
+            .created(new URI("/api/<%= entityName.toLowerCase() %>s/" + result.getId()))
+            .body(result);
+    }
+
+    /**
+     * {@code PUT  /<%= entityName.toLowerCase() %>s/:id} : Updates an existing <%= entityName.toLowerCase() %>.
+     *
+     * @param id the id of the <%= entityName.toLowerCase() %> to save.
+     * @param <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %> the <%= entityName.toLowerCase() %> to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated <%= entityName.toLowerCase() %>,
+     * or with status {@code 400 (Bad Request)} if the <%= entityName.toLowerCase() %> is not valid,
+     * or with status {@code 500 (Internal Server Error)} if the <%= entityName.toLowerCase() %> couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<<%= entityName %>> update<%= entityName %>(@PathVariable(value = "id", required = false) final Long id, @Valid @RequestBody <%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) throws URISyntaxException {
+        log.debug("REST request to update <%= entityName %> : {}, {}", id, <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId() == null) {
+            return ResponseEntity.badRequest().header("Failure", "Invalid id").build();
+        }
+        if (!Objects.equals(id, <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId())) {
+            return ResponseEntity.badRequest().header("Failure", "Invalid ID").build();
+        }
+
+        if (!<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.findOne(id).isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        <%= entityName %> result = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.update(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        return ResponseEntity.ok()
+            .body(result);
+    }
+
+    /**
+     * {@code PATCH  /<%= entityName.toLowerCase() %>s/:id} : Partial updates given fields of an existing <%= entityName.toLowerCase() %>, field will ignore if it is null
+     *
+     * @param id the id of the <%= entityName.toLowerCase() %> to save.
+     * @param <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %> the <%= entityName.toLowerCase() %> to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated <%= entityName.toLowerCase() %>,
+     * or with status {@code 400 (Bad Request)} if the <%= entityName.toLowerCase() %> is not valid,
+     * or with status {@code 404 (Not Found)} if the <%= entityName.toLowerCase() %> is not found,
+     * or with status {@code 500 (Internal Server Error)} if the <%= entityName.toLowerCase() %> couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
+    public ResponseEntity<<%= entityName %>> partialUpdate<%= entityName %>(@PathVariable(value = "id", required = false) final Long id, @RequestBody <%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) throws URISyntaxException {
+        log.debug("REST request to partial update <%= entityName %> partially : {}, {}", id, <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId() == null) {
+            return ResponseEntity.badRequest().header("Failure", "Invalid id").build();
+        }
+        if (!Objects.equals(id, <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId())) {
+            return ResponseEntity.badRequest().header("Failure", "Invalid ID").build();
+        }
+
+        if (!<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.findOne(id).isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Optional<<%= entityName %>> result = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.partialUpdate(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+
+        return result
+            .map(response -> ResponseEntity.ok().body(response))
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /<%= entityName.toLowerCase() %>s} : get all the <%= entityName.toLowerCase() %>s.
+     *
+     * @param pageable the pagination information.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of <%= entityName.toLowerCase() %>s in body.
+     */
+    @GetMapping("")
+    public ResponseEntity<List<<%= entityName %>>> getAll<%= entityName %>s(Pageable pageable) {
+        log.debug("REST request to get a page of <%= entityName %>s");
+        Page<<%= entityName %>> page = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.findAll(pageable);
+        return ResponseEntity.ok().body(page.getContent());
+    }
+
+    /**
+     * {@code GET  /<%= entityName.toLowerCase() %>s/:id} : get the "id" <%= entityName.toLowerCase() %>.
+     *
+     * @param id the id of the <%= entityName.toLowerCase() %> to retrieve.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the <%= entityName.toLowerCase() %>, or with status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<<%= entityName %>> get<%= entityName %>(@PathVariable Long id) {
+        log.debug("REST request to get <%= entityName %> : {}", id);
+        Optional<<%= entityName %>> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %> = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.findOne(id);
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.map(response -> ResponseEntity.ok().body(response))
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code DELETE  /<%= entityName.toLowerCase() %>s/:id} : delete the "id" <%= entityName.toLowerCase() %>.
+     *
+     * @param id the id of the <%= entityName.toLowerCase() %> to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete<%= entityName %>(@PathVariable Long id) {
+        log.debug("REST request to delete <%= entityName %> : {}", id);
+        <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

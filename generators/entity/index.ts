@@ -418,29 +418,153 @@ export default class EntityGenerator extends BaseGenerator {
     const entityName = this.answers.entityName;
     const packagePath = this.answers.packageName.replace(/\./g, '/');
 
-    // TODO: Générer ici les fichiers en utilisant les templates
-    this.displayHelpMessage(`Génération des fichiers pour l'entité ${entityName}...`);
+    // Préparer les données pour les templates
+    const templateData = {
+      entityName: entityName,
+      packageName: this.answers.packageName,
+      tableName: this._generateTableName(entityName),
+      fields: this._prepareFieldsForTemplate(this.entityFields),
+      hasDateFields: this._hasDateFields(),
+      hasBigDecimalFields: this._hasBigDecimalFields(),
+      imports: this._generateImports(),
+      auditable: this.answers.auditable
+    };
 
-    // Génération simulée pour le moment
+    // Créer les dossiers nécessaires
+    const srcMainJavaDir = path.join(process.cwd(), 'src/main/java');
+
+    // Dossier de l'entité
+    const entityDir = path.join(srcMainJavaDir, packagePath);
+    this.createDirectory(entityDir);
+
+    // Générer le fichier de l'entité
+    this.displayHelpMessage(`Génération de l'entité ${entityName}...`);
+    const entityPath = path.join(entityDir, `${entityName}.java`);
+    this.renderEjsTemplate('Entity.java.ejs', entityPath, templateData);
+
     this.displaySuccess(`Entité ${entityName}.java générée`);
+
+    // Générer le repository si demandé
     if (this.answers.generateRepository) {
+      const repositoryPackagePath = this.answers.packageName.replace('.domain', '.repository').replace(/\./g, '/');
+      const repositoryDir = path.join(srcMainJavaDir, repositoryPackagePath);
+      this.createDirectory(repositoryDir);
+
+      const repositoryPath = path.join(repositoryDir, `${entityName}Repository.java`);
+      this.renderEjsTemplate('Repository.java.ejs', repositoryPath, templateData);
+
       this.displaySuccess(`Repository ${entityName}Repository.java généré`);
     }
+
+    // Générer le service si demandé
     if (this.answers.generateService) {
+      const servicePackagePath = this.answers.packageName.replace('.domain', '.service').replace(/\./g, '/');
+      const serviceDir = path.join(srcMainJavaDir, servicePackagePath);
+      this.createDirectory(serviceDir);
+
+      const servicePath = path.join(serviceDir, `${entityName}Service.java`);
+      this.renderEjsTemplate('Service.java.ejs', servicePath, templateData);
+
       this.displaySuccess(`Service ${entityName}Service.java généré`);
     }
+
+    // Générer le controller si demandé
     if (this.answers.generateController) {
+      const controllerPackagePath = this.answers.packageName.replace('.domain', '.controller').replace(/\./g, '/');
+      const controllerDir = path.join(srcMainJavaDir, controllerPackagePath);
+      this.createDirectory(controllerDir);
+
+      const controllerPath = path.join(controllerDir, `${entityName}Controller.java`);
+      this.renderEjsTemplate('Controller.java.ejs', controllerPath, templateData);
+
       this.displaySuccess(`Controller ${entityName}Controller.java généré`);
     }
+
+    // Générer les DTOs si demandés (à implémenter plus tard)
     if (this.answers.generateDto) {
-      this.displaySuccess(`DTOs ${entityName}DTO.java générés`);
+      this.displayHelpMessage("La génération des DTOs sera implémentée dans une version future");
     }
   }
 
-  end() {
-    this.log("");
-    this.log(SECTION_DIVIDER);
-    this.displaySuccess(`L'entité ${this.answers.entityName} a été créée avec succès!`);
-    this.log(SECTION_DIVIDER);
+  /**
+   * Génère un nom de table à partir du nom de l'entité
+   * @param entityName Nom de l'entité
+   * @returns Nom de table au format snake_case
+   */
+  private _generateTableName(entityName: string): string {
+    // Convertir camelCase en snake_case
+    return entityName
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .toLowerCase();
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type date
+   * @returns true si l'entité a des champs de type date
+   */
+  private _hasDateFields(): boolean {
+    return this.entityFields.some(field =>
+      ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant'].includes(field.type)
+    );
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type BigDecimal
+   * @returns true si l'entité a des champs de type BigDecimal
+   */
+  private _hasBigDecimalFields(): boolean {
+    return this.entityFields.some(field => field.type === 'BigDecimal');
+  }
+
+  /**
+   * Génère les imports nécessaires pour l'entité
+   * @returns Liste des imports
+   */
+  private _generateImports(): string[] {
+    const imports: string[] = [];
+
+    // Ajouter les imports pour les types spéciaux
+    if (this._hasDateFields()) {
+      if (this.entityFields.some(field => field.type === 'LocalDate')) {
+        imports.push('java.time.LocalDate');
+      }
+      if (this.entityFields.some(field => field.type === 'LocalDateTime')) {
+        imports.push('java.time.LocalDateTime');
+      }
+      if (this.entityFields.some(field => field.type === 'LocalTime')) {
+        imports.push('java.time.LocalTime');
+      }
+      if (this.entityFields.some(field => field.type === 'ZonedDateTime')) {
+        imports.push('java.time.ZonedDateTime');
+      }
+      if (this.entityFields.some(field => field.type === 'Instant')) {
+        imports.push('java.time.Instant');
+      }
+    }
+
+    return imports;
+  }
+
+  /**
+   * Prépare les champs pour les templates
+   * @param fields Liste des champs de l'entité
+   * @returns Liste des champs préparés avec des informations supplémentaires
+   */
+  private _prepareFieldsForTemplate(fields: EntityField[]): any[] {
+    return fields.map(field => ({
+      ...field,
+      columnName: this._fieldNameToColumnName(field.name)
+    }));
+  }
+
+  /**
+   * Convertit un nom de champ en nom de colonne
+   * @param fieldName Nom du champ
+   * @returns Nom de colonne au format snake_case
+   */
+  private _fieldNameToColumnName(fieldName: string): string {
+    return fieldName
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .toLowerCase();
   }
 }
