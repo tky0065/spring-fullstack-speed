@@ -4,7 +4,7 @@
  */
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { getPresets } from "./questions.js";
+import { getPresets, displaySuccess, displayError, displayHelpMessage } from "./questions.js";
 
 // Importer les types Yeoman pour éviter les erreurs de typage
 import Generator from "yeoman-generator";
@@ -17,6 +17,7 @@ const MENU_OPTION_TITLE = chalk.green.bold;
 const MENU_OPTION_DESC = chalk.white;
 const MENU_KEY = chalk.yellow;
 const MENU_SEPARATOR = chalk.gray("────────────────────────────────────────────");
+const KEYBOARD_SHORTCUT = chalk.yellow.bold;
 
 /**
  * Affiche un écran d'accueil avec les options de démarrage
@@ -53,191 +54,278 @@ export async function showWelcomeMenu(): Promise<string> {
 }
 
 /**
- * Présente les presets disponibles avec leur description détaillée
+ * Affiche le menu de sélection des presets
  * @returns Le preset sélectionné
  */
-export async function showPresetMenu(): Promise<string> {
+export async function showPresetMenu() {
   const presets = getPresets();
-
-  // Détails des presets pour affichage
-  const presetDescriptions: Record<string, string> = {
-    basic: "Application simple avec Thymeleaf et base H2, idéale pour les débutants",
-    full: "Application complète avec React, PostgreSQL et toutes les fonctionnalités",
-    "api-only": "API RESTful sans frontend, avec PostgreSQL et documentation Swagger",
-    quickstart: "Application minimale prête à l'emploi avec React et H2"
-  };
-
-  console.log(MENU_SEPARATOR);
-  console.log(MENU_TITLE("📋 CONFIGURATIONS PRÉDÉFINIES"));
-  console.log(MENU_SUBTITLE("Sélectionnez un modèle d'application prédéfini"));
-  console.log(MENU_SEPARATOR);
-
-  // Création de choix enrichis avec description
-  const presetChoices = Object.keys(presets).map(key => {
-    const preset = presets[key as keyof typeof presets];
+  const presetChoices = Object.entries(presets).map(([key, preset]) => {
     return {
-      name: `${MENU_OPTION_TITLE(key)} - ${MENU_OPTION_DESC(presetDescriptions[key as keyof typeof presetDescriptions])}
-      ${chalk.dim(`• Frontend: ${preset.frontendFramework}`)}
-      ${chalk.dim(`• Base de données: ${preset.database}`)}
-      ${chalk.dim(`• Auth: ${preset.includeAuth ? preset.authType : "Non"}`)}`,
+      name: `${MENU_OPTION_TITLE(preset.appName)} - ${MENU_OPTION_DESC(getPresetDescription(key))}`,
       value: key
     };
   });
 
-  // Ajout d'une option pour revenir au menu précédent
-  presetChoices.push({
-    name: `${chalk.yellow("⬅️ Retour")} - Revenir au menu principal`,
-    value: "back"
-  });
-
-  const { selectedPreset } = await inquirer.prompt({
+  const { presetChoice } = await inquirer.prompt({
     type: "list",
-    name: "selectedPreset",
-    message: "Sélectionnez une configuration prédéfinie:",
-    choices: presetChoices,
-    pageSize: 10
-  });
-
-  return selectedPreset;
-}
-
-/**
- * Menu pour sélectionner les fonctionnalités supplémentaires avec descriptions détaillées
- * @param baseChoices Les choix de base à présenter
- * @returns Les fonctionnalités sélectionnées
- */
-export async function showFeaturesSelectionMenu(baseChoices: any[]): Promise<string[]> {
-  // Ajouter des descriptions détaillées aux choix
-  const enhancedChoices = baseChoices.map(choice => {
-    // Si c'est déjà un objet avec name et value
-    if (typeof choice === 'object' && choice.name && choice.value) {
-      return choice;
-    }
-
-    // Si c'est une simple chaîne
-    const descriptions: {[key: string]: string} = {
-      "openapi": "Documentation d'API interactive avec Swagger UI",
-      "docker": "Configuration Docker avec docker-compose pour déploiement facile",
-      "tests": "Tests unitaires et d'intégration préconfigurés",
-      "websocket": "Support WebSocket pour communication en temps réel",
-      "liquibase": "Gestion des migrations de base de données avec Liquibase",
-      "pwa": "Progressive Web App pour expérience mobile améliorée",
-      "redis": "Cache Redis pour améliorer les performances",
-      "monitoring": "Monitoring avec Spring Actuator, Micrometer et Prometheus",
-      "i18n": "Support multi-langue (internationalisation)",
-      "elasticsearch": "Moteur de recherche avancée avec Elasticsearch"
-    };
-
-    const value = typeof choice === 'string' ? choice : choice.value;
-    const name = typeof choice === 'string' ? choice : choice.name;
-    const checked = typeof choice === 'object' && choice.checked !== undefined ? choice.checked : false;
-    const description = descriptions[value] || "";
-
-    return {
-      name: `${name}${description ? ` - ${chalk.dim(description)}` : ''}`,
-      value,
-      checked
-    };
-  });
-
-  console.log(MENU_SEPARATOR);
-  console.log(MENU_TITLE("⚙️ FONCTIONNALITÉS SUPPLÉMENTAIRES"));
-  console.log(MENU_SUBTITLE("Sélectionnez les fonctionnalités à inclure dans votre projet"));
-  console.log(MENU_SEPARATOR);
-
-  const { selectedFeatures } = await inquirer.prompt({
-    type: "checkbox",
-    name: "selectedFeatures",
-    message: "Sélectionnez les fonctionnalités à ajouter:",
-    choices: enhancedChoices,
-    pageSize: 15,
-    validate: (input: string[]) => {
-      if (input.length < 1) {
-        return "Sélectionnez au moins une fonctionnalité";
+    name: "presetChoice",
+    message: "Choisissez un preset:",
+    choices: [
+      ...presetChoices,
+      new inquirer.Separator(MENU_SEPARATOR),
+      {
+        name: `${MENU_OPTION_TITLE("← Retour")} - ${MENU_OPTION_DESC("Revenir au menu principal")}`,
+        value: "back"
       }
-      return true;
-    }
-  });
-
-  return selectedFeatures;
-}
-
-/**
- * Menu pour sélectionner le type d'authentification avec descriptions détaillées
- * @returns Le type d'authentification sélectionné
- */
-export async function showAuthSelectionMenu(): Promise<string> {
-  const authOptions = [
-    {
-      name: `${MENU_OPTION_TITLE("JWT (JSON Web Token)")} - ${MENU_OPTION_DESC("Authentification stateless via tokens")}`,
-      value: "JWT"
-    },
-    {
-      name: `${MENU_OPTION_TITLE("JWT + OAuth2")} - ${MENU_OPTION_DESC("JWT avec support Google, GitHub, etc.")}`,
-      value: "JWT+OAuth2"
-    },
-    {
-      name: `${MENU_OPTION_TITLE("Basic Auth")} - ${MENU_OPTION_DESC("Authentification simple username/password")}`,
-      value: "Basic"
-    },
-    {
-      name: `${MENU_OPTION_TITLE("Session")} - ${MENU_OPTION_DESC("Authentification basée sur les sessions")}`,
-      value: "Session"
-    },
-    {
-      name: `${MENU_OPTION_TITLE("Aucune")} - ${MENU_OPTION_DESC("Pas d'authentification")}`,
-      value: "None"
-    }
-  ];
-
-  console.log(MENU_SEPARATOR);
-  console.log(MENU_TITLE("🔐 CONFIGURATION DE L'AUTHENTIFICATION"));
-  console.log(MENU_SUBTITLE("Sélectionnez le type d'authentification pour votre application"));
-  console.log(MENU_SEPARATOR);
-
-  const { selectedAuth } = await inquirer.prompt({
-    type: "list",
-    name: "selectedAuth",
-    message: "Type d'authentification:",
-    choices: authOptions,
+    ],
     pageSize: 10
   });
 
-  return selectedAuth;
+  return presetChoice;
 }
 
 /**
- * Menu de confirmation avec résumé des choix
- * @param config La configuration à confirmer
- * @returns true si confirmé, false sinon
+ * Obtient une description lisible pour un preset donné
+ * @param presetKey Clé du preset
+ * @returns Description du preset
  */
-export async function showConfirmationMenu(config: any): Promise<boolean> {
+function getPresetDescription(presetKey: string): string {
+  const descriptions: Record<string, string> = {
+    basic: "Application Spring Boot basique avec Thymeleaf et H2",
+    fullstack: "Application fullstack avec React, PostgreSQL et Docker",
+    microservice: "Microservice avec MongoDB, Kafka et support Kubernetes",
+    minimal: "Application Spring Boot minimale sans frontend"
+  };
+
+  return descriptions[presetKey] || "Configuration personnalisée";
+}
+
+/**
+ * Affiche un menu de confirmation avant la génération du projet
+ * @param config La configuration du projet à confirmer
+ * @returns True si confirmé, false sinon
+ */
+export async function showConfirmationMenu(config: Record<string, any>): Promise<boolean> {
   console.log(MENU_SEPARATOR);
-  console.log(MENU_TITLE("📝 RÉSUMÉ DE LA CONFIGURATION"));
+  console.log(MENU_TITLE("📋 RÉSUMÉ DE LA CONFIGURATION"));
   console.log(MENU_SEPARATOR);
 
-  // Affichage des détails de configuration
-  console.log(`${chalk.cyan("Nom de l'application:")} ${chalk.yellow(config.appName)}`);
-  console.log(`${chalk.cyan("Package Java:")} ${chalk.yellow(config.packageName)}`);
-  console.log(`${chalk.cyan("Outil de build:")} ${chalk.yellow(config.buildTool)}`);
-  console.log(`${chalk.cyan("Version Java:")} ${chalk.yellow(config.javaVersion)}`);
-  console.log(`${chalk.cyan("Version Spring Boot:")} ${chalk.yellow(config.springBootVersion)}`);
-  console.log(`${chalk.cyan("Frontend:")} ${chalk.yellow(config.frontendFramework)}`);
-  console.log(`${chalk.cyan("Base de données:")} ${chalk.yellow(config.database)}`);
-  console.log(`${chalk.cyan("Authentification:")} ${chalk.yellow(config.includeAuth ? config.authType : "Non")}`);
-
-  if (config.additionalFeatures && config.additionalFeatures.length > 0) {
-    console.log(`${chalk.cyan("Fonctionnalités:")} ${chalk.yellow(config.additionalFeatures.join(", "))}`);
-  }
+  // Afficher les détails de configuration de manière formatée
+  Object.entries(config).forEach(([key, value]) => {
+    if (key === 'additionalFeatures' && Array.isArray(value)) {
+      console.log(`${chalk.cyan(key)}: ${chalk.green(value.join(', '))}`);
+    } else if (key === 'oauth2Providers' && Array.isArray(value)) {
+      console.log(`${chalk.cyan(key)}: ${chalk.green(value.join(', '))}`);
+    } else {
+      console.log(`${chalk.cyan(key)}: ${chalk.green(String(value))}`);
+    }
+  });
 
   console.log(MENU_SEPARATOR);
-
   const { confirmed } = await inquirer.prompt({
     type: "confirm",
     name: "confirmed",
-    message: "Cette configuration vous convient-elle?",
+    message: "Voulez-vous générer le projet avec cette configuration?",
     default: true
   });
 
   return confirmed;
+}
+
+/**
+ * Affiche un menu de sélection de commandes pour les outils additionnels
+ * @returns La commande sélectionnée
+ */
+export async function showToolsMenu(): Promise<string> {
+  const { toolCommand } = await inquirer.prompt({
+    type: "list",
+    name: "toolCommand",
+    message: "Sélectionnez une commande:",
+    choices: [
+      {
+        name: `${MENU_OPTION_TITLE("sfs add")} - ${MENU_OPTION_DESC("Ajouter des composants au projet")}`,
+        value: "add"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("sfs generate entity")} - ${MENU_OPTION_DESC("Générer une entité et son CRUD")}`,
+        value: "entity"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("sfs generate dtos")} - ${MENU_OPTION_DESC("Générer des DTOs pour les entités")}`,
+        value: "dtos"
+      },
+      new inquirer.Separator(MENU_SEPARATOR),
+      {
+        name: `${MENU_OPTION_TITLE("Quitter")} - ${MENU_OPTION_DESC("Revenir au terminal")}`,
+        value: "exit"
+      }
+    ],
+    pageSize: 10
+  });
+
+  return toolCommand;
+}
+
+/**
+ * Affiche un menu de sélection d'entités pour la génération CRUD
+ * @param entities Liste des entités disponibles
+ * @returns L'entité sélectionnée
+ */
+export async function showEntitySelectionMenu(entities: string[]): Promise<string> {
+  if (entities.length === 0) {
+    displayError("Aucune entité trouvée dans le projet!");
+    return "";
+  }
+
+  const entityChoices = entities.map(entity => ({
+    name: entity,
+    value: entity
+  }));
+
+  const { selectedEntity } = await inquirer.prompt({
+    type: "list",
+    name: "selectedEntity",
+    message: "Sélectionnez une entité pour la génération de CRUD:",
+    choices: [
+      ...entityChoices,
+      new inquirer.Separator(MENU_SEPARATOR),
+      {
+        name: `${MENU_OPTION_TITLE("Créer nouvelle entité")} - ${MENU_OPTION_DESC("Définir une nouvelle entité")}`,
+        value: "new"
+      },
+      {
+        name: `${MENU_OPTION_TITLE("← Retour")} - ${MENU_OPTION_DESC("Revenir au menu précédent")}`,
+        value: "back"
+      }
+    ],
+    pageSize: 12
+  });
+
+  return selectedEntity;
+}
+
+/**
+ * Menu pour sélectionner des composants à ajouter au projet
+ * @returns Liste des composants sélectionnés
+ */
+export async function showAddComponentsMenu(): Promise<string[]> {
+  const { components } = await inquirer.prompt({
+    type: "checkbox",
+    name: "components",
+    message: "Sélectionnez les composants à ajouter:",
+    choices: [
+      { name: "Security (Spring Security, Auth, Login)", value: "security" },
+      { name: "Swagger UI (Documentation API)", value: "swagger" },
+      { name: "Redis (Cache)", value: "redis" },
+      { name: "WebSocket (Communication temps réel)", value: "websocket" },
+      { name: "File Upload (Gestion des fichiers)", value: "fileupload" },
+      { name: "Email (Service d'envoi d'emails)", value: "email" },
+      { name: "Monitoring (Actuator, Prometheus)", value: "monitoring" },
+      { name: "Internationalization (i18n)", value: "i18n" }
+    ],
+    pageSize: 10
+  });
+
+  return components;
+}
+
+/**
+ * Affiche l'aide contextuelle avec navigation par touches
+ * @param context Le contexte actuel pour afficher l'aide appropriée
+ */
+export function showContextualHelp(context: string) {
+  console.log(MENU_SEPARATOR);
+  console.log(MENU_TITLE("💡 AIDE CONTEXTUELLE"));
+  console.log(MENU_SEPARATOR);
+
+  const helpContent: Record<string, string[]> = {
+    "main": [
+      "Utilisez les " + KEYBOARD_SHORTCUT("flèches ↑↓") + " pour naviguer entre les options",
+      "Appuyez sur " + KEYBOARD_SHORTCUT("Entrée") + " pour sélectionner une option",
+      "Appuyez sur " + KEYBOARD_SHORTCUT("Ctrl+C") + " à tout moment pour quitter"
+    ],
+    "project": [
+      "Nom de l'application: nom du dossier du projet (ex: my-spring-app)",
+      "Nom du package: format Java standard (ex: com.example.app)",
+      "Outil de build: Maven utilise pom.xml, Gradle utilise build.gradle"
+    ],
+    "database": [
+      "H2: parfait pour le développement et les tests",
+      "MySQL/PostgreSQL: bases relationnelles pour production",
+      "MongoDB: base NoSQL orientée document"
+    ],
+    "frontend": [
+      "React/Vue: génère un frontend séparé avec API REST",
+      "Angular: utilise la nouvelle API Signal d'Angular",
+      "Thymeleaf/JTE: templates intégrés au backend"
+    ],
+    "auth": [
+      "JWT: authentification stateless avec tokens",
+      "OAuth2: permet l'auth via Google, GitHub, etc.",
+      "Session: auth traditionnelle avec cookies"
+    ]
+  };
+
+  if (helpContent[context]) {
+    helpContent[context].forEach(item => {
+      console.log(`• ${item}`);
+    });
+  } else {
+    console.log("• Pas d'aide disponible pour ce contexte");
+  }
+
+  console.log(MENU_SEPARATOR);
+  console.log("Appuyez sur " + KEYBOARD_SHORTCUT("une touche") + " pour continuer...");
+  // En production, on utiliserait process.stdin.once('data', () => {}) pour attendre une touche
+}
+
+/**
+ * Affiche un menu de progression avec une barre de progression
+ * @param step Étape actuelle
+ * @param total Nombre total d'étapes
+ * @param message Message à afficher
+ */
+export function showProgressBar(step: number, total: number, message: string) {
+  const width = 40;
+  const completed = Math.floor((step / total) * width);
+  const remaining = width - completed;
+
+  const bar = chalk.green('█'.repeat(completed)) + chalk.gray('░'.repeat(remaining));
+  const percentage = Math.floor((step / total) * 100);
+
+  console.log(`${bar} ${chalk.cyan(percentage + '%')} - ${message}`);
+}
+
+/**
+ * Menu de navigation avec touches de raccourci
+ * @returns La commande de navigation choisie
+ */
+export async function showNavigationMenu(): Promise<string> {
+  displayHelpMessage("Utilisez les raccourcis clavier pour naviguer plus rapidement");
+
+  const { navCommand } = await inquirer.prompt({
+    type: "list",
+    name: "navCommand",
+    message: "Navigation:",
+    choices: [
+      {
+        name: `${KEYBOARD_SHORTCUT("N")} ${MENU_OPTION_TITLE("Suivant")} - Continuer à l'étape suivante`,
+        value: "next"
+      },
+      {
+        name: `${KEYBOARD_SHORTCUT("P")} ${MENU_OPTION_TITLE("Précédent")} - Revenir à l'étape précédente`,
+        value: "prev"
+      },
+      {
+        name: `${KEYBOARD_SHORTCUT("H")} ${MENU_OPTION_TITLE("Aide")} - Afficher l'aide contextuelle`,
+        value: "help"
+      },
+      {
+        name: `${KEYBOARD_SHORTCUT("Q")} ${MENU_OPTION_TITLE("Quitter")} - Annuler la génération`,
+        value: "quit"
+      }
+    ]
+  });
+
+  return navCommand;
 }

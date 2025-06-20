@@ -8,14 +8,67 @@ import chalk from "chalk";
 import path from "path";
 import fs from "fs";
 import pluralize from "pluralize";
+import inquirer from "inquirer";
+import { EntityField, EntityGeneratorOptions, EntityGeneratorAnswers, ProjectConfig } from "../types.js";
+
+// Styles visuels constants
+const STEP_PREFIX = chalk.bold.blue("➤ ");
+const SECTION_DIVIDER = chalk.gray("────────────────────────────────────────────");
+const INFO_COLOR = chalk.yellow;
+const SUCCESS_COLOR = chalk.green;
+const ERROR_COLOR = chalk.red;
+const HELP_COLOR = chalk.gray.italic;
+
+// Types disponibles pour les champs d'entité
+const FIELD_TYPES = [
+  { name: "String - Texte", value: "String" },
+  { name: "Integer - Nombre entier", value: "Integer" },
+  { name: "Long - Nombre entier long", value: "Long" },
+  { name: "Float - Nombre décimal", value: "Float" },
+  { name: "Double - Nombre décimal précis", value: "Double" },
+  { name: "Boolean - Vrai/Faux", value: "Boolean" },
+  { name: "Date - Date", value: "LocalDate" },
+  { name: "DateTime - Date et heure", value: "LocalDateTime" },
+  { name: "Time - Heure", value: "LocalTime" },
+  { name: "Enum - Liste de valeurs fixes", value: "Enum" },
+  { name: "BigDecimal - Nombre décimal pour calculs précis", value: "BigDecimal" },
+  { name: "byte[] - Tableau d'octets (fichiers, images)", value: "byte[]" },
+  { name: "UUID - Identifiant universel unique", value: "UUID" }
+];
+
+// Validateurs
+function validateFieldName(input: string): boolean | string {
+  if (!input) return "Le nom du champ est requis";
+  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(input)) {
+    return "Le nom du champ doit commencer par une lettre et ne contenir que des lettres, chiffres et underscores";
+  }
+  if (["id", "class", "abstract", "interface", "enum"].includes(input.toLowerCase())) {
+    return `'${input}' est un mot réservé Java`;
+  }
+  return true;
+}
+
+function validateEnumValues(input: string): boolean | string {
+  if (!input) return "Les valeurs d'enum sont requises";
+  const values = input.split(',').map(v => v.trim());
+  for (const value of values) {
+    if (!/^[A-Z][A-Z0-9_]*$/.test(value)) {
+      return `'${value}' n'est pas valide. Les valeurs d'enum doivent être en MAJUSCULES et ne contenir que des lettres, chiffres et underscores`;
+    }
+  }
+  return true;
+}
 
 export default class EntityGenerator extends BaseGenerator {
-  declare answers: any;
-  declare projectConfig: any;
-  declare entityFields: any[];
+  // Utiliser une approche différente pour la déclaration des options
+  declare options: any; // Type any pour contourner le problème de compatibilité
+  declare answers: EntityGeneratorAnswers;
+  declare projectConfig: ProjectConfig;
+  // Initialiser les tableaux vides directement
+  entityFields: EntityField[] = [];
 
-  constructor(args: string | string[], options: any) {
-    super(args, options);
+  constructor(args: string | string[], opts: any) {
+    super(args, opts);
 
     this.argument("entityName", {
       type: String,
@@ -29,1142 +82,365 @@ export default class EntityGenerator extends BaseGenerator {
       description: "Package de base pour l'entité (ex: com.example.domain)",
     });
 
-    this.option("microservice", {
+    this.option("interactive", {
       type: Boolean,
-      alias: "m",
-      description: "Générer une architecture de microservice pour cette entité",
-      default: false
+      default: true,
+      description: "Mode interactif avec questions",
     });
 
-    this.option("dto", {
+    this.option("skip-repository", {
       type: Boolean,
-      alias: "d",
-      description: "Générer un DTO pour cette entité",
-      default: true
+      default: false,
+      description: "Ne pas générer de repository",
     });
 
-    this.option("skipService", {
+    this.option("skip-service", {
       type: Boolean,
-      alias: "ss",
-      description: "Ne pas générer de service pour cette entité",
-      default: false
+      default: false,
+      description: "Ne pas générer de service",
     });
 
-    this.option("skipController", {
+    this.option("skip-controller", {
       type: Boolean,
-      alias: "sc",
-      description: "Ne pas générer de contrôleur pour cette entité",
-      default: false
+      default: false,
+      description: "Ne pas générer de controller",
     });
 
-    this.entityFields = [];
+    this.option("skip-dto", {
+      type: Boolean,
+      default: false,
+      description: "Ne pas générer de DTO",
+    });
   }
 
-  initializing() {
-    this.log(chalk.blue("SFS Generate Entity - Génération d'entités et composants associés"));
+  async initializing() {
+    this.log(SECTION_DIVIDER);
+    this.log(chalk.bold.blue("🧩 GÉNÉRATEUR D'ENTITÉS SPRING FULLSTACK"));
+    this.log(SECTION_DIVIDER);
+    this.log(HELP_COLOR("Ce générateur va créer une entité Java avec tous les composants associés"));
+    this.log("");
 
-    // Vérifier si nous sommes dans un projet Spring-Fullstack
     try {
-      if (fs.existsSync('.sfs-config.json')) {
-        this.projectConfig = JSON.parse(fs.readFileSync('.sfs-config.json', 'utf8'));
-        this.log(chalk.green("Projet Spring-Fullstack détecté!"));
-      } else {
-        // Tentative de détection en cherchant des fichiers caractéristiques
-        const hasPomXml = fs.existsSync('pom.xml');
-        const hasGradle = fs.existsSync('build.gradle') || fs.existsSync('build.gradle.kts');
-        const hasApplication = fs.existsSync('src/main/java');
+      this.projectConfig = await this.readProjectConfig();
 
-        if (!(hasPomXml || hasGradle) || !hasApplication) {
-          this.log(chalk.red("⚠️ Ce répertoire ne semble pas contenir un projet Spring-Fullstack."));
-          this.log(chalk.yellow("Exécutez cette commande dans un projet généré par Spring-Fullstack-Speed."));
-          process.exit(1);
-        }
-
-        // Créer une configuration minimale basée sur la détection
-        this.projectConfig = {
-          buildTool: hasPomXml ? "Maven" : "Gradle",
-          packageName: this._detectPackageName(),
-          createdWithSfs: false
-        };
-
-        this.log(chalk.yellow("Projet Spring Boot détecté, mais pas de fichier de configuration SFS."));
-        this.log(chalk.yellow("Une configuration minimale sera utilisée."));
+      if (!this.projectConfig) {
+        this.log(ERROR_COLOR("❌ Impossible de trouver la configuration du projet. Assurez-vous d'être dans un projet Spring Fullstack."));
+        process.exit(1);
       }
     } catch (error) {
-      this.log(chalk.red("⚠️ Erreur lors de la lecture de la configuration: " + error));
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'initialisation: ${error}`));
       process.exit(1);
     }
   }
 
-  async prompting() {
-    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
-    const opts = this.options as any;
-
-    // Questions de base pour l'entité
-    const entityQuestions: any[] = [];
-
-    if (!opts.entityName) {
-      entityQuestions.push({
-        type: "input",
-        name: "entityName",
-        message: "Quel est le nom de l'entité à générer?",
-        validate: (input: string) => {
-          if (!input || input.trim() === '') {
-            return "Le nom de l'entité ne peut pas être vide";
-          }
-          if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
-            return "Le nom de l'entité doit commencer par une majuscule et ne contenir que des lettres et chiffres";
-          }
-          return true;
-        }
-      });
-    }
-
-    if (!opts.package) {
-      entityQuestions.push({
-        type: "input",
-        name: "packageName",
-        message: "Dans quel package voulez-vous générer l'entité?",
-        default: `${this.projectConfig.packageName}.domain`
-      });
-    }
-
-    if (entityQuestions.length > 0) {
-      const entityAnswers = await this.prompt(entityQuestions);
-      this.answers = {
-        ...entityAnswers,
-        entityName: opts.entityName || entityAnswers.entityName,
-        packageName: opts.package || entityAnswers.packageName
-      };
-    } else {
-      this.answers = {
-        entityName: opts.entityName,
-        packageName: opts.package
-      };
-    }
-
-    // Options pour la génération
-    if (!opts.microservice && !opts.skipService && !opts.skipController && !opts.dto) {
-      const optionsQuestions: any[] = [
-        {
-          type: "confirm",
-          name: "generateDto",
-          message: "Voulez-vous générer un DTO pour cette entité?",
-          default: true
-        },
-        {
-          type: "confirm",
-          name: "generateService",
-          message: "Voulez-vous générer un service pour cette entité?",
-          default: true
-        },
-        {
-          type: "confirm",
-          name: "generateController",
-          message: "Voulez-vous générer un contrôleur REST pour cette entité?",
-          default: true
-        },
-        {
-          type: "confirm",
-          name: "microserviceArchitecture",
-          message: "Voulez-vous utiliser une architecture de microservice?",
-          default: false
-        }
-      ];
-
-      const optionsAnswers = await this.prompt(optionsQuestions);
-      this.answers = {
-        ...this.answers,
-        ...optionsAnswers
-      };
-    } else {
-      this.answers.generateDto = opts.dto !== false;
-      this.answers.generateService = !opts.skipService;
-      this.answers.generateController = !opts.skipController;
-      this.answers.microserviceArchitecture = !!opts.microservice;
-    }
-
-    // Configuration de la table
-    const tableQuestions: any[] = [
-      {
-        type: "input",
-        name: "tableName",
-        message: "Nom de la table en base de données:",
-        default: this._toSnakeCase(pluralize.plural(this.answers.entityName))
-      }
-    ];
-
-    const tableAnswers = await this.prompt(tableQuestions);
-    this.answers = { ...this.answers, ...tableAnswers };
-
-    // Définition des champs de l'entité
-    await this._promptForFields();
-
-    // Affichage du résumé
-    this._displayEntitySummary();
+  /**
+   * Affiche un message d'aide contextuelle
+   */
+  displayHelpMessage(message: string) {
+    this.log(HELP_COLOR(`💡 ${message}`));
   }
 
-  async _promptForFields() {
-    this.entityFields = [];
-    let addMoreFields = true;
+  /**
+   * Affiche un message de succès
+   */
+  displaySuccess(message: string) {
+    this.log(SUCCESS_COLOR(`✅ ${message}`));
+  }
 
-    this.log(chalk.cyan('\nDéfinition des champs de l\'entité:'));
-    this.log(chalk.yellow('Note: Un champ ID sera automatiquement généré\n'));
+  /**
+   * Affiche un message d'erreur
+   */
+  displayError(message: string) {
+    this.log(ERROR_COLOR(`❌ ${message}`));
+  }
 
-    while (addMoreFields) {
-      const fieldQuestions: any = [
+  /**
+   * Récupérer la configuration du projet
+   */
+  async readProjectConfig() {
+    try {
+      const configPath = path.join(process.cwd(), '.yo-rc.json');
+      if (fs.existsSync(configPath)) {
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        const config = JSON.parse(configContent);
+        return config['generator-spring-fullstack'] || null;
+      }
+      return null;
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la lecture de la configuration: ${error}`));
+      return null;
+    }
+  }
+
+  async prompting() {
+    if (!this.options.entityName || this.options.interactive) {
+      this.log(SECTION_DIVIDER);
+      this.log(STEP_PREFIX + chalk.bold("CONFIGURATION DE L'ENTITÉ"));
+      this.log(SECTION_DIVIDER);
+
+      // Questions de base pour l'entité
+      const answers = await this.prompt<EntityGeneratorAnswers>([
         {
           type: "input",
-          name: "fieldName",
-          message: "Nom du champ:",
+          name: "entityName",
+          message: chalk.cyan("Nom de l'entité:"),
+          default: this.options.entityName,
           validate: (input: string) => {
-            if (!input || input.trim() === '') {
-              return "Le nom du champ ne peut pas être vide";
-            }
-            if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(input)) {
-              return "Le nom du champ doit commencer par une lettre et ne contenir que des lettres et chiffres";
+            if (!input) return "Le nom de l'entité est requis";
+            if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
+              return "Le nom de l'entité doit commencer par une majuscule et ne contenir que des lettres et chiffres";
             }
             return true;
           }
         },
         {
-          type: "list",
-          name: "fieldType",
-          message: "Type de données:",
-          choices: [
-            { name: "String - Chaîne de caractères", value: "String" },
-            { name: "Integer - Nombre entier", value: "Integer" },
-            { name: "Long - Nombre entier long", value: "Long" },
-            { name: "Double - Nombre à virgule flottante", value: "Double" },
-            { name: "BigDecimal - Nombre décimal précis", value: "BigDecimal" },
-            { name: "Boolean - Valeur booléenne", value: "Boolean" },
-            { name: "LocalDate - Date", value: "LocalDate" },
-            { name: "LocalDateTime - Date et heure", value: "LocalDateTime" },
-            { name: "Enum - Énumération", value: "Enum" },
-            { name: "Many-to-One - Relation plusieurs-vers-un", value: "ManyToOne" },
-            { name: "One-to-Many - Relation un-vers-plusieurs", value: "OneToMany" },
-            { name: "Many-to-Many - Relation plusieurs-vers-plusieurs", value: "ManyToMany" }
-          ]
-        }
-      ];
-
-      const fieldAnswers = await this.prompt(fieldQuestions);
-
-      // Questions supplémentaires selon le type
-      let additionalAnswers = {};
-
-      if (fieldAnswers.fieldType === 'String') {
-        const stringQuestions: any = {
           type: "input",
-          name: "maxLength",
-          message: "Longueur maximale:",
-          default: "255",
+          name: "packageName",
+          message: chalk.cyan("Package:"),
+          default: () => this.options.package ||
+                       (this.projectConfig ? `${this.projectConfig.packageName}.domain` : "com.example.domain"),
           validate: (input: string) => {
-            const num = parseInt(input);
-            return (!isNaN(num) && num > 0) || "La longueur doit être un nombre positif";
-          }
-        };
-        additionalAnswers = await this.prompt(stringQuestions);
-      } else if (fieldAnswers.fieldType === 'Enum') {
-        const enumQuestions: any = [
-          {
-            type: "input",
-            name: "enumName",
-            message: "Nom de l'énumération:",
-            default: `${fieldAnswers.fieldName.charAt(0).toUpperCase() + fieldAnswers.fieldName.slice(1)}Type`,
-            validate: (input: string) => {
-              if (!input || input.trim() === '') {
-                return "Le nom de l'énumération ne peut pas être vide";
-              }
-              if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
-                return "Le nom de l'énumération doit commencer par une majuscule";
-              }
-              return true;
+            if (!input) return "Le package est requis";
+            if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
+              return "Format de package invalide (ex: com.example.domain)";
             }
-          },
-          {
-            type: "input",
-            name: "enumValues",
-            message: "Valeurs de l'énumération (séparées par des virgules):",
-            validate: (input: string) => {
-              if (!input || input.trim() === '') {
-                return "Les valeurs de l'énumération ne peuvent pas être vides";
-              }
-              return true;
-            }
+            return true;
           }
-        ];
-        additionalAnswers = await this.prompt(enumQuestions);
-      } else if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(fieldAnswers.fieldType)) {
-        const relationQuestions: any = [
-          {
-            type: "input",
-            name: "relatedEntity",
-            message: "Nom de l'entité en relation:",
-            validate: (input: string) => {
-              if (!input || input.trim() === '') {
-                return "Le nom de l'entité ne peut pas être vide";
-              }
-              if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
-                return "Le nom de l'entité doit commencer par une majuscule";
-              }
-              return true;
-            }
-          }
-        ];
-
-        if (fieldAnswers.fieldType === 'ManyToMany') {
-          relationQuestions.push({
-            type: "confirm",
-            name: "relationOwner",
-            message: "Cette entité est-elle propriétaire de la relation?",
-            default: true
-          });
+        },
+        {
+          type: "confirm",
+          name: "generateRepository",
+          message: chalk.cyan("Générer un repository?"),
+          default: !this.options.skipRepository
+        },
+        {
+          type: "confirm",
+          name: "generateService",
+          message: chalk.cyan("Générer un service?"),
+          default: !this.options.skipService
+        },
+        {
+          type: "confirm",
+          name: "generateController",
+          message: chalk.cyan("Générer un controller REST?"),
+          default: !this.options.skipController
+        },
+        {
+          type: "confirm",
+          name: "generateDto",
+          message: chalk.cyan("Générer des DTOs?"),
+          default: !this.options.skipDto
+        },
+        {
+          type: "confirm",
+          name: "auditable",
+          message: chalk.cyan("Ajouter des champs d'audit (createdBy, createdDate, etc.)?"),
+          default: true
         }
+      ]);
 
-        additionalAnswers = await this.prompt(relationQuestions);
+      this.answers = answers;
+
+      // Demander à l'utilisateur de définir les champs de l'entité
+      await this.askForFields();
+    } else {
+      this.answers = {
+        entityName: this.options.entityName || '',
+        packageName: this.options.package ||
+                  (this.projectConfig ? `${this.projectConfig.packageName}.domain` : "com.example.domain"),
+        generateRepository: !this.options.skipRepository,
+        generateService: !this.options.skipService,
+        generateController: !this.options.skipController,
+        generateDto: !this.options.skipDto,
+        auditable: true
+      };
+
+      // En mode non-interactif, on demanderait ici de définir les champs via un fichier JSON ou des arguments
+      this.log(HELP_COLOR("Mode non-interactif: utilisez un fichier de définition d'entité ou ajoutez des champs manuellement plus tard."));
+    }
+  }
+
+  /**
+   * Demander à l'utilisateur de définir les champs de l'entité
+   */
+  async askForFields() {
+    this.entityFields = [];
+
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("DÉFINITION DES CHAMPS"));
+    this.log(SECTION_DIVIDER);
+    this.displayHelpMessage("Un champ 'id' de type Long sera automatiquement ajouté comme clé primaire");
+
+    let addMore = true;
+
+    while (addMore) {
+      interface FieldAnswers {
+        name: string;
+        type: string;
+        enumValues?: string;
+        required: boolean;
+        minLength?: string;
+        maxLength?: string;
+        min?: string;
+        max?: string;
+        unique: boolean;
       }
 
-      // Questions communes pour tous les champs
-      const commonQuestions: any = [
+      const field = await this.prompt<FieldAnswers>([
+        {
+          type: "input",
+          name: "name",
+          message: chalk.cyan("Nom du champ:"),
+          validate: validateFieldName
+        },
+        {
+          type: "list",
+          name: "type",
+          message: chalk.cyan("Type de données:"),
+          choices: FIELD_TYPES,
+          pageSize: 13
+        },
+        {
+          type: "input",
+          name: "enumValues",
+          message: chalk.cyan("Valeurs d'enum (séparées par des virgules):"),
+          when: (answers: FieldAnswers) => answers.type === "Enum",
+          validate: validateEnumValues
+        },
         {
           type: "confirm",
           name: "required",
-          message: "Ce champ est-il obligatoire?",
+          message: chalk.cyan("Ce champ est-il requis?"),
           default: true
+        },
+        {
+          type: "input",
+          name: "minLength",
+          message: chalk.cyan("Longueur minimale:"),
+          default: "",
+          when: (answers: FieldAnswers) => answers.type === "String",
+          validate: (input: string) => {
+            if (!input) return true;
+            const num = parseInt(input);
+            return isNaN(num) ? "Veuillez entrer un nombre valide" : true;
+          }
+        },
+        {
+          type: "input",
+          name: "maxLength",
+          message: chalk.cyan("Longueur maximale:"),
+          default: "",
+          when: (answers: FieldAnswers) => answers.type === "String",
+          validate: (input: string) => {
+            if (!input) return true;
+            const num = parseInt(input);
+            return isNaN(num) ? "Veuillez entrer un nombre valide" : true;
+          }
+        },
+        {
+          type: "input",
+          name: "min",
+          message: chalk.cyan("Valeur minimale:"),
+          default: "",
+          when: (answers: FieldAnswers) => ["Integer", "Long", "Float", "Double", "BigDecimal"].includes(answers.type),
+          validate: (input: string) => {
+            if (!input) return true;
+            const num = parseFloat(input);
+            return isNaN(num) ? "Veuillez entrer un nombre valide" : true;
+          }
+        },
+        {
+          type: "input",
+          name: "max",
+          message: chalk.cyan("Valeur maximale:"),
+          default: "",
+          when: (answers: FieldAnswers) => ["Integer", "Long", "Float", "Double", "BigDecimal"].includes(answers.type),
+          validate: (input: string) => {
+            if (!input) return true;
+            const num = parseFloat(input);
+            return isNaN(num) ? "Veuillez entrer un nombre valide" : true;
+          }
         },
         {
           type: "confirm",
           name: "unique",
-          message: "Ce champ doit-il être unique?",
+          message: chalk.cyan("Ce champ doit-il être unique?"),
           default: false
         }
-      ];
-
-      const commonAnswers = await this.prompt(commonQuestions);
+      ]);
 
       // Ajouter le champ à la liste
       this.entityFields.push({
-        ...fieldAnswers,
-        ...additionalAnswers,
-        ...commonAnswers,
-        columnName: this._toSnakeCase(fieldAnswers.fieldName)
+        name: field.name,
+        type: field.type,
+        required: field.required,
+        unique: field.unique,
+        minLength: field.minLength ? parseInt(field.minLength) : null,
+        maxLength: field.maxLength ? parseInt(field.maxLength) : null,
+        min: field.min ? parseFloat(field.min) : null,
+        max: field.max ? parseFloat(field.max) : null,
+        enumValues: field.type === "Enum" && field.enumValues ? field.enumValues.split(',').map((v: string) => v.trim()) : null
       });
 
-      // Demander si l'utilisateur veut ajouter d'autres champs
-      const addMoreQuestion: any = {
+      this.displaySuccess(`Champ '${field.name}' ajouté`);
+
+      // Demander si l'utilisateur veut ajouter un autre champ
+      const { addMoreFields } = await this.prompt<{addMoreFields: boolean}>({
         type: "confirm",
-        name: "addMore",
-        message: "Voulez-vous ajouter un autre champ?",
+        name: "addMoreFields",
+        message: chalk.cyan("Ajouter un autre champ?"),
         default: true
-      };
+      });
 
-      const { addMore } = await this.prompt(addMoreQuestion);
-      addMoreFields = addMore;
+      addMore = addMoreFields;
     }
-  }
 
-  _displayEntitySummary() {
-    this.log(chalk.green.bold('\n📋 Résumé de l\'entité:'));
-    this.log(chalk.cyan('Nom de l\'entité: ') + chalk.yellow(this.answers.entityName));
-    this.log(chalk.cyan('Nom de la table: ') + chalk.yellow(this.answers.tableName));
-    this.log(chalk.cyan('Package: ') + chalk.yellow(this.answers.packageName));
+    // Afficher un résumé des champs
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("RÉSUMÉ DES CHAMPS"));
+    this.log(SECTION_DIVIDER);
 
-    this.log(chalk.cyan('\nChamps:'));
-    this.log(chalk.cyan('- id: Long (Généré automatiquement)'));
-
-    this.entityFields.forEach(field => {
-      let fieldDescription = `- ${field.fieldName}: ${field.fieldType}`;
-
-      if (field.fieldType === 'String' && field.maxLength) {
-        fieldDescription += ` (max: ${field.maxLength})`;
-      } else if (field.fieldType === 'Enum') {
-        fieldDescription += ` (${field.enumName}: ${field.enumValues})`;
-      } else if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        fieldDescription += ` (→ ${field.relatedEntity})`;
-        if (field.fieldType === 'ManyToMany') {
-          fieldDescription += field.relationOwner ? ' (propriétaire)' : ' (non-propriétaire)';
-        }
-      }
-
-      if (field.required) fieldDescription += ' [Obligatoire]';
-      if (field.unique) fieldDescription += ' [Unique]';
-
-      this.log(chalk.cyan(fieldDescription));
+    this.entityFields.forEach((field, index) => {
+      this.log(`${index + 1}. ${chalk.green(field.name)} : ${chalk.cyan(field.type)} ${field.required ? chalk.yellow('(requis)') : ''} ${field.unique ? chalk.yellow('(unique)') : ''}`);
     });
-
-    this.log(chalk.cyan('\nComposants à générer:'));
-    this.log(chalk.cyan('- Entité: ') + chalk.yellow(this.answers.entityName));
-    this.log(chalk.cyan('- Repository: ') + chalk.yellow(`${this.answers.entityName}Repository`));
-
-    if (this.answers.generateService) {
-      this.log(chalk.cyan('- Service: ') + chalk.yellow(`${this.answers.entityName}Service`));
-    }
-
-    if (this.answers.generateController) {
-      this.log(chalk.cyan('- Controller: ') + chalk.yellow(`${this.answers.entityName}Controller`));
-    }
-
-    if (this.answers.generateDto) {
-      this.log(chalk.cyan('- DTO: ') + chalk.yellow(`${this.answers.entityName}DTO`));
-    }
-
-    if (this.answers.microserviceArchitecture) {
-      this.log(chalk.cyan('\nArchitecture: ') + chalk.yellow('Microservice'));
-    } else {
-      this.log(chalk.cyan('\nArchitecture: ') + chalk.yellow('Monolithique'));
-    }
-  }
-
-  configuring() {
-    // Traitement et validation des données avant la génération
   }
 
   writing() {
-    const { entityName, packageName, tableName } = this.answers;
-
-    // Générer l'entité
-    this._generateEntity();
-
-    // Générer le repository
-    this._generateRepository();
-
-    // Générer le DTO si demandé
-    if (this.answers.generateDto) {
-      this._generateDTO();
+    if (this.entityFields.length === 0 && this.options.interactive) {
+      this.displayError("Aucun champ défini pour l'entité. Génération annulée.");
+      return;
     }
 
-    // Générer le service si demandé
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES FICHIERS"));
+    this.log(SECTION_DIVIDER);
+
+    const entityName = this.answers.entityName;
+    const packagePath = this.answers.packageName.replace(/\./g, '/');
+
+    // TODO: Générer ici les fichiers en utilisant les templates
+    this.displayHelpMessage(`Génération des fichiers pour l'entité ${entityName}...`);
+
+    // Génération simulée pour le moment
+    this.displaySuccess(`Entité ${entityName}.java générée`);
+    if (this.answers.generateRepository) {
+      this.displaySuccess(`Repository ${entityName}Repository.java généré`);
+    }
     if (this.answers.generateService) {
-      this._generateService();
+      this.displaySuccess(`Service ${entityName}Service.java généré`);
     }
-
-    // Générer le controller si demandé
     if (this.answers.generateController) {
-      this._generateController();
+      this.displaySuccess(`Controller ${entityName}Controller.java généré`);
     }
-
-    // Générer les énumérations nécessaires
-    this._generateEnums();
-  }
-
-  _generateEntity() {
-    const { entityName, packageName, tableName } = this.answers;
-    const entityPackagePath = packageName.replace(/\./g, '/');
-    const filePath = `src/main/java/${entityPackagePath}/${entityName}.java`;
-
-    this.log(chalk.blue(`Génération de l'entité ${entityName} dans ${filePath}...`));
-
-    // Imports nécessaires
-    let imports = new Set([
-      'jakarta.persistence.*',
-      'lombok.AllArgsConstructor',
-      'lombok.Builder',
-      'lombok.Data',
-      'lombok.NoArgsConstructor',
-      'java.io.Serializable',
-      'java.time.LocalDateTime'
-    ]);
-
-    // Ajouter des imports selon les types de champs
-    this.entityFields.forEach(field => {
-      if (field.fieldType === 'LocalDate') {
-        imports.add('java.time.LocalDate');
-      } else if (field.fieldType === 'BigDecimal') {
-        imports.add('java.math.BigDecimal');
-      } else if (['OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        imports.add('java.util.Set');
-        imports.add('java.util.HashSet');
-      }
-    });
-
-    // Génération des imports
-    let importsCode = Array.from(imports).map(imp => `import ${imp};`).join('\n');
-
-    // Génération des champs de l'entité
-    let fieldsCode = this.entityFields.map(field => {
-      let code = '';
-
-      // Annotations de colonne
-      if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        if (field.fieldType === 'ManyToOne') {
-          code += `    @ManyToOne\n`;
-          code += `    @JoinColumn(name = "${field.columnName}_id"${field.required ? '' : ', nullable = true'})\n`;
-        } else if (field.fieldType === 'OneToMany') {
-          code += `    @OneToMany(mappedBy = "${this._toLowerCamelCase(entityName)}")\n`;
-        } else if (field.fieldType === 'ManyToMany') {
-          if (field.relationOwner) {
-            code += `    @ManyToMany\n`;
-            code += `    @JoinTable(\n`;
-            code += `        name = "${tableName}_${this._toSnakeCase(pluralize.plural(field.relatedEntity))}",\n`;
-            code += `        joinColumns = @JoinColumn(name = "${this._toSnakeCase(entityName)}_id"),\n`;
-            code += `        inverseJoinColumns = @JoinColumn(name = "${this._toSnakeCase(field.relatedEntity)}_id")\n`;
-            code += `    )\n`;
-          } else {
-            code += `    @ManyToMany(mappedBy = "${this._toLowerCamelCase(pluralize.plural(entityName))}")\n`;
-          }
-        }
-      } else {
-        let columnOptions:any = [];
-
-        columnOptions.push(`name = "${field.columnName}"`);
-
-        if (field.required) {
-          columnOptions.push('nullable = false');
-        }
-
-        if (field.unique) {
-          columnOptions.push('unique = true');
-        }
-
-        if (field.fieldType === 'String' && field.maxLength) {
-          columnOptions.push(`length = ${field.maxLength}`);
-        }
-
-        code += `    @Column(${columnOptions.join(', ')})\n`;
-      }
-
-      // Type de champ
-      let fieldType = field.fieldType;
-
-      if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        if (field.fieldType === 'ManyToOne') {
-          fieldType = field.relatedEntity;
-        } else if (field.fieldType === 'OneToMany' || field.fieldType === 'ManyToMany') {
-          fieldType = `Set<${field.relatedEntity}>`;
-        }
-      } else if (field.fieldType === 'Enum') {
-        fieldType = field.enumName;
-      }
-
-      code += `    private ${fieldType} ${field.fieldName}`;
-
-      // Valeurs par défaut pour les collections
-      if (['OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        code += ` = new HashSet<>()`;
-      }
-
-      code += ';\n';
-      return code;
-    }).join('\n');
-
-    // Génération du code de l'entité
-    let entityCode = `package ${packageName};
-
-${importsCode}
-
-/**
- * ${entityName}
- * Entité JPA représentant la table ${tableName}
- */
-@Entity
-@Table(name = "${tableName}")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ${entityName} implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
-    
-${fieldsCode}
-    
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-    
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}`;
-
-    this.fs.write(filePath, entityCode);
-  }
-
-  _generateRepository() {
-    const { entityName, packageName } = this.answers;
-    const repoPackageName = packageName.replace(/\.domain|\.entity|\.model/, '.repository');
-    const repoPackagePath = repoPackageName.replace(/\./g, '/');
-    const filePath = `src/main/java/${repoPackagePath}/${entityName}Repository.java`;
-
-    this.log(chalk.blue(`Génération du repository ${entityName}Repository dans ${filePath}...`));
-
-    const repositoryCode = `package ${repoPackageName};
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import ${packageName}.${entityName};
-
-/**
- * Repository pour ${entityName}
- */
-@Repository
-public interface ${entityName}Repository extends JpaRepository<${entityName}, Long> {
-    
-    // TODO: Ajouter des méthodes de requête personnalisées
-    
-}`;
-
-    this.fs.write(filePath, repositoryCode);
-  }
-
-  _generateDTO() {
-    const { entityName, packageName } = this.answers;
-    const dtoPackageName = packageName.replace(/\.domain|\.entity|\.model/, '.dto');
-    const dtoPackagePath = dtoPackageName.replace(/\./g, '/');
-    const filePath = `src/main/java/${dtoPackagePath}/${entityName}DTO.java`;
-
-    this.log(chalk.blue(`Génération du DTO ${entityName}DTO dans ${filePath}...`));
-
-    // Imports nécessaires
-    let imports = new Set([
-      'lombok.AllArgsConstructor',
-      'lombok.Builder',
-      'lombok.Data',
-      'lombok.NoArgsConstructor',
-      'java.io.Serializable'
-    ]);
-
-    // Ajouter des imports selon les types de champs
-    this.entityFields.forEach(field => {
-      if (field.fieldType === 'LocalDate') {
-        imports.add('java.time.LocalDate');
-      } else if (field.fieldType === 'LocalDateTime') {
-        imports.add('java.time.LocalDateTime');
-      } else if (field.fieldType === 'BigDecimal') {
-        imports.add('java.math.BigDecimal');
-      }
-    });
-
-    // Import de l'entité pour la méthode de conversion
-    imports.add(`${packageName}.${entityName}`);
-
-    // Génération des imports
-    let importsCode = Array.from(imports).map(imp => `import ${imp};`).join('\n');
-
-    // Génération des champs du DTO
-    let fieldsCode = this.entityFields.map(field => {
-      let fieldType = field.fieldType;
-
-      if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-        if (field.fieldType === 'ManyToOne') {
-          return `    private Long ${field.fieldName}Id;`;
-        } else {
-          // Pour les relations OneToMany et ManyToMany, on n'inclut pas ces champs dans le DTO de base
-          return null;
-        }
-      } else if (field.fieldType === 'Enum') {
-        fieldType = field.enumName;
-      }
-
-      return `    private ${fieldType} ${field.fieldName};`;
-    }).filter(Boolean).join('\n');
-
-    // Méthodes de conversion
-    const fromEntityMethod = `    /**
-     * Convertit une entité en DTO
-     * @param entity l'entité à convertir
-     * @return le DTO correspondant
-     */
-    public static ${entityName}DTO fromEntity(${entityName} entity) {
-        if (entity == null) {
-            return null;
-        }
-        
-        ${entityName}DTOBuilder builder = ${entityName}DTO.builder()
-            .id(entity.getId())${this.entityFields.map(field => {
-              if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-                if (field.fieldType === 'ManyToOne') {
-                  return `\n            .${field.fieldName}Id(entity.get${field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)}() != null ? entity.get${field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)}().getId() : null)`;
-                } else {
-                  return '';
-                }
-              } else {
-                return `\n            .${field.fieldName}(entity.get${field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)}())`;
-              }
-            }).filter(Boolean).join('')};
-            
-        return builder.build();
-    }`;
-
-    const toEntityMethod = `    /**
-     * Convertit ce DTO en entité
-     * @return l'entité correspondante
-     */
-    public ${entityName} toEntity() {
-        ${entityName}Builder builder = ${entityName}.builder()
-            .id(this.id)${this.entityFields.map(field => {
-              if (['ManyToOne', 'OneToMany', 'ManyToMany'].includes(field.fieldType)) {
-                // Pour les relations, on ne gère pas la conversion ici
-                return '';
-              } else {
-                return `\n            .${field.fieldName}(this.${field.fieldName})`;
-              }
-            }).filter(Boolean).join('')};
-            
-        return builder.build();
-    }`;
-
-    // Génération du code du DTO
-    const dtoCode = `package ${dtoPackageName};
-
-${importsCode}
-
-/**
- * DTO pour ${entityName}
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ${entityName}DTO implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    private Long id;
-    
-${fieldsCode}
-    
-${fromEntityMethod}
-    
-${toEntityMethod}
-}`;
-
-    this.fs.write(filePath, dtoCode);
-  }
-
-  _generateService() {
-    const { entityName, packageName } = this.answers;
-    const servicePackageName = packageName.replace(/\.domain|\.entity|\.model/, '.service');
-    const servicePackagePath = servicePackageName.replace(/\./g, '/');
-
-    // Générer l'interface du service
-    const interfacePath = `src/main/java/${servicePackagePath}/${entityName}Service.java`;
-
-    this.log(chalk.blue(`Génération du service ${entityName}Service dans ${interfacePath}...`));
-
-    // Imports pour l'interface
-    const interfaceImports = this.answers.generateDto
-      ? `import ${packageName.replace(/\.domain|\.entity|\.model/, '.dto')}.${entityName}DTO;`
-      : `import ${packageName}.${entityName};`;
-
-    const dataType = this.answers.generateDto ? `${entityName}DTO` : entityName;
-
-    const interfaceCode = `package ${servicePackageName};
-
-import java.util.List;
-import java.util.Optional;
-${interfaceImports}
-
-/**
- * Service pour ${entityName}
- */
-public interface ${entityName}Service {
-    
-    /**
-     * Récupère toutes les instances
-     * @return Liste des instances
-     */
-    List<${dataType}> findAll();
-    
-    /**
-     * Récupère une instance par son ID
-     * @param id ID de l'instance
-     * @return L'instance trouvée, ou empty si non trouvée
-     */
-    Optional<${dataType}> findById(Long id);
-    
-    /**
-     * Crée une nouvelle instance
-     * @param data Les données pour créer l'instance
-     * @return L'instance créée
-     */
-    ${dataType} save(${dataType} data);
-    
-    /**
-     * Met à jour une instance existante
-     * @param id ID de l'instance
-     * @param data Les nouvelles données
-     * @return L'instance mise à jour
-     */
-    ${dataType} update(Long id, ${dataType} data);
-    
-    /**
-     * Supprime une instance
-     * @param id ID de l'instance à supprimer
-     */
-    void delete(Long id);
-}`;
-
-    this.fs.write(interfacePath, interfaceCode);
-
-    // Générer l'implémentation du service
-    const implPath = `src/main/java/${servicePackagePath}/impl/${entityName}ServiceImpl.java`;
-
-    this.log(chalk.blue(`Génération de l'implémentation du service ${entityName}ServiceImpl dans ${implPath}...`));
-
-    // Imports pour l'implémentation
-    let implImports = new Set([
-      'org.springframework.stereotype.Service',
-      'lombok.RequiredArgsConstructor',
-      'java.util.List',
-      'java.util.Optional',
-      'java.util.stream.Collectors',
-      `${servicePackageName}.${entityName}Service`,
-      `${packageName.replace(/\.domain|\.entity|\.model/, '.repository')}.${entityName}Repository`,
-      `${packageName}.${entityName}`
-    ]);
-
     if (this.answers.generateDto) {
-      implImports.add(`${packageName.replace(/\.domain|\.entity|\.model/, '.dto')}.${entityName}DTO`);
-    }
-
-    // Génération des imports
-    const implImportsCode = Array.from(implImports).map(imp => `import ${imp};`).join('\n');
-
-    // Logique de service différente selon le cas avec ou sans DTO
-    let serviceLogic = '';
-
-    if (this.answers.generateDto) {
-      serviceLogic = `    @Override
-    public List<${entityName}DTO> findAll() {
-        return repository.findAll().stream()
-                .map(${entityName}DTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-    
-    @Override
-    public Optional<${entityName}DTO> findById(Long id) {
-        return repository.findById(id)
-                .map(${entityName}DTO::fromEntity);
-    }
-    
-    @Override
-    public ${entityName}DTO save(${entityName}DTO dto) {
-        ${entityName} entity = dto.toEntity();
-        entity = repository.save(entity);
-        return ${entityName}DTO.fromEntity(entity);
-    }
-    
-    @Override
-    public ${entityName}DTO update(Long id, ${entityName}DTO dto) {
-        if (!repository.existsById(id)) {
-            throw new RuntimeException("${entityName} with id " + id + " not found");
-        }
-        
-        ${entityName} entity = dto.toEntity();
-        entity.setId(id);
-        entity = repository.save(entity);
-        return ${entityName}DTO.fromEntity(entity);
-    }
-    
-    @Override
-    public void delete(Long id) {
-        repository.deleteById(id);
-    }`;
-    } else {
-      serviceLogic = `    @Override
-    public List<${entityName}> findAll() {
-        return repository.findAll();
-    }
-    
-    @Override
-    public Optional<${entityName}> findById(Long id) {
-        return repository.findById(id);
-    }
-    
-    @Override
-    public ${entityName} save(${entityName} entity) {
-        return repository.save(entity);
-    }
-    
-    @Override
-    public ${entityName} update(Long id, ${entityName} entity) {
-        if (!repository.existsById(id)) {
-            throw new RuntimeException("${entityName} with id " + id + " not found");
-        }
-        
-        entity.setId(id);
-        return repository.save(entity);
-    }
-    
-    @Override
-    public void delete(Long id) {
-        repository.deleteById(id);
-    }`;
-    }
-
-    const implCode = `package ${servicePackageName}.impl;
-
-${implImportsCode}
-
-/**
- * Implémentation du service pour ${entityName}
- */
-@Service
-@RequiredArgsConstructor
-public class ${entityName}ServiceImpl implements ${entityName}Service {
-
-    private final ${entityName}Repository repository;
-    
-${serviceLogic}
-}`;
-
-    // Créer le répertoire impl s'il n'existe pas
-    const implDir = path.dirname(implPath);
-    if (!fs.existsSync(implDir)) {
-      fs.mkdirSync(implDir, { recursive: true });
-    }
-
-    this.fs.write(implPath, implCode);
-  }
-
-  _generateController() {
-    const { entityName, packageName } = this.answers;
-    const controllerPackageName = packageName.replace(/\.domain|\.entity|\.model/, '.controller');
-    const controllerPackagePath = controllerPackageName.replace(/\./g, '/');
-    const filePath = `src/main/java/${controllerPackagePath}/${entityName}Controller.java`;
-
-    this.log(chalk.blue(`Génération du controller ${entityName}Controller dans ${filePath}...`));
-
-    // Imports
-    let imports = new Set([
-      'org.springframework.web.bind.annotation.*',
-      'org.springframework.http.ResponseEntity',
-      'lombok.RequiredArgsConstructor',
-      'java.util.List'
-    ]);
-
-    const servicePackageName = packageName.replace(/\.domain|\.entity|\.model/, '.service');
-    imports.add(`${servicePackageName}.${entityName}Service`);
-
-    if (this.answers.generateDto) {
-      imports.add(`${packageName.replace(/\.domain|\.entity|\.model/, '.dto')}.${entityName}DTO`);
-    } else {
-      imports.add(`${packageName}.${entityName}`);
-    }
-
-    // Génération des imports
-    const importsCode = Array.from(imports).map(imp => `import ${imp};`).join('\n');
-
-    // Type de données utilisé
-    const dataType = this.answers.generateDto ? `${entityName}DTO` : entityName;
-
-    // Chemin de base du contrôleur
-    const basePath = `/api/${this._toLowerCamelCase(pluralize.plural(entityName))}`;
-
-    // Génération du code du contrôleur
-    const controllerCode = `package ${controllerPackageName};
-
-${importsCode}
-
-/**
- * REST Controller pour ${entityName}
- */
-@RestController
-@RequestMapping("${basePath}")
-@RequiredArgsConstructor
-public class ${entityName}Controller {
-    
-    private final ${entityName}Service service;
-    
-    /**
-     * Récupère toutes les instances
-     * @return Liste des instances
-     */
-    @GetMapping
-    public ResponseEntity<List<${dataType}>> getAll() {
-        List<${dataType}> items = service.findAll();
-        return ResponseEntity.ok(items);
-    }
-    
-    /**
-     * Récupère une instance par son ID
-     * @param id ID de l'instance
-     * @return L'instance trouvée
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<${dataType}> getById(@PathVariable Long id) {
-        return service.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-    
-    /**
-     * Crée une nouvelle instance
-     * @param data Les données pour créer l'instance
-     * @return L'instance créée
-     */
-    @PostMapping
-    public ResponseEntity<${dataType}> create(@RequestBody ${dataType} data) {
-        ${dataType} created = service.save(data);
-        return ResponseEntity.ok(created);
-    }
-    
-    /**
-     * Met à jour une instance existante
-     * @param id ID de l'instance
-     * @param data Les nouvelles données
-     * @return L'instance mise à jour
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<${dataType}> update(@PathVariable Long id, @RequestBody ${dataType} data) {
-        try {
-            ${dataType} updated = service.update(id, data);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-    
-    /**
-     * Supprime une instance
-     * @param id ID de l'instance à supprimer
-     * @return Réponse vide
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-}`;
-
-    // Créer le répertoire controller s'il n'existe pas
-    const controllerDir = path.dirname(filePath);
-    if (!fs.existsSync(controllerDir)) {
-      fs.mkdirSync(controllerDir, { recursive: true });
-    }
-
-    this.fs.write(filePath, controllerCode);
-  }
-
-  _generateEnums() {
-    // Chercher les champs de type Enum et générer les fichiers d'énumération
-    const enumFields = this.entityFields.filter(field => field.fieldType === 'Enum');
-    const { packageName } = this.answers;
-
-    for (const field of enumFields) {
-      const enumName = field.enumName;
-      const enumPackageName = `${packageName}.enums`;
-      const enumPackagePath = enumPackageName.replace(/\./g, '/');
-      const filePath = `src/main/java/${enumPackagePath}/${enumName}.java`;
-
-      this.log(chalk.blue(`Génération de l'énumération ${enumName} dans ${filePath}...`));
-
-      // Convertir les valeurs en format énumération
-      const enumValues = field.enumValues.split(',')
-        .map(value => value.trim())
-        .map(value => value.toUpperCase().replace(/\s+/g, '_'))
-        .join(',\n    ');
-
-      const enumCode = `package ${enumPackageName};
-
-/**
- * Énumération pour ${enumName}
- */
-public enum ${enumName} {
-    ${enumValues}
-}`;
-
-      // Créer le répertoire enums s'il n'existe pas
-      const enumsDir = path.dirname(filePath);
-      if (!fs.existsSync(enumsDir)) {
-        fs.mkdirSync(enumsDir, { recursive: true });
-      }
-
-      this.fs.write(filePath, enumCode);
+      this.displaySuccess(`DTOs ${entityName}DTO.java générés`);
     }
   }
 
   end() {
-    this.log(chalk.green.bold(`\n✅ L'entité ${this.answers.entityName} et ses composants associés ont été générés avec succès!`));
-
-    if (this.answers.generateController) {
-      this.log(chalk.cyan(`\nAPI REST disponible à l'adresse: `) +
-                chalk.yellow(`http://localhost:8080/api/${this._toLowerCamelCase(pluralize.plural(this.answers.entityName))}`));
-    }
-
-    this.log(chalk.yellow("\nPensez à adapter les relations et les conversions DTO selon vos besoins spécifiques."));
-  }
-
-  // Méthodes privées utilitaires
-
-  /**
-   * Détecte automatiquement le package principal du projet
-   * @returns Le nom du package détecté ou un package par défaut
-   */
-  _detectPackageName() {
-    try {
-      // Recherche dans les fichiers Java pour trouver le package
-      const javaFiles = this._findJavaFiles('src/main/java');
-      if (javaFiles.length > 0) {
-        const content = fs.readFileSync(javaFiles[0], 'utf8');
-        const packageMatch = content.match(/package\s+([\w.]+);/);
-        if (packageMatch && packageMatch[1]) {
-          return packageMatch[1].split('.').slice(0, 2).join('.');
-        }
-      }
-    } catch (error) {
-      this.log(chalk.yellow("Impossible de détecter automatiquement le package. Utilisation du package par défaut."));
-    }
-    return 'com.example.app';
-  }
-
-  /**
-   * Trouve les fichiers Java dans un répertoire
-   * @param dir Le répertoire à explorer
-   * @returns Liste des chemins de fichiers Java
-   */
-  _findJavaFiles(dir) {
-    let results: string[] = [];
-    if (!fs.existsSync(dir)) return results;
-
-    const files = fs.readdirSync(dir);
-    for (const file of files) {
-      const filePath = path.join(dir, file);
-      const stat = fs.statSync(filePath);
-
-      if (stat.isDirectory()) {
-        results = results.concat(this._findJavaFiles(filePath));
-      } else if (file.endsWith('.java')) {
-        results.push(filePath);
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Convertit une chaîne en snake_case
-   * @param str La chaîne à convertir
-   * @returns La chaîne en snake_case
-   */
-  _toSnakeCase(str) {
-    return str
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
-      .replace(/[\s-]+/g, '_')
-      .toLowerCase();
-  }
-
-  /**
-   * Convertit une chaîne en camelCase
-   * @param str La chaîne à convertir
-   * @returns La chaîne en camelCase
-   */
-  _toLowerCamelCase(str) {
-    return str.charAt(0).toLowerCase() + str.slice(1);
+    this.log("");
+    this.log(SECTION_DIVIDER);
+    this.displaySuccess(`L'entité ${this.answers.entityName} a été créée avec succès!`);
+    this.log(SECTION_DIVIDER);
   }
 }

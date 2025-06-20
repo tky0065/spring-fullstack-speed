@@ -19,6 +19,7 @@ import {
   BUILD_TOOL_OPTIONS,
   ADDITIONAL_FEATURES,
 } from "../utils/config.js";
+import { SFSBaseOptions } from "./types.js";
 
 /**
  * Classe de base pour tous les générateurs SFS (Spring-Fullstack-Speed)
@@ -26,11 +27,13 @@ import {
  */
 export class BaseGenerator extends Generator {
   // Propriétés communes à tous les générateurs
-  answers: any = {};
+  declare answers: any;
   // Contexte global pour les templates
   templateContext: Record<string, any> = {};
   // Configuration globale (renommée pour éviter le conflit avec config de Generator)
   appConfig: GlobalConfig = DEFAULT_CONFIG;
+  // Nous n'avons pas besoin de redéclarer 'options' car elle est déjà définie dans la classe de base
+  // La propriété options réelle sera du type de Yeoman, mais nous utiliserons notre interface pour le typage
 
   // Constants exportées pour tous les générateurs
   readonly DATABASE_OPTIONS = DATABASE_OPTIONS;

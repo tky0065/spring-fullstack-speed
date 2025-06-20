@@ -49,198 +49,279 @@ export function getPresets() {
       authType: "JWT",
       additionalFeatures: ["openapi", "tests"],
       springBootVersion: "3.1.0",
-      javaVersion: "17",
     },
-    full: {
-      appName: "sfs-full",
-      packageName: "com.example.full",
+    fullstack: {
+      appName: "sfs-fullstack",
+      packageName: "com.example.fullstack",
       buildTool: "Gradle",
-      frontendFramework: "React avec openapi",
+      frontendFramework: "React",
       database: "PostgreSQL",
       includeAuth: true,
       authType: "JWT+OAuth2",
-      additionalFeatures: ["openapi", "docker", "tests", "websocket", "redis", "monitoring"],
-      springBootVersion: "3.1.0",
-      javaVersion: "17",
+      additionalFeatures: ["openapi", "tests", "docker"],
+      springBootVersion: "3.1.5",
     },
-    "api-only": {
-      appName: "sfs-api",
-      packageName: "com.example.api",
-      buildTool: "Maven",
-      frontendFramework: "Aucun (API seulement)",
-      database: "PostgreSQL",
+    microservice: {
+      appName: "sfs-microservice",
+      packageName: "com.example.microservice",
+      buildTool: "Gradle",
+      frontendFramework: "none",
+      database: "MongoDB",
       includeAuth: true,
       authType: "JWT",
-      additionalFeatures: ["openapi", "docker", "tests"],
-      springBootVersion: "3.1.0",
-      javaVersion: "17",
+      additionalFeatures: ["openapi", "tests", "docker", "kubernetes", "kafka"],
+      springBootVersion: "3.2.0",
     },
-    quickstart: {
-      appName: "sfs-quickstart",
-      packageName: "com.example.sfs",
+    minimal: {
+      appName: "sfs-minimal",
+      packageName: "com.example.minimal",
       buildTool: "Maven",
-      frontendFramework: "React avec openapi",
+      frontendFramework: "none",
       database: "H2",
-      includeAuth: true,
-      authType: "JWT",
-      additionalFeatures: ["openapi", "docker", "tests"],
+      includeAuth: false,
+      additionalFeatures: [],
       springBootVersion: "3.1.0",
-      javaVersion: "17",
     }
   };
 }
 
 /**
- * Questions de base pour la configuration du projet
- * @returns Questions au format compatible avec Yeoman
+ * Affiche un message d'aide contextuelle
+ * @param message Le message d'aide à afficher
  */
-export function getBasicQuestions(): YeomanQuestion {
+export function displayHelpMessage(message: string) {
+  console.log(HELP_COLOR(`💡 ${message}`));
+}
+
+/**
+ * Affiche un message de succès
+ * @param message Le message de succès à afficher
+ */
+export function displaySuccess(message: string) {
+  console.log(SUCCESS_COLOR(`✓ ${message}`));
+}
+
+/**
+ * Affiche un message d'erreur
+ * @param message Le message d'erreur à afficher
+ */
+export function displayError(message: string) {
+  console.log(ERROR_COLOR(`✗ ${message}`));
+}
+
+/**
+ * Génère une question de confirmation avec style personnalisé
+ * @param name Nom de la question
+ * @param message Message à afficher
+ * @param defaultValue Valeur par défaut (true/false)
+ * @returns Question formattée pour yeoman-generator
+ */
+export function createConfirmQuestion(name: string, message: string, defaultValue: boolean = true): YeomanQuestion {
   return {
-    type: "input",
-    name: "appName",
-    message: `${chalk.bold("Nom de l'application:")}`,
-    default: "sfs-app",
-    validate: (input: string) => validateProjectName(input),
-    prefix: OPTION_PREFIX,
-    suffix: HELP_COLOR(" (nom du projet sans espaces ni caractères spéciaux)"),
+    type: 'confirm',
+    name,
+    message: chalk.cyan(message),
+    default: defaultValue
   };
 }
 
 /**
- * Questions pour la sélection du frontend
- * @returns Questions au format compatible avec Yeoman
+ * Génère une question avec validation des réponses
+ * @param name Nom de la question
+ * @param message Message à afficher
+ * @param defaultValue Valeur par défaut
+ * @param validator Fonction de validation
+ * @returns Question formattée pour yeoman-generator
  */
-export function getFrontendQuestions(): YeomanQuestion {
+export function createValidatedQuestion(
+  name: string,
+  message: string,
+  defaultValue: string = '',
+  validator?: (input: string) => boolean | string
+): YeomanQuestion {
   return {
-    type: "list",
-    name: "frontendFramework",
-    message: "Quel framework frontend voulez-vous utiliser?",
-    choices: [
-      { name: "React avec openapi", value: "React avec openapi" },
-      { name: "Vue.js avec openapi", value: "Vue.js avec openapi" },
-      { name: "Angular standalone", value: "Angular standalone" },
-      { name: "Thymeleaf (rendu côté serveur)", value: "Thymeleaf" },
-      { name: "JTE (rendu côté serveur)", value: "JTE" },
-      { name: "Aucun (API seulement)", value: "Aucun (API seulement)" }
-    ],
-    default: "React avec openapi",
+    type: 'input',
+    name,
+    message: chalk.cyan(message),
+    default: defaultValue,
+    validate: validator
   };
 }
 
 /**
- * Questions pour la configuration de l'API et de la base de données
- * @returns Questions au format compatible avec Yeoman
+ * Génère les questions de base pour la configuration du projet
+ * @returns Liste de questions pour yeoman-generator
  */
-export function getApiDbQuestions(): YeomanQuestion {
+export function getProjectQuestions(): YeomanQuestion[] {
+  return [
+    createValidatedQuestion('appName', 'Nom de l\'application:', 'my-spring-app', validateProjectName),
+    createValidatedQuestion('packageName', 'Nom du package Java:', 'com.example.app', validateJavaPackageName),
+    {
+      type: 'list',
+      name: 'buildTool',
+      message: chalk.cyan('Outil de build:'),
+      choices: ['Maven', 'Gradle'],
+      default: 'Maven'
+    },
+    {
+      type: 'list',
+      name: 'springBootVersion',
+      message: chalk.cyan('Version de Spring Boot:'),
+      choices: ['3.0.0', '3.1.0', '3.1.5', '3.2.0'],
+      default: '3.1.5'
+    }
+  ];
+}
+
+/**
+ * Génère les questions pour la configuration de la base de données
+ * @returns Liste de questions pour yeoman-generator
+ */
+export function getDatabaseQuestions(): YeomanQuestion[] {
   return [
     {
-      type: "list",
-      name: "database",
-      message: "Quelle base de données voulez-vous utiliser?",
+      type: 'list',
+      name: 'database',
+      message: chalk.cyan('Base de données:'),
       choices: [
-        { name: "PostgreSQL (recommandé pour la production)", value: "PostgreSQL" },
-        { name: "MySQL", value: "MySQL" },
-        { name: "MongoDB (NoSQL)", value: "MongoDB" },
-        { name: "H2 (développement)", value: "H2" }
+        { name: 'H2 (en mémoire, idéal pour le développement)', value: 'H2' },
+        { name: 'MySQL', value: 'MySQL' },
+        { name: 'PostgreSQL', value: 'PostgreSQL' },
+        { name: 'MongoDB', value: 'MongoDB' }
       ],
-      default: "PostgreSQL",
+      default: 'H2'
     },
     {
-      type: "confirm",
-      name: "includeAuth",
-      message: "Voulez-vous inclure l'authentification?",
-      default: true,
+      type: 'input',
+      name: 'dbUrl',
+      message: chalk.cyan('URL de la base de données:'),
+      default: (answers: any) => {
+        switch(answers.database) {
+          case 'MySQL': return 'jdbc:mysql://localhost:3306/myapp';
+          case 'PostgreSQL': return 'jdbc:postgresql://localhost:5432/myapp';
+          case 'MongoDB': return 'mongodb://localhost:27017/myapp';
+          case 'H2': return 'jdbc:h2:mem:myapp';
+          default: return '';
+        }
+      },
+      when: (answers: any) => answers.database !== 'H2'
     },
     {
-      type: "list",
-      name: "authType",
-      message: "Quel type d'authentification voulez-vous?",
-      choices: [
-        { name: "JWT (JSON Web Token)", value: "JWT" },
-        { name: "JWT + OAuth2 (Google, GitHub, etc.)", value: "JWT+OAuth2" },
-        { name: "Basic Auth", value: "Basic" },
-        { name: "Session-based", value: "Session" }
-      ],
-      default: "JWT",
-      when: (answers: any) => answers.includeAuth
+      type: 'input',
+      name: 'dbUsername',
+      message: chalk.cyan('Nom d\'utilisateur DB:'),
+      default: 'root',
+      when: (answers: any) => answers.database !== 'H2'
+    },
+    {
+      type: 'password',
+      name: 'dbPassword',
+      message: chalk.cyan('Mot de passe DB:'),
+      default: '',
+      when: (answers: any) => answers.database !== 'H2'
     }
-  ] as YeomanQuestion;
-}
-
-/**
- * Crée les choix de fonctionnalités supplémentaires en fonction des réponses précédentes
- * @param answers Les réponses déjà collectées
- * @returns Tableau de choix
- */
-export function buildFeatureChoices(answers: any) {
-  const choicesFeatures = [
-    { name: "OpenAPI/Swagger - Documentation d'API", value: "openapi", checked: true },
-    { name: "Docker - Conteneurisation", value: "docker", checked: true },
-    { name: "Tests unitaires et d'intégration", value: "tests", checked: true },
-    { name: "WebSocket - Communication temps réel", value: "websocket", checked: false }
   ];
-
-  // Ajout conditionnel de fonctionnalités basées sur les réponses précédentes
-  if (answers.database === "PostgreSQL" || answers.database === "MySQL") {
-    choicesFeatures.push({ name: "Liquibase - Migrations de base de données", value: "liquibase", checked: false });
-  }
-
-  if (answers.frontendFramework !== "Aucun (API seulement)") {
-    choicesFeatures.push({ name: "PWA - Progressive Web App", value: "pwa", checked: false });
-  }
-
-  choicesFeatures.push(
-    { name: "Redis Cache - Mise en cache des données", value: "redis", checked: false },
-    { name: "Monitoring - Actuator, Micrometer, Prometheus", value: "monitoring", checked: false },
-    { name: "Internationalization (i18n)", value: "i18n", checked: false }
-  );
-
-  return choicesFeatures;
 }
 
 /**
- * Questions pour les fonctionnalités supplémentaires
- * @param answers Les réponses déjà collectées
- * @returns Questions au format compatible avec Yeoman
+ * Génère les questions pour la configuration du frontend
+ * @returns Liste de questions pour yeoman-generator
  */
-export function getFeatureQuestions(answers: any): YeomanQuestion {
+export function getFrontendQuestions(): YeomanQuestion[] {
+  return [
+    {
+      type: 'list',
+      name: 'frontendFramework',
+      message: chalk.cyan('Framework frontend:'),
+      choices: [
+        { name: 'React (avec TypeScript et openapi-generator)', value: 'React' },
+        { name: 'Vue.js (avec TypeScript et openapi-generator)', value: 'Vue' },
+        { name: 'Angular (avec Signal API et ng-openapi-gen)', value: 'Angular' },
+        { name: 'Thymeleaf (templates côté serveur)', value: 'Thymeleaf' },
+        { name: 'JTE (templates côté serveur)', value: 'JTE' },
+        { name: 'Aucun (API seulement)', value: 'none' }
+      ],
+      default: 'React'
+    },
+    {
+      type: 'confirm',
+      name: 'useTailwind',
+      message: chalk.cyan('Utiliser TailwindCSS?'),
+      default: true,
+      when: (answers: any) => ['React', 'Vue'].includes(answers.frontendFramework)
+    }
+  ];
+}
+
+/**
+ * Génère les questions pour la configuration de l'authentification
+ * @returns Liste de questions pour yeoman-generator
+ */
+export function getAuthenticationQuestions(): YeomanQuestion[] {
+  return [
+    createConfirmQuestion('includeAuth', 'Inclure l\'authentification?'),
+    {
+      type: 'list',
+      name: 'authType',
+      message: chalk.cyan('Type d\'authentification:'),
+      choices: [
+        { name: 'JWT', value: 'JWT' },
+        { name: 'JWT + OAuth2 (Google, GitHub, etc.)', value: 'JWT+OAuth2' },
+        { name: 'Session (cookie-based)', value: 'Session' }
+      ],
+      default: 'JWT',
+      when: (answers: any) => answers.includeAuth
+    },
+    {
+      type: 'checkbox',
+      name: 'oauth2Providers',
+      message: chalk.cyan('Fournisseurs OAuth2:'),
+      choices: [
+        { name: 'Google', value: 'google' },
+        { name: 'GitHub', value: 'github' },
+        { name: 'Facebook', value: 'facebook' },
+        { name: 'Twitter', value: 'twitter' }
+      ],
+      when: (answers: any) => answers.includeAuth && answers.authType === 'JWT+OAuth2'
+    }
+  ];
+}
+
+/**
+ * Génère les questions pour les fonctionnalités additionnelles
+ * @returns Liste de questions pour yeoman-generator
+ */
+export function getFeaturesQuestions(): YeomanQuestion[] {
+  return [
+    {
+      type: 'checkbox',
+      name: 'additionalFeatures',
+      message: chalk.cyan('Fonctionnalités additionnelles:'),
+      choices: [
+        { name: 'Documentation API (OpenAPI/Swagger)', value: 'openapi' },
+        { name: 'Tests unitaires et d\'intégration', value: 'tests' },
+        { name: 'Docker', value: 'docker' },
+        { name: 'Kubernetes', value: 'kubernetes' },
+        { name: 'Support Redis (cache)', value: 'redis' },
+        { name: 'Kafka (messaging)', value: 'kafka' },
+        { name: 'Elasticsearch (recherche)', value: 'elasticsearch' },
+        { name: 'Monitoring (Actuator, Micrometer)', value: 'monitoring' }
+      ],
+      default: ['openapi', 'tests']
+    }
+  ];
+}
+
+/**
+ * Crée un objet de questions complet pour toutes les étapes du wizard
+ * @returns Objet contenant toutes les questions par étape
+ */
+export function createWizardQuestions() {
   return {
-    type: "checkbox",
-    name: "additionalFeatures",
-    message: "Quelles fonctionnalités supplémentaires souhaitez-vous?",
-    choices: buildFeatureChoices(answers),
-    pageSize: 15
-  };
-}
-
-/**
- * Affiche un résumé des choix de l'utilisateur
- * @param answers Les réponses collectées
- */
-export function displaySummary(answers: any) {
-  console.log("\n");
-  console.log(chalk.green.bold("📋 Résumé de la configuration:"));
-  console.log(chalk.cyan("Nom de l'application: ") + chalk.yellow(answers.appName));
-  console.log(chalk.cyan("Package Java: ") + chalk.yellow(answers.packageName));
-  console.log(chalk.cyan("Outil de build: ") + chalk.yellow(answers.buildTool));
-  console.log(chalk.cyan("Version Spring Boot: ") + chalk.yellow(answers.springBootVersion));
-  console.log(chalk.cyan("Version Java: ") + chalk.yellow(answers.javaVersion));
-  console.log(chalk.cyan("Frontend: ") + chalk.yellow(answers.frontendFramework));
-  console.log(chalk.cyan("Base de données: ") + chalk.yellow(answers.database));
-  console.log(chalk.cyan("Authentification: ") + chalk.yellow(answers.includeAuth ? answers.authType : "Non"));
-  console.log(chalk.cyan("Fonctionnalités: ") + chalk.yellow(answers.additionalFeatures.join(", ")));
-  console.log("\n");
-}
-
-/**
- * Question de confirmation finale
- * @returns Question de confirmation au format compatible avec Yeoman
- */
-export function getConfirmationQuestion(): YeomanQuestion {
-  return {
-    type: "confirm",
-    name: "confirmConfig",
-    message: "Voulez-vous continuer avec cette configuration?",
-    default: true
+    project: getProjectQuestions(),
+    database: getDatabaseQuestions(),
+    frontend: getFrontendQuestions(),
+    authentication: getAuthenticationQuestions(),
+    features: getFeaturesQuestions()
   };
 }

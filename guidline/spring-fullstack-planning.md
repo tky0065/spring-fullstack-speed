@@ -417,7 +417,7 @@ generator-spring-fullstack/
 - [ ] Tester l'interface utilisateur
 
 ### Module 9.2 : Gestion des Templates
-- [ ] **[PRIORITÉ]** Créer le système de versioning templates
+- [ ]  Créer le système de versioning templates
 - [ ] Implémenter le téléchargement de templates
 - [ ] Créer le cache des templates
 - [ ] Implémenter la mise à jour automatique

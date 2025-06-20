@@ -1,6 +1,5 @@
 base toi sur les fichier dans le dossier guidline pour continue les tasks, n'oublie pas de marker les tasks terminer,pour les tests tu deja dans bonn e dossier tu na pas besoin de faire cd
-
-
+si tu modifie les fichiers assure toi de la coerrence des types et la repercution dans les autres fichiers .
 
 
 
