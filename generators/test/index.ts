@@ -7,7 +7,7 @@ import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
 import path from "path";
 import fs from "fs";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { createSpinner, displaySectionTitle, displaySectionEnd, success, error, info } from "../../utils/cli-ui.js";
 
 /**
@@ -148,61 +148,65 @@ export default class TestGenerator extends BaseGenerator {
   private async runMavenTests(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Construire la commande Maven
-      const mvnCmd = process.platform === "win32" ? "mvn.cmd" : "mvn";
-      const mvnWrapper = fs.existsSync(path.join(process.cwd(), "mvnw"))
-        ? path.join(process.cwd(), process.platform === "win32" ? "mvnw.cmd" : "mvnw")
-        : mvnCmd;
+      const mvnCmd = global.process.platform === "win32" ? "mvn.cmd" : "mvn";
 
       // Construire les arguments Maven
-      const args: string[] = ["test"];
+      const args = ["test"];
 
-      // Ajouter les options selon les paramètres
-      if (this.options.skipUnit) {
-        args.push("-DskipUnitTests=true");
-      }
-
-      if (this.options.skipIntegration) {
-        args.push("-DskipIntegrationTests=true");
-      }
-
+      // Ajouter les options en fonction des paramètres
       if (this.options.coverage) {
         args.push("jacoco:report");
       }
 
+      // Construire les options de test
+      const testOptions:any = [];
+      if (this.options.skipUnit) {
+        testOptions.push("-Dskip.unit.tests=true");
+      }
+      if (this.options.skipIntegration) {
+        testOptions.push("-Dskip.integration.tests=true");
+      }
       if (this.options.pattern) {
-        args.push(`-Dtest=${this.options.pattern}`);
+        testOptions.push(`-Dtest=${this.options.pattern}`);
       }
 
+      // Ajouter les options à la commande
+      args.push(...testOptions);
+
+      // Ajouter des options de sortie pour faciliter l'analyse des résultats
+      args.push("-Dsurefire.useFile=false");
+
+      // Mode détaillé si demandé
       if (this.options.verbose) {
-        this.log(chalk.gray(`Exécution de la commande: ${mvnWrapper} ${args.join(' ')}`));
+        this.log(chalk.dim(`$ ${mvnCmd} ${args.join(' ')}`));
       }
 
-      // Exécuter la commande Maven
-      const childProcess = spawn(mvnWrapper, args, {
+      // Exécuter Maven
+      const process = spawn(mvnCmd, args, {
         stdio: this.options.verbose ? "inherit" : "pipe",
         shell: true
       });
 
       let output = "";
-      let errOutput = "";
-
       if (!this.options.verbose) {
-        childProcess.stdout?.on("data", (data) => {
+        process.stdout?.on("data", (data) => {
           output += data.toString();
+          this.parseTestProgress(data.toString());
         });
 
-        childProcess.stderr?.on("data", (data) => {
-          errOutput += data.toString();
+        process.stderr?.on("data", (data) => {
+          output += data.toString();
         });
       }
 
-      childProcess.on("close", (code) => {
+      process.on("close", (code) => {
         if (code === 0) {
           this.parseTestResults(output);
           resolve();
         } else {
+          // Enregistrer quand même les résultats des tests si disponibles
           this.parseTestResults(output);
-          reject(new Error(`Tests échoués avec le code d'erreur ${code}`));
+          reject(new Error(`Échec des tests avec le code de sortie ${code}`));
         }
       });
     });
@@ -214,196 +218,188 @@ export default class TestGenerator extends BaseGenerator {
   private async runGradleTests(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Construire la commande Gradle
-      const gradleCmd = process.platform === "win32" ? "gradle.bat" : "gradle";
-      const gradleWrapper = fs.existsSync(path.join(process.cwd(), "gradlew"))
-        ? path.join(process.cwd(), process.platform === "win32" ? "gradlew.bat" : "gradlew")
-        : gradleCmd;
+      const gradleCmd = global.process.platform === "win32" ? "gradlew.bat" : "./gradlew";
 
       // Construire les arguments Gradle
-      const args: string[] = ["test"];
+      const args:any = [];
 
-      // Ajouter les options selon les paramètres
-      if (this.options.skipUnit) {
-        args.push("-PskipUnitTests=true");
+      // Sélectionner les tests à exécuter
+      if (this.options.skipUnit && !this.options.skipIntegration) {
+        args.push("integrationTest");
+      } else if (!this.options.skipUnit && this.options.skipIntegration) {
+        args.push("test");
+      } else {
+        args.push("check");
       }
 
-      if (this.options.skipIntegration) {
-        args.push("-PskipIntegrationTests=true");
-      }
-
+      // Ajouter l'option de couverture si demandée
       if (this.options.coverage) {
         args.push("jacocoTestReport");
       }
 
+      // Filtrer les tests si un pattern est spécifié
       if (this.options.pattern) {
-        // Format pour Gradle est différent de Maven
-        args.push(`--tests "${this.options.pattern}"`);
+        args.push(`--tests ${this.options.pattern}`);
       }
 
+      // Mode détaillé si demandé
       if (this.options.verbose) {
-        this.log(chalk.gray(`Exécution de la commande: ${gradleWrapper} ${args.join(' ')}`));
+        this.log(chalk.dim(`$ ${gradleCmd} ${args.join(' ')}`));
       }
 
-      // Exécuter la commande Gradle
-      const childProcess = spawn(gradleWrapper, args, {
+      // Exécuter Gradle
+      const process = spawn(gradleCmd, args, {
         stdio: this.options.verbose ? "inherit" : "pipe",
         shell: true
       });
 
       let output = "";
-      let errOutput = "";
-
       if (!this.options.verbose) {
-        childProcess.stdout?.on("data", (data) => {
+        process.stdout?.on("data", (data) => {
           output += data.toString();
+          this.parseTestProgress(data.toString());
         });
 
-        childProcess.stderr?.on("data", (data) => {
-          errOutput += data.toString();
+        process.stderr?.on("data", (data) => {
+          output += data.toString();
         });
       }
 
-      childProcess.on("close", (code) => {
+      process.on("close", (code) => {
         if (code === 0) {
-          this.parseGradleTestResults(output);
+          this.parseTestResults(output);
           resolve();
         } else {
-          this.parseGradleTestResults(output);
-          reject(new Error(`Tests échoués avec le code d'erreur ${code}`));
+          // Enregistrer quand même les résultats des tests si disponibles
+          this.parseTestResults(output);
+          reject(new Error(`Échec des tests avec le code de sortie ${code}`));
         }
       });
     });
   }
 
   /**
-   * Parse les résultats des tests Maven
+   * Analyse le flux de sortie pour afficher la progression des tests
+   */
+  private parseTestProgress(output: string): void {
+    // Maven regex
+    const mvnTestStartMatch = output.match(/Running ([a-zA-Z0-9_.]+)/);
+    if (mvnTestStartMatch) {
+      if (!this.options.verbose) {
+        process.stdout.write(".");
+      }
+    }
+
+    // Gradle regex
+    const gradleTestMatch = output.match(/([a-zA-Z0-9_.]+) > .* PASSED|FAILED|SKIPPED/);
+    if (gradleTestMatch) {
+      if (!this.options.verbose) {
+        process.stdout.write(".");
+      }
+    }
+  }
+
+  /**
+   * Analyse les résultats des tests pour extraire les statistiques
    */
   private parseTestResults(output: string): void {
-    // Pour Maven, on cherche la ligne de résultat des tests (variable selon la version de Maven)
-    // Exemples:
-    // "Tests run: 42, Failures: 0, Errors: 0, Skipped: 2"
-    // "Results: Tests run: 10, Failures: 1, Errors: 0, Skipped: 0"
+    if (this.projectType === "maven") {
+      // Analyser les résultats Maven
+      const resultsMatch = output.match(/Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/);
+      if (resultsMatch) {
+        this.testResults.total = parseInt(resultsMatch[1], 10);
+        const failures = parseInt(resultsMatch[2], 10);
+        const errors = parseInt(resultsMatch[3], 10);
+        this.testResults.failed = failures + errors;
+        this.testResults.skipped = parseInt(resultsMatch[4], 10);
+        this.testResults.passed = this.testResults.total - this.testResults.failed - this.testResults.skipped;
+      }
 
-    const mavenResultRegex = /Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/;
-    const match = output.match(mavenResultRegex);
+      // Durée des tests Maven
+      const timeMatch = output.match(/Total time: ([0-9.]+) ([a-z]+)/);
+      if (timeMatch) {
+        this.testResults.duration = `${timeMatch[1]} ${timeMatch[2]}`;
+      }
+    } else if (this.projectType === "gradle") {
+      // Analyser les résultats Gradle
+      const resultsMatch = output.match(/(\d+) tests completed, (\d+) failed(, (\d+) skipped)?/);
+      if (resultsMatch) {
+        const total = parseInt(resultsMatch[1], 10);
+        const failed = parseInt(resultsMatch[2], 10);
+        const skipped = resultsMatch[4] ? parseInt(resultsMatch[4], 10) : 0;
 
-    if (match) {
-      this.testResults.total = parseInt(match[1], 10);
-      // Maven liste les échecs (assertions) et erreurs (exceptions) séparément
-      this.testResults.failed = parseInt(match[2], 10) + parseInt(match[3], 10);
-      this.testResults.skipped = parseInt(match[4], 10);
-      this.testResults.passed = this.testResults.total - this.testResults.failed - this.testResults.skipped;
-    } else {
-      // Si on ne peut pas extraire les informations exactes, on estime la réussite/échec
-      this.testResults.total = output.match(/Running .+Test/g)?.length || 0;
-      this.testResults.passed = output.includes("BUILD SUCCESS") ? this.testResults.total : 0;
-      this.testResults.failed = output.includes("BUILD FAILURE") ? this.testResults.total - this.testResults.passed : 0;
-    }
+        this.testResults.total = total;
+        this.testResults.failed = failed;
+        this.testResults.skipped = skipped;
+        this.testResults.passed = total - failed - skipped;
+      }
 
-    // Extraire la durée (si disponible)
-    const durationMatch = output.match(/Time elapsed: ([0-9.]+) s/);
-    if (durationMatch) {
-      this.testResults.duration = parseFloat(durationMatch[1]);
+      // Durée des tests Gradle
+      const timeMatch = output.match(/Total time: ([0-9.]+)s/);
+      if (timeMatch) {
+        this.testResults.duration = `${timeMatch[1]} secondes`;
+      }
     }
   }
 
   /**
-   * Parse les résultats des tests Gradle
+   * Affiche le rapport de couverture si demandé
    */
-  private parseGradleTestResults(output: string): void {
-    // Pour Gradle, le format est différent de Maven
-    // Exemples:
-    // "36 tests completed, 1 failed, 2 skipped"
+  private displayCoverageReport(): void {
+    let coveragePath = "";
 
-    const gradleResultRegex = /(\d+) tests? completed, (\d+) failed, (\d+) skipped/;
-    const match = output.match(gradleResultRegex);
-
-    if (match) {
-      this.testResults.total = parseInt(match[1], 10) + parseInt(match[2], 10) + parseInt(match[3], 10);
-      this.testResults.failed = parseInt(match[2], 10);
-      this.testResults.skipped = parseInt(match[3], 10);
-      this.testResults.passed = parseInt(match[1], 10);
-    } else {
-      // Si on ne peut pas extraire les informations exactes, on estime la réussite/échec
-      this.testResults.passed = output.includes("BUILD SUCCESSFUL") ? 1 : 0;
-      this.testResults.failed = output.includes("BUILD FAILED") ? 1 : 0;
-      this.testResults.total = this.testResults.passed + this.testResults.failed;
+    if (this.projectType === "maven") {
+      coveragePath = path.join(process.cwd(), "target", "site", "jacoco", "index.html");
+    } else if (this.projectType === "gradle") {
+      coveragePath = path.join(process.cwd(), "build", "reports", "jacoco", "test", "html", "index.html");
     }
 
-    // Extraire la durée (si disponible)
-    const durationMatch = output.match(/Total time: ([0-9.]+) s/);
-    if (durationMatch) {
-      this.testResults.duration = parseFloat(durationMatch[1]);
+    if (fs.existsSync(coveragePath)) {
+      this.log(chalk.cyan(`\n📊 Rapport de couverture de code disponible à : ${coveragePath}`));
+    } else {
+      this.log(chalk.yellow(`\n⚠️ Aucun rapport de couverture n'a été trouvé. Vérifiez que JaCoCo est configuré correctement.`));
     }
   }
 
   /**
-   * Affichage du rapport de tests
+   * Méthode finale : affichage des résultats
    */
-  end() {
-    displaySectionEnd();
-
-    // Message pour indiquer la fin des tests
-    this.log(chalk.bold.blue("Tests terminés"));
-
-    // Afficher un résumé détaillé des tests
-    this.log("\n" + chalk.bold("Résultat des tests:"));
-    this.log(`✓ Tests réussis:  ${chalk.green(this.testResults.passed)}`);
-    this.log(`✗ Tests échoués:  ${chalk.red(this.testResults.failed)}`);
-    this.log(`○ Tests ignorés:  ${chalk.yellow(this.testResults.skipped)}`);
-    this.log(`⏱ Temps écoulé:  ${chalk.blue(this.testResults.duration ? `${this.testResults.duration} secondes` : 'Non disponible')}`);
-
-    // Afficher des messages en fonction du résultat
-    if (this.testResults.failed > 0) {
-      this.log("\n" + chalk.red("Des tests ont échoué! Consultez le rapport complet pour plus de détails."));
-
-      // Suggestion pour les rapports détaillés
-      if (this.projectType === "maven") {
-        this.log(chalk.gray("Rapport de test disponible dans: target/surefire-reports/"));
-      } else if (this.projectType === "gradle") {
-        this.log(chalk.gray("Rapport de test disponible dans: build/reports/tests/test/"));
-      }
-    } else if (this.testResults.total === 0) {
-      this.log("\n" + chalk.yellow("Aucun test n'a été exécuté. Assurez-vous que votre projet contient des tests."));
-    } else {
-      this.log("\n" + chalk.green.bold("Tous les tests ont réussi!"));
-    }
-
-    // Afficher des informations sur la couverture de code si demandée
-    if (this.options.coverage) {
-      this.log("\n" + chalk.bold("Rapport de couverture de code:"));
-
-      if (this.projectType === "maven") {
-        this.log(chalk.gray("Rapport de couverture disponible dans: target/site/jacoco/"));
-      } else if (this.projectType === "gradle") {
-        this.log(chalk.gray("Rapport de couverture disponible dans: build/reports/jacoco/test/html/"));
-      }
-
-      // Détection du rapport
-      let coveragePath = "";
-      if (this.projectType === "maven" && fs.existsSync("target/site/jacoco/")) {
-        coveragePath = "target/site/jacoco/index.html";
-      } else if (this.projectType === "gradle" && fs.existsSync("build/reports/jacoco/test/html/")) {
-        coveragePath = "build/reports/jacoco/test/html/index.html";
-      }
-
-      if (fs.existsSync(coveragePath)) {
-        this.log(chalk.green(`✓ Rapport de couverture généré avec succès: ${coveragePath}`));
-      } else {
-        this.log(chalk.yellow("! Le rapport de couverture n'a pas été trouvé. Vérifiez que JaCoCo est correctement configuré."));
-      }
-    }
-
-    // Ajouter des conseils pour l'amélioration des tests
-    if (this.testResults.total > 0 && this.testResults.skipped > this.testResults.total * 0.3) {
-      this.log("\n" + chalk.yellow("Conseil: Une grande proportion de tests est ignorée. Envisagez de les activer ou de les supprimer."));
-    }
-
+  async writing() {
     if (this.testResults.total === 0) {
-      this.log("\n" + chalk.yellow("Conseil pour débuter avec les tests:"));
-      this.log(chalk.gray("- Créez des tests dans src/test/java"));
-      this.log(chalk.gray("- Utilisez JUnit 5 et AssertJ pour des assertions expressives"));
-      this.log(chalk.gray("- Pour les tests d'API, considérez Spring MockMvc ou RestAssured"));
+      this.log(chalk.yellow("\n⚠️ Aucun test n'a été exécuté."));
+      return;
     }
+
+    // Afficher les résultats détaillés
+    this.log("\n" + chalk.bold.underline("📋 Résumé des Tests"));
+    this.log(chalk.green(`✓ Tests réussis: ${this.testResults.passed}`));
+    if (this.testResults.failed > 0) {
+      this.log(chalk.red(`✗ Tests échoués: ${this.testResults.failed}`));
+    } else {
+      this.log(chalk.gray(`✗ Tests échoués: 0`));
+    }
+    this.log(chalk.gray(`○ Tests ignorés: ${this.testResults.skipped}`));
+    this.log(chalk.bold(`Total: ${this.testResults.total} tests`));
+
+    if (this.testResults.duration) {
+      this.log(chalk.gray(`⏱️ Durée: ${this.testResults.duration}`));
+    }
+
+    // Afficher le rapport de couverture si demandé
+    if (this.options.coverage) {
+      this.displayCoverageReport();
+    }
+
+    // Afficher des conseils en fonction des résultats
+    if (this.testResults.failed > 0) {
+      this.log("\n" + chalk.yellow("Conseils pour résoudre les tests échoués:"));
+      this.log(chalk.gray("- Examinez les messages d'erreur dans les logs détaillés"));
+      this.log(chalk.gray("- Utilisez l'option --verbose pour voir les logs détaillés"));
+      this.log(chalk.gray("- Exécutez un test spécifique avec --pattern=com.example.MonTest"));
+      this.log(chalk.gray("- Vérifiez les dépendances dans pom.xml ou build.gradle"));
+    }
+
+    // Afficher la section de fin
+    displaySectionEnd();
   }
 }

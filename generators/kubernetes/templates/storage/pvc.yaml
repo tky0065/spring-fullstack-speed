@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: <%= appNameKebab %>-pvc
+  namespace: <%= appNameKebab %>-ns
+  labels:
+    app: <%= appNameKebab %>
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+

@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: <%= appNameKebab %>-config
+  namespace: <%= appNameKebab %>-ns
+  labels:
+    app: <%= appNameKebab %>
+data:
+  # Configuration de l'application
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "<%= containerPort %>"
+
+  # Configuration de la journalisation
+  LOGGING_LEVEL_ROOT: "INFO"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "INFO"
+
+  # Configuration actuator
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+
+<% if (database === 'mysql') { %>
+  # Configuration MySQL
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-service:3306/<%= appNameKebab %>"
+  SPRING_DATASOURCE_USERNAME: "app_user"
+  # Note: Le mot de passe doit être défini dans un Secret
+<% } else if (database === 'postgresql') { %>
+  # Configuration PostgreSQL
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql-service:5432/<%= appNameKebab %>"
+  SPRING_DATASOURCE_USERNAME: "app_user"
+  # Note: Le mot de passe doit être défini dans un Secret
+<% } else if (database === 'mongodb') { %>
+  # Configuration MongoDB
+  SPRING_DATA_MONGODB_HOST: "mongodb-service"
+  SPRING_DATA_MONGODB_PORT: "27017"
+  SPRING_DATA_MONGODB_DATABASE: "<%= appNameKebab %>"
+  # Note: Les identifiants doivent être définis dans un Secret
+<% } %>
+

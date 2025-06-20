@@ -1,0 +1,83 @@
+package <%= packageName %>.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class SecurityConfigTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void testPublicEndpointsAccessible() throws Exception {
+        // Public endpoints should be accessible without authentication
+        mockMvc.perform(get("/api/public/health"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/auth/login"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testProtectedEndpointsRequireAuthentication() throws Exception {
+        // Protected endpoints should require authentication
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/admin/dashboard"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testUserRoleEndpointsAccessible() throws Exception {
+        // USER role should be able to access user endpoints
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testUserRoleCannotAccessAdminEndpoints() throws Exception {
+        // USER role should not be able to access admin endpoints
+        mockMvc.perform(get("/api/admin/dashboard"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testAdminRoleCanAccessAllEndpoints() throws Exception {
+        // ADMIN role should be able to access all endpoints
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/admin/dashboard"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testCorsConfiguration() throws Exception {
+        // Test CORS configuration
+        mockMvc.perform(get("/api/public/health")
+                .header("Origin", "http://localhost:3000"))
+                .andExpect(status().isOk());
+                // .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+    }
+
+    @Test
+    void testCsrfProtection() throws Exception {
+        // Test CSRF protection
+        // This depends on your CSRF configuration - adapt as necessary
+    }
+}

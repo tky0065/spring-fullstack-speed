@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base à partir de laquelle personnaliser
+resources:
+  - ../../base
+
+# Namespace où déployer les ressources
+namespace: <%= appNameKebab %>-ns
+
+# Labels spécifiques à l'environnement
+commonLabels:
+  environment: dev
+
+# Patchs à appliquer aux ressources de base
+patchesStrategicMerge:
+  - deployment-patch.yaml
+
+# Configurations spécifiques à l'environnement
+configMapGenerator:
+  - name: <%= appNameKebab %>-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=dev
+      - LOGGING_LEVEL_ROOT=DEBUG

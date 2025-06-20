@@ -1,0 +1,84 @@
+package <%= packageName %>.utils;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import <%= packageName %>.entity.<%= entityName %>;
+import <%= packageName %>.dto.<%= entityName %>Dto;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+/**
+ * Utility class for testing purposes
+ */
+public class TestUtil {
+
+    private static final ObjectMapper mapper = createObjectMapper();
+
+    /**
+     * Creates an ObjectMapper for test purposes
+     */
+    public static ObjectMapper createObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        return mapper;
+    }
+
+    /**
+     * Convert object to JSON byte array
+     */
+    public static byte[] convertObjectToJsonBytes(Object object) throws IOException {
+        return mapper.writeValueAsBytes(object);
+    }
+
+    /**
+     * Create a request for fetching an entity by ID
+     */
+    public static MockHttpServletRequestBuilder createGetRequest(String url, Long id) {
+        return get(url + "/" + id).accept(MediaType.APPLICATION_JSON);
+    }
+
+    /**
+     * Create a request for posting a new entity
+     */
+    public static MockHttpServletRequestBuilder createPostRequest(String url, Object dto) throws IOException {
+        return post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(convertObjectToJsonBytes(dto));
+    }
+
+    /**
+     * Convert MVC result to the specified type
+     */
+    public static <T> T convertMvcResultToObject(MvcResult result, Class<T> clazz) throws IOException {
+        return mapper.readValue(result.getResponse().getContentAsString(), clazz);
+    }
+
+    /**
+     * Convert MVC result to a list of the specified type
+     */
+    public static <T> List<T> convertMvcResultToList(MvcResult result, Class<T> elementClass) throws IOException {
+        return mapper.readValue(
+                result.getResponse().getContentAsString(),
+                mapper.getTypeFactory().constructCollectionType(ArrayList.class, elementClass)
+        );
+    }
+
+    /**
+     * Create a JWT token for testing authenticated endpoints
+     */
+    public static String createTestJwtToken(String username, String... roles) {
+        // This is a simple mock implementation - in real tests you'd use your actual JWT provider
+        return "test-jwt-token-for-" + username;
+    }
+}

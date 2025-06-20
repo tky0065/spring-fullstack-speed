@@ -1,0 +1,142 @@
+package <%= packageName %>.controller;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import <%= packageName %>.entity.<%= entityName %>;
+import <%= packageName %>.service.<%= entityName %>Service;
+import <%= packageName %>.dto.<%= entityName %>Dto;
+
+@WebMvcTest(<%= entityName %>Controller.class)
+@ActiveProfiles("test")
+public class <%= entityName %>ControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private <%= entityName %>Service <%= entityNameLower %>Service;
+
+    private <%= entityName %> test<%= entityName %>;
+    private <%= entityName %>Dto test<%= entityName %>Dto;
+    private List<<%= entityName %>> <%= entityNameLower %>List;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize test entity
+        test<%= entityName %> = new <%= entityName %>();
+        // Set ID and other properties
+        // test<%= entityName %>.setId(1L);
+        // test<%= entityName %>.setName("Test Name");
+
+        // Initialize DTO
+        test<%= entityName %>Dto = new <%= entityName %>Dto();
+        // Set DTO properties
+        // test<%= entityName %>Dto.setId(1L);
+        // test<%= entityName %>Dto.setName("Test Name");
+
+        // Initialize list
+        <%= entityName %> second<%= entityName %> = new <%= entityName %>();
+        // second<%= entityName %>.setId(2L);
+        // second<%= entityName %>.setName("Second Test");
+
+        <%= entityNameLower %>List = Arrays.asList(test<%= entityName %>, second<%= entityName %>);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testGetAll() throws Exception {
+        // Given
+        when(<%= entityNameLower %>Service.findAll()).thenReturn(<%= entityNameLower %>List);
+
+        // When & Then
+        mockMvc.perform(get("/api/<%= entityNameLower %>s"))
+               .andExpect(status().isOk())
+               .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+               .andExpect(jsonPath("$", hasSize(2)))
+               .andExpect(jsonPath("$[0].id", is(test<%= entityName %>.getId().intValue())));
+               // Add more assertions for other properties
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testGetById() throws Exception {
+        // Given
+        when(<%= entityNameLower %>Service.findById(anyLong())).thenReturn(test<%= entityName %>);
+
+        // When & Then
+        mockMvc.perform(get("/api/<%= entityNameLower %>s/1"))
+               .andExpect(status().isOk())
+               .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+               .andExpect(jsonPath("$.id", is(test<%= entityName %>.getId().intValue())));
+               // Add more assertions for other properties
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testCreate() throws Exception {
+        // Given
+        when(<%= entityNameLower %>Service.save(any(<%= entityName %>.class))).thenReturn(test<%= entityName %>);
+
+        // When & Then
+        mockMvc.perform(post("/api/<%= entityNameLower %>s")
+               .contentType(MediaType.APPLICATION_JSON)
+               .content(objectMapper.writeValueAsString(test<%= entityName %>Dto)))
+               .andExpect(status().isCreated())
+               .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+               .andExpect(jsonPath("$.id", is(test<%= entityName %>.getId().intValue())));
+               // Add more assertions for other properties
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testUpdate() throws Exception {
+        // Given
+        when(<%= entityNameLower %>Service.update(anyLong(), any(<%= entityName %>.class))).thenReturn(test<%= entityName %>);
+
+        // When & Then
+        mockMvc.perform(put("/api/<%= entityNameLower %>s/1")
+               .contentType(MediaType.APPLICATION_JSON)
+               .content(objectMapper.writeValueAsString(test<%= entityName %>Dto)))
+               .andExpect(status().isOk())
+               .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+               .andExpect(jsonPath("$.id", is(test<%= entityName %>.getId().intValue())));
+               // Add more assertions for other properties
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testDelete() throws Exception {
+        // Given
+        when(<%= entityNameLower %>Service.delete(anyLong())).thenReturn(true);
+
+        // When & Then
+        mockMvc.perform(delete("/api/<%= entityNameLower %>s/1"))
+               .andExpect(status().isNoContent());
+    }
+
+    // Add more test methods for other controller methods
+}

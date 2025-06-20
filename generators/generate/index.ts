@@ -120,10 +120,10 @@ export default class GenerateGenerator extends BaseGenerator {
     }
   }
 
-  configuring() {
-    if (!this.generateType) {
-      this.log(ERROR_COLOR("Type de génération non spécifié. Utilisation: sfs generate [entity|dtos|crud] [nom]"));
-      process.exit(1);
+  async configuring() {
+    if (!this.generateType || !this.entityName) {
+      this.log(ERROR_COLOR("Configuration incomplète. Type de génération et nom d'entité requis."));
+      return;
     }
 
     if (!this.entityName) {
@@ -135,60 +135,56 @@ export default class GenerateGenerator extends BaseGenerator {
   async default() {
     this.log(STEP_PREFIX + `Préparation de la génération de type '${this.generateType}' pour l'entité '${this.entityName}'`);
 
-    // Préparation des options pour les sous-générateurs
-    const commonOptions = {
+    // Les options doivent être passées directement, pas dans un objet imbriqué
+    const generatorOptions = {
       entityName: this.entityName,
       package: this.packageName,
       interactive: this.options.interactive,
       skipInstall: this.options.skipInstall
     };
 
-    // Options spécifiques pour le générateur de DTOs
     const dtosOptions = {
-      ...commonOptions,
-      entityClass: this.entityName
+      ...generatorOptions,
+      entityClass: this.entityName as string
     };
 
-    // Options spécifiques pour le générateur CRUD
-    const crudOptions = {
-      ...commonOptions,
-      entity: this.entityName
-    };
+    switch (this.generateType) {
+      case 'entity':
+        try {
+          await this.composeWith(require.resolve('../entity'), generatorOptions);
+        } catch (error) {
+          this.log(ERROR_COLOR(`Erreur lors de la composition avec le générateur entity: ${error}`));
+        }
+        break;
 
-    try {
-      // Chemins des sous-générateurs
-      const entityGeneratorPath = path.resolve(__dirname, '../entity/index.js');
-      const dtosGeneratorPath = path.resolve(__dirname, '../dtos/index.js');
-      const crudGeneratorPath = path.resolve(__dirname, '../crud/index.js');
+      case 'dtos':
+        try {
 
-      switch (this.generateType) {
-        case 'entity':
-          // Utiliser la signature qui accepte le chemin du générateur et les options
-          await this.composeWith(entityGeneratorPath, commonOptions);
-          break;
+          await this.composeWith(require.resolve('../dtos'), dtosOptions);
 
-        case 'dtos':
-          await this.composeWith(dtosGeneratorPath, dtosOptions);
-          break;
+        } catch (error) {
+          this.log(ERROR_COLOR(`Erreur lors de la composition avec le générateur dtos: ${error}`));
+        }
+        break;
 
-        case 'crud':
-          // Pour le CRUD, on compose les différents générateurs en séquence
+      case 'crud':
+        try {
           // On génère d'abord l'entité
-          await this.composeWith(entityGeneratorPath, commonOptions);
+          await this.composeWith(require.resolve('../entity'), generatorOptions);
 
           // Puis les DTOs
-          await this.composeWith(dtosGeneratorPath, dtosOptions);
+          await this.composeWith(require.resolve('../dtos'), dtosOptions);
 
           // Et enfin le CRUD
-          await this.composeWith(crudGeneratorPath, crudOptions);
-          break;
+          await this.composeWith(require.resolve('../crud'), dtosOptions);
+        } catch (error) {
+          this.log(ERROR_COLOR(`Erreur lors de la génération CRUD: ${error}`));
+        }
+        break;
 
-        default:
-          this.log(ERROR_COLOR(`Type de génération '${this.generateType}' non reconnu. Utilisation: sfs generate [entity|dtos|crud] [nom]`));
-          process.exit(1);
-      }
-    } catch (error) {
-      this.log(ERROR_COLOR(`Erreur lors de la génération: ${error}`));
+      default:
+        this.log(ERROR_COLOR(`Type de génération '${this.generateType}' non reconnu. Utilisation: sfs generate [entity|dtos|crud] [nom]`));
+        process.exit(1);
     }
   }
 

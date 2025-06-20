@@ -1,0 +1,56 @@
+package <%= packageName %>.dto;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import <%= packageName %>.dto.<%= entityName %>Dto;
+
+public class <%= entityName %>DtoTest {
+
+    private <%= entityName %>Dto <%= entityNameLower %>Dto;
+
+    @BeforeEach
+    public void setUp() {
+        // Setup test data
+        <%= entityNameLower %>Dto = new <%= entityName %>Dto();
+        // Initialize with sample data
+        // <%= entityNameLower %>Dto.setId(1L);
+        // Add more initialization based on your DTO properties
+    }
+
+    @Test
+    public void testGettersAndSetters() {
+        // Test getters and setters
+        <%= entityNameLower %>Dto.setId(1L);
+        assertEquals(1L, <%= entityNameLower %>Dto.getId());
+
+        // Add more getter/setter tests based on your DTO
+    }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        // Test equals and hashCode methods
+        <%= entityName %>Dto dto1 = new <%= entityName %>Dto();
+        <%= entityName %>Dto dto2 = new <%= entityName %>Dto();
+
+        dto1.setId(1L);
+        dto2.setId(1L);
+
+        assertEquals(dto1, dto2);
+        assertEquals(dto1.hashCode(), dto2.hashCode());
+
+        dto2.setId(2L);
+        assertNotEquals(dto1, dto2);
+        assertNotEquals(dto1.hashCode(), dto2.hashCode());
+    }
+
+    @Test
+    public void testToString() {
+        // Test toString method
+        <%= entityNameLower %>Dto.setId(1L);
+        String toString = <%= entityNameLower %>Dto.toString();
+
+        assertNotNull(toString);
+        assertTrue(toString.contains("id=1"));
+    }
+}

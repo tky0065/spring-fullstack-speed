@@ -1,0 +1,104 @@
+package <%= packageName %>.performance;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.Duration;
+import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+public class ApiPerformanceTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    private static final int ACCEPTABLE_RESPONSE_TIME_MS = 500; // Adjust according to your requirements
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testApiEndpointPerformance() throws Exception {
+        // Test the performance of a specific API endpoint
+
+        // Record start time
+        Instant start = Instant.now();
+
+        // Perform request
+        mockMvc.perform(get("/api/users")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Calculate execution time
+        Duration executionTime = Duration.between(start, Instant.now());
+        long executionTimeMs = executionTime.toMillis();
+
+        // Log execution time
+        System.out.println("API endpoint response time: " + executionTimeMs + " ms");
+
+        // Assert that it meets performance criteria
+        assertTrue(executionTimeMs < ACCEPTABLE_RESPONSE_TIME_MS,
+                "API endpoint response time (" + executionTimeMs + "ms) exceeds acceptable limit (" + ACCEPTABLE_RESPONSE_TIME_MS + "ms)");
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testDatabaseQueryPerformance() throws Exception {
+        // Test the performance of endpoints that involve complex database queries
+
+        // Record start time
+        Instant start = Instant.now();
+
+        // Perform request with complex query parameters
+        mockMvc.perform(get("/api/users/search?criteria=active&sort=name&page=0&size=100")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Calculate execution time
+        Duration executionTime = Duration.between(start, Instant.now());
+        long executionTimeMs = executionTime.toMillis();
+
+        // Log execution time
+        System.out.println("Complex query response time: " + executionTimeMs + " ms");
+
+        // Assert that it meets performance criteria
+        assertTrue(executionTimeMs < ACCEPTABLE_RESPONSE_TIME_MS * 2, // Allow more time for complex queries
+                "Complex query response time (" + executionTimeMs + "ms) exceeds acceptable limit (" + (ACCEPTABLE_RESPONSE_TIME_MS * 2) + "ms)");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testAuthenticatedEndpointPerformance() throws Exception {
+        // Test the performance of endpoints that require authentication and authorization
+
+        // Record start time
+        Instant start = Instant.now();
+
+        // Perform request to authenticated endpoint
+        mockMvc.perform(get("/api/admin/dashboard")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Calculate execution time
+        Duration executionTime = Duration.between(start, Instant.now());
+        long executionTimeMs = executionTime.toMillis();
+
+        // Log execution time
+        System.out.println("Authenticated endpoint response time: " + executionTimeMs + " ms");
+
+        // Assert that it meets performance criteria
+        assertTrue(executionTimeMs < ACCEPTABLE_RESPONSE_TIME_MS,
+                "Authenticated endpoint response time (" + executionTimeMs + "ms) exceeds acceptable limit (" + ACCEPTABLE_RESPONSE_TIME_MS + "ms)");
+    }
+}

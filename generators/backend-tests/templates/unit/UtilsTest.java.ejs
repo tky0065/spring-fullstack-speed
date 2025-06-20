@@ -1,0 +1,49 @@
+package <%= packageName %>.util;
+
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import <%= packageName %>.util.AppUtils;
+
+public class AppUtilsTest {
+
+    @Test
+    @DisplayName("Test string utility functions")
+    public void testStringUtils() {
+        // Test example for string utils
+        // Adapt these tests to match your actual utility methods
+        AppUtils utils = new AppUtils();
+
+        assertNull(utils.sanitizeInput(null));
+        assertEquals("", utils.sanitizeInput(""));
+        assertEquals("hello world", utils.sanitizeInput("hello world"));
+        assertEquals("hello world", utils.sanitizeInput("  hello world  "));
+        assertEquals("hello world", utils.sanitizeInput("<script>hello world</script>"));
+    }
+
+    @Test
+    @DisplayName("Test validation utility functions")
+    public void testValidationUtils() {
+        AppUtils utils = new AppUtils();
+
+        // Test validation methods
+        assertTrue(utils.isValidEmail("test@example.com"));
+        assertFalse(utils.isValidEmail("invalid-email"));
+
+        // Add more validation tests based on your utility methods
+    }
+
+    @Test
+    @DisplayName("Test date utility functions")
+    public void testDateUtils() {
+        AppUtils utils = new AppUtils();
+
+        // Test date formatting/parsing methods
+        // For example:
+        // String formattedDate = utils.formatDate(new Date(), "yyyy-MM-dd");
+        // assertNotNull(formattedDate);
+        // assertTrue(formattedDate.matches("\\d{4}-\\d{2}-\\d{2}"));
+
+        // Add more date utility tests based on your utility methods
+    }
+}

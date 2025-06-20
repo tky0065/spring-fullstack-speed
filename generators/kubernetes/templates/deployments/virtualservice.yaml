@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: <%= appNameKebab %>-vs
+  namespace: <%= appNameKebab %>-ns
+spec:
+  hosts:
+  - <%= appNameKebab %>.example.com
+  gateways:
+  - <%= appNameKebab %>-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api
+    route:
+    - destination:
+        host: <%= appNameKebab %>
+        port:
+          number: <%= servicePort %>
+        subset: v1
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+    timeout: 5s
+  - route:
+    - destination:
+        host: <%= appNameKebab %>
+        port:
+          number: <%= servicePort %>
+        subset: v1
+

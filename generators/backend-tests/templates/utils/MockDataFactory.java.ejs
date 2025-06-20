@@ -1,0 +1,96 @@
+package <%= packageName %>.utils;
+
+import <%= packageName %>.entity.<%= entityName %>;
+import <%= packageName %>.dto.<%= entityName %>Dto;
+import <%= packageName %>.entity.User;
+import <%= packageName %>.entity.Role;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Factory class for creating mock data for tests
+ */
+public class MockDataFactory {
+
+    /**
+     * Create a mock <%= entityName %> entity
+     */
+    public static <%= entityName %> create<%= entityName %>() {
+        <%= entityName %> entity = new <%= entityName %>();
+        // Set ID and other properties based on your entity structure
+        // entity.setId(1L);
+        // entity.setName("Test Name " + UUID.randomUUID().toString().substring(0, 8));
+        // entity.setActive(true);
+        // entity.setCreatedDate(LocalDateTime.now());
+        return entity;
+    }
+
+    /**
+     * Create a list of mock <%= entityName %> entities
+     */
+    public static List<<%= entityName %>> create<%= entityName %>List(int count) {
+        List<<%= entityName %>> list = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            <%= entityName %> entity = create<%= entityName %>();
+            // entity.setId((long) (i + 1));
+            list.add(entity);
+        }
+        return list;
+    }
+
+    /**
+     * Create a mock <%= entityName %>Dto
+     */
+    public static <%= entityName %>Dto create<%= entityName %>Dto() {
+        <%= entityName %>Dto dto = new <%= entityName %>Dto();
+        // Set properties based on your DTO structure
+        // dto.setId(1L);
+        // dto.setName("Test DTO Name " + UUID.randomUUID().toString().substring(0, 8));
+        // dto.setActive(true);
+        return dto;
+    }
+
+    /**
+     * Create a mock User entity
+     */
+    public static User createUser() {
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testuser");
+        user.setEmail("test@example.com");
+        user.setPassword("password");
+        user.setEnabled(true);
+
+        Set<Role> roles = new HashSet<>();
+        Role userRole = new Role();
+        userRole.setId(1L);
+        userRole.setName("ROLE_USER");
+        roles.add(userRole);
+        user.setRoles(roles);
+
+        return user;
+    }
+
+    /**
+     * Create a mock admin User entity
+     */
+    public static User createAdminUser() {
+        User admin = createUser();
+        admin.setId(2L);
+        admin.setUsername("admin");
+        admin.setEmail("admin@example.com");
+
+        Role adminRole = new Role();
+        adminRole.setId(2L);
+        adminRole.setName("ROLE_ADMIN");
+        admin.getRoles().add(adminRole);
+
+        return admin;
+    }
+}

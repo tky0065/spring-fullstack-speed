@@ -97,7 +97,14 @@ export default class FrontendTestGenerator extends BaseGenerator {
             { name: 'Vue Testing Library (Pour les composants Vue)', value: 'vtl', checked: frontendFramework === 'vue' },
             { name: 'Cypress (Tests E2E)', value: 'cypress', checked: true },
             { name: 'Playwright (Tests E2E alternatifs)', value: 'playwright' },
-            { name: 'Vitest (Alternative à Jest pour Vite)', value: 'vitest', checked: (frontendFramework === 'react' || frontendFramework === 'vue') }
+            { name: 'Vitest (Alternative à Jest pour Vite)', value: 'vitest', checked: (frontendFramework === 'react' || frontendFramework === 'vue') },
+            // Nouveaux types de tests ajoutés
+            { name: 'Tests de performance (Web Vitals)', value: 'performance', checked: false },
+            { name: 'Tests d\'accessibilité (axe)', value: 'accessibility', checked: false },
+            { name: 'Tests de design responsive', value: 'responsive', checked: false },
+            { name: 'Tests de snapshots', value: 'snapshots', checked: true },
+            { name: 'Tests SEO', value: 'seo', checked: false },
+            { name: 'Tests PWA', value: 'pwa', checked: false }
           ];
           return choices;
         }
@@ -349,6 +356,160 @@ export default class FrontendTestGenerator extends BaseGenerator {
     );
 
     this.displaySuccess('Tests d\'utilitaires ajoutés');
+    // 5. Tests supplémentaires - Nouveaux types de tests
+    this._setupAdvancedTests(frontendPath);
+  }
+
+  /**
+   * Configure les tests avancés: performances, accessibilité, responsive, snapshots, SEO, PWA
+   */
+  private _setupAdvancedTests(frontendPath: string) {
+    const testDir = path.join(frontendPath, 'src/__tests__');
+    const appName = this.config.get('appName') || 'App';
+
+    // Tests de performance (Web Vitals)
+    if (this.answers.testLibraries.includes('performance')) {
+      this.displayHelpMessage('Configuration des tests de performance...');
+      const performanceTestDir = path.join(testDir, 'performance');
+      this.createDirectory(performanceTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('performance/web-vitals.test.ts'),
+        path.join(performanceTestDir, 'web-vitals.test.ts'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'web-vitals': '^3.5.0'
+      });
+
+      this.displaySuccess('Tests de performance ajoutés');
+    }
+
+    // Tests d'accessibilité
+    if (this.answers.testLibraries.includes('accessibility')) {
+      this.displayHelpMessage('Configuration des tests d\'accessibilité...');
+      const accessibilityTestDir = path.join(testDir, 'accessibility');
+      this.createDirectory(accessibilityTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('accessibility/accessibility.test.tsx'),
+        path.join(accessibilityTestDir, 'accessibility.test.tsx'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'jest-axe': '^8.0.0',
+        '@types/jest-axe': '^3.5.0'
+      });
+
+      this.displaySuccess('Tests d\'accessibilité ajoutés');
+    }
+
+    // Tests de responsive design
+    if (this.answers.testLibraries.includes('responsive')) {
+      this.displayHelpMessage('Configuration des tests de responsive design...');
+      const responsiveTestDir = path.join(testDir, 'responsive');
+      this.createDirectory(responsiveTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('responsive/responsive.test.tsx'),
+        path.join(responsiveTestDir, 'responsive.test.tsx'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'jest-matchmedia-mock': '^1.1.0'
+      });
+
+      this.displaySuccess('Tests de responsive design ajoutés');
+    }
+
+    // Tests de snapshots
+    if (this.answers.testLibraries.includes('snapshots')) {
+      this.displayHelpMessage('Configuration des tests de snapshots...');
+      const snapshotsTestDir = path.join(testDir, 'snapshots');
+      this.createDirectory(snapshotsTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('snapshots/snapshot.test.tsx'),
+        path.join(snapshotsTestDir, 'snapshot.test.tsx'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'react-test-renderer': '^18.2.0',
+        '@types/react-test-renderer': '^18.0.0'
+      });
+
+      this.displaySuccess('Tests de snapshots ajoutés');
+    }
+
+    // Tests SEO
+    if (this.answers.testLibraries.includes('seo')) {
+      this.displayHelpMessage('Configuration des tests SEO...');
+      const seoTestDir = path.join(testDir, 'seo');
+      this.createDirectory(seoTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('seo/seo.test.tsx'),
+        path.join(seoTestDir, 'seo.test.tsx'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'react-helmet-async': '^1.3.0',
+        'react-router-dom': '^6.15.0'
+      });
+
+      this.displaySuccess('Tests SEO ajoutés');
+    }
+
+    // Tests PWA
+    if (this.answers.testLibraries.includes('pwa')) {
+      this.displayHelpMessage('Configuration des tests PWA...');
+      const pwaTestDir = path.join(testDir, 'pwa');
+      this.createDirectory(pwaTestDir);
+
+      this.fs.copyTpl(
+        this.templatePath('pwa/pwa.test.tsx'),
+        path.join(pwaTestDir, 'pwa.test.tsx'),
+        { appName }
+      );
+
+      // Ajouter les dépendances au package.json
+      this._addDependencies(frontendPath, {
+        'workbox-window': '^7.0.0',
+        'jest-fetch-mock': '^3.0.3'
+      });
+
+      this.displaySuccess('Tests PWA ajoutés');
+    }
+  }
+
+  /**
+   * Ajoute des dépendances au package.json
+   */
+  private _addDependencies(frontendPath: string, dependencies: Record<string, string>): void {
+    const pkgPath = path.join(frontendPath, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      pkg.devDependencies = pkg.devDependencies || {};
+
+      // Ajouter les nouvelles dépendances
+      Object.entries(dependencies).forEach(([name, version]) => {
+        if (!pkg.devDependencies[name]) {
+          pkg.devDependencies[name] = version;
+        }
+      });
+
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+    }
   }
 
   private _setupVueTests(frontendPath: string) {
@@ -707,6 +868,35 @@ export default class FrontendTestGenerator extends BaseGenerator {
 
     if (this.answers.testLibraries.includes('playwright')) {
       deps['@playwright/test'] = '^1.36.0';
+    }
+
+    // Dépendances pour les tests avancés
+    if (this.answers.testLibraries.includes('performance')) {
+      deps['web-vitals'] = '^3.5.0';
+    }
+
+    if (this.answers.testLibraries.includes('accessibility')) {
+      deps['jest-axe'] = '^8.0.0';
+      deps['@types/jest-axe'] = '^3.5.0';
+    }
+
+    if (this.answers.testLibraries.includes('responsive')) {
+      deps['jest-matchmedia-mock'] = '^1.1.0';
+    }
+
+    if (this.answers.testLibraries.includes('snapshots')) {
+      deps['react-test-renderer'] = '^18.2.0';
+      deps['@types/react-test-renderer'] = '^18.0.0';
+    }
+
+    if (this.answers.testLibraries.includes('seo')) {
+      deps['react-helmet-async'] = '^1.3.0';
+      deps['react-router-dom'] = '^6.15.0';
+    }
+
+    if (this.answers.testLibraries.includes('pwa')) {
+      deps['workbox-window'] = '^7.0.0';
+      deps['jest-fetch-mock'] = '^3.0.3';
     }
 
     return deps;

@@ -1,0 +1,158 @@
+package <%= packageName %>.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import <%= packageName %>.entity.<%= entityName %>;
+import <%= packageName %>.repository.<%= entityName %>Repository;
+import <%= packageName %>.service.<%= entityName %>Service;
+
+@ExtendWith(MockitoExtension.class)
+public class <%= entityName %>ServiceTest {
+
+    @Mock
+    private <%= entityName %>Repository <%= entityNameLower %>Repository;
+
+    @InjectMocks
+    private <%= entityName %>Service <%= entityNameLower %>Service;
+
+    private <%= entityName %> test<%= entityName %>;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize test entity
+        test<%= entityName %> = new <%= entityName %>();
+        // Set ID and other properties
+        // test<%= entityName %>.setId(1L);
+        // test<%= entityName %>.setName("Test Name");
+    }
+
+    @Test
+    void testFindById() {
+        // Given
+        when(<%= entityNameLower %>Repository.findById(anyLong())).thenReturn(Optional.of(test<%= entityName %>));
+
+        // When
+        <%= entityName %> found = <%= entityNameLower %>Service.findById(1L);
+
+        // Then
+        assertNotNull(found);
+        assertEquals(test<%= entityName %>.getId(), found.getId());
+        // Add more assertions based on your entity properties
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findById(1L);
+    }
+
+    @Test
+    void testFindByIdNotFound() {
+        // Given
+        when(<%= entityNameLower %>Repository.findById(anyLong())).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> {
+            <%= entityNameLower %>Service.findById(1L);
+        });
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findById(1L);
+    }
+
+    @Test
+    void testFindAll() {
+        // Given
+        <%= entityName %> second<%= entityName %> = new <%= entityName %>();
+        // Set properties for second entity
+
+        when(<%= entityNameLower %>Repository.findAll()).thenReturn(Arrays.asList(test<%= entityName %>, second<%= entityName %>));
+
+        // When
+        List<<%= entityName %>> result = <%= entityNameLower %>Service.findAll();
+
+        // Then
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findAll();
+    }
+
+    @Test
+    void testSave() {
+        // Given
+        when(<%= entityNameLower %>Repository.save(any(<%= entityName %>.class))).thenReturn(test<%= entityName %>);
+
+        // When
+        <%= entityName %> saved = <%= entityNameLower %>Service.save(test<%= entityName %>);
+
+        // Then
+        assertNotNull(saved);
+        assertEquals(test<%= entityName %>.getId(), saved.getId());
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).save(test<%= entityName %>);
+    }
+
+    @Test
+    void testUpdate() {
+        // Given
+        when(<%= entityNameLower %>Repository.findById(anyLong())).thenReturn(Optional.of(test<%= entityName %>));
+        when(<%= entityNameLower %>Repository.save(any(<%= entityName %>.class))).thenReturn(test<%= entityName %>);
+
+        // When
+        <%= entityName %> updated<%= entityName %> = new <%= entityName %>();
+        // Set ID and updated properties
+        <%= entityName %> result = <%= entityNameLower %>Service.update(1L, updated<%= entityName %>);
+
+        // Then
+        assertNotNull(result);
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findById(1L);
+        verify(<%= entityNameLower %>Repository).save(any(<%= entityName %>.class));
+    }
+
+    @Test
+    void testDelete() {
+        // Given
+        when(<%= entityNameLower %>Repository.findById(anyLong())).thenReturn(Optional.of(test<%= entityName %>));
+        doNothing().when(<%= entityNameLower %>Repository).delete(any(<%= entityName %>.class));
+
+        // When
+        boolean result = <%= entityNameLower %>Service.delete(1L);
+
+        // Then
+        assertTrue(result);
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findById(1L);
+        verify(<%= entityNameLower %>Repository).delete(test<%= entityName %>);
+    }
+
+    @Test
+    void testDeleteNotFound() {
+        // Given
+        when(<%= entityNameLower %>Repository.findById(anyLong())).thenReturn(Optional.empty());
+
+        // When
+        boolean result = <%= entityNameLower %>Service.delete(1L);
+
+        // Then
+        assertFalse(result);
+
+        // Verify
+        verify(<%= entityNameLower %>Repository).findById(1L);
+        verify(<%= entityNameLower %>Repository, never()).delete(any(<%= entityName %>.class));
+    }
+}

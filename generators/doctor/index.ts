@@ -9,8 +9,6 @@ import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
 import { createSpinner, displaySectionTitle, displaySectionEnd, success, error, info } from "../../utils/cli-ui.js";
-import { withKeyboardInput, showNavigableMenu } from "../../utils/cli-navigation.js";
-import { validateJavaPackageName } from "../../utils/validation.js";
 import boxen from "boxen";
 
 // Interface pour les options du générateur
@@ -99,1120 +97,719 @@ export default class DoctorGenerator extends BaseGenerator {
 
         // Extraire le nom du projet
         const nameMatch = pomContent.match(/<artifactId>(.*?)<\/artifactId>/);
-        if (nameMatch) {
+        if (nameMatch && nameMatch[1]) {
           this.projectDetails.name = nameMatch[1];
         }
 
-        // Extraire le package
+        // Extraire le package principal
         const groupIdMatch = pomContent.match(/<groupId>(.*?)<\/groupId>/);
-        if (groupIdMatch) {
+        if (groupIdMatch && groupIdMatch[1]) {
           this.projectDetails.packageName = groupIdMatch[1];
         }
 
         // Extraire la version de Spring Boot
-        const springBootMatch = pomContent.match(/<spring-boot\.version>(.*?)<\/spring-boot\.version>/);
-        if (springBootMatch) {
+        const springBootMatch = pomContent.match(/<parent>[\s\S]*?<artifactId>spring-boot-starter-parent<\/artifactId>[\s\S]*?<version>(.*?)<\/version>/);
+        if (springBootMatch && springBootMatch[1]) {
           this.projectDetails.springBootVersion = springBootMatch[1];
-        } else {
-          const parentMatch = pomContent.match(/<parent>[\s\S]*?<version>(.*?)<\/version>/);
-          if (parentMatch) {
-            this.projectDetails.springBootVersion = parentMatch[1];
-          }
         }
-      } catch (err) {
-        if (this.options.verbose) {
-          this.log(chalk.red(`Erreur lors de la lecture de pom.xml: ${err}`));
-        }
+      } catch (e) {
+        // Ignorer les erreurs de parsing
       }
-
-    } else if (fs.existsSync(path.join(process.cwd(), "build.gradle")) ||
-              fs.existsSync(path.join(process.cwd(), "build.gradle.kts"))) {
-
-      const isKotlinDSL = fs.existsSync(path.join(process.cwd(), "build.gradle.kts"));
-      this.projectDetails.buildTool = isKotlinDSL ? "Gradle (Kotlin DSL)" : "Gradle";
+    } else if (fs.existsSync(path.join(process.cwd(), "build.gradle")) || fs.existsSync(path.join(process.cwd(), "build.gradle.kts"))) {
+      this.projectDetails.buildTool = fs.existsSync(path.join(process.cwd(), "build.gradle.kts")) ? "Gradle (Kotlin DSL)" : "Gradle";
 
       try {
-        const gradlePath = isKotlinDSL ?
-          path.join(process.cwd(), "build.gradle.kts") :
-          path.join(process.cwd(), "build.gradle");
+        const gradleFilePath = fs.existsSync(path.join(process.cwd(), "build.gradle.kts"))
+          ? path.join(process.cwd(), "build.gradle.kts")
+          : path.join(process.cwd(), "build.gradle");
 
-        const gradleContent = fs.readFileSync(gradlePath, "utf8");
+        const gradleContent = fs.readFileSync(gradleFilePath, "utf8");
+
+        // Extraire le nom du projet
+        const nameMatch = gradleContent.match(/rootProject\.name\s*=\s*["'](.+?)["']/);
+        if (nameMatch && nameMatch[1]) {
+          this.projectDetails.name = nameMatch[1];
+        }
+
+        // Extraire le package principal
+        const groupMatch = gradleContent.match(/group\s*=\s*["'](.+?)["']/);
+        if (groupMatch && groupMatch[1]) {
+          this.projectDetails.packageName = groupMatch[1];
+        }
 
         // Extraire la version de Spring Boot
-        const springBootMatch = gradleContent.match(/spring-boot['"]\s*version\s*['"]([^'"]+)['"]/);
-        if (springBootMatch) {
+        const springBootMatch = gradleContent.match(/org\.springframework\.boot['"]\s*version\s*["'](.+?)["']/);
+        if (springBootMatch && springBootMatch[1]) {
           this.projectDetails.springBootVersion = springBootMatch[1];
         }
-
-        // Pour gradle, le nom du projet est généralement dans settings.gradle
-        if (fs.existsSync(path.join(process.cwd(), isKotlinDSL ? "settings.gradle.kts" : "settings.gradle"))) {
-          const settingsPath = isKotlinDSL ?
-            path.join(process.cwd(), "settings.gradle.kts") :
-            path.join(process.cwd(), "settings.gradle");
-
-          const settingsContent = fs.readFileSync(settingsPath, "utf8");
-          const rootProjectMatch = settingsContent.match(/rootProject\.name\s*=\s*['"](.*)['"]/);
-
-          if (rootProjectMatch) {
-            this.projectDetails.name = rootProjectMatch[1];
-          }
-        }
-      } catch (err) {
-        if (this.options.verbose) {
-          this.log(chalk.red(`Erreur lors de la lecture des fichiers gradle: ${err}`));
-        }
+      } catch (e) {
+        // Ignorer les erreurs de parsing
       }
     }
 
-    // Trouver le package Java principal
-    try {
-      this.findJavaPackage();
-    } catch (err) {
-      if (this.options.verbose) {
-        this.log(chalk.red(`Erreur lors de la détection du package Java: ${err}`));
-      }
+    // Détecter la structure du projet
+    if (fs.existsSync(path.join(process.cwd(), "src", "main", "java"))) {
+      this.projectDetails.hasBackend = true;
     }
 
-    // Détecter d'autres caractéristiques du projet
-    this.projectDetails.hasDocker = fs.existsSync(path.join(process.cwd(), "Dockerfile")) ||
-                                   fs.existsSync(path.join(process.cwd(), "docker-compose.yml"));
-
-    this.projectDetails.hasTests = fs.existsSync(path.join(process.cwd(), "src", "test"));
-
-    // Détecter la configuration git
-    this.projectDetails.hasGit = fs.existsSync(path.join(process.cwd(), ".git"));
-
-    // Détecter le frontend
-    this.projectDetails.hasFrontend = fs.existsSync(path.join(process.cwd(), "package.json")) ||
-                                     fs.existsSync(path.join(process.cwd(), "frontend"));
+    if (fs.existsSync(path.join(process.cwd(), "src", "main", "resources", "static")) ||
+        fs.existsSync(path.join(process.cwd(), "frontend"))) {
+      this.projectDetails.hasFrontend = true;
+    }
   }
 
   /**
-   * Trouve le package Java principal du projet
+   * Exécute tous les diagnostics
    */
-  private findJavaPackage() {
-    const srcMainJava = path.join(process.cwd(), "src", "main", "java");
+  async runDiagnostics() {
 
-    if (!fs.existsSync(srcMainJava)) {
+    const spinner = createSpinner({
+      text: "Exécution des diagnostics...",
+      color: "primary"
+    });
+
+
+    try {
+      await this.checkBuildConfiguration();
+      await this.checkDependencies();
+      await this.checkApplicationProperties();
+      await this.checkDatabaseConfiguration();
+      await this.checkCodeQuality();
+      await this.checkSecurityIssues();
+      await this.checkFrontendConfiguration();
+
+      spinner.succeed("Diagnostics terminés");
+    } catch (e:any) {
+      spinner.fail("Erreur lors des diagnostics");
+      this.log(chalk.red(`Erreur: ${e.message}`));
+    }
+  }
+
+  /**
+   * Phase principale d'exécution
+   */
+  async prompting() {
+    // Exécuter les diagnostics
+    await this.runDiagnostics();
+
+    // Afficher les résultats
+    this.displayIssues();
+
+    // Si l'option fix est activée, tenter de corriger automatiquement
+    if (this.options.fix) {
+      await this.fixIssues();
+    }
+    // Sinon, proposer la correction interactive
+    else if (this.issues.filter(i => i.fixable).length > 0) {
+      const { shouldFix } = await this.prompt({
+        type: 'confirm',
+        name: 'shouldFix',
+        message: 'Voulez-vous tenter de corriger automatiquement les problèmes fixables?',
+        default: false
+      });
+
+      if (shouldFix) {
+        await this.fixIssues();
+      }
+    }
+  }
+
+  /**
+   * Vérification de la configuration de build
+   */
+  async checkBuildConfiguration() {
+    // Vérifier la présence du fichier de build
+    if (!this.projectDetails.buildTool) {
+      this.issues.push({
+        id: 'missing-build-config',
+        level: 'error',
+        message: 'Aucun fichier de configuration de build trouvé (pom.xml ou build.gradle)',
+        details: 'Le projet doit contenir un fichier de configuration Maven ou Gradle valide.',
+        fixable: false
+      });
       return;
     }
 
-    // Rechercher une classe avec @SpringBootApplication
-    const findApplicationClass = (dir: string): string | null => {
-      const files = fs.readdirSync(dir);
+    // Vérifier les plugins essentiels
+    if (this.projectDetails.buildTool.includes('Maven')) {
+      const pomPath = path.join(process.cwd(), "pom.xml");
+      const pomContent = fs.readFileSync(pomPath, "utf8");
 
-      for (const file of files) {
-        const fullPath = path.join(dir, file);
-        const stat = fs.statSync(fullPath);
-
-        if (stat.isDirectory()) {
-          const result = findApplicationClass(fullPath);
-          if (result) return result;
-        }
-        else if (file.endsWith(".java")) {
-          const content = fs.readFileSync(fullPath, "utf8");
-          if (content.includes("@SpringBootApplication")) {
-            // Extraire le package de la première ligne (package com.example;)
-            const packageMatch = content.match(/package\s+([\w.]+);/);
-            if (packageMatch) {
-              return packageMatch[1];
+      if (!pomContent.includes('spring-boot-maven-plugin')) {
+        this.issues.push({
+          id: 'missing-spring-boot-maven-plugin',
+          level: 'warning',
+          message: 'spring-boot-maven-plugin manquant',
+          details: 'Ce plugin est nécessaire pour créer un JAR exécutable.',
+          fixable: true,
+          fix: async () => {
+            let newPomContent = pomContent;
+            // Ajouter le plugin s'il n'existe pas déjà
+            if (!newPomContent.includes('<plugins>')) {
+              newPomContent = newPomContent.replace('</build>', `  <plugins>
+    <plugin>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-maven-plugin</artifactId>
+    </plugin>
+  </plugins>
+</build>`);
+            } else if (!newPomContent.includes('spring-boot-maven-plugin')) {
+              newPomContent = newPomContent.replace('<plugins>', `<plugins>
+    <plugin>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-maven-plugin</artifactId>
+    </plugin>`);
             }
+            fs.writeFileSync(pomPath, newPomContent);
           }
-        }
+        });
       }
+    } else if (this.projectDetails.buildTool.includes('Gradle')) {
+      const isKotlinDSL = this.projectDetails.buildTool.includes('Kotlin');
+      const gradlePath = isKotlinDSL
+        ? path.join(process.cwd(), "build.gradle.kts")
+        : path.join(process.cwd(), "build.gradle");
 
-      return null;
-    };
+      const gradleContent = fs.readFileSync(gradlePath, "utf8");
 
-    const packageName = findApplicationClass(srcMainJava);
-    if (packageName) {
-      this.projectDetails.packageName = packageName;
+      if (!gradleContent.includes('org.springframework.boot')) {
+        this.issues.push({
+          id: 'missing-spring-boot-gradle-plugin',
+          level: 'warning',
+          message: 'Plugin Spring Boot Gradle manquant',
+          details: 'Ce plugin est nécessaire pour créer un JAR exécutable.',
+          fixable: true,
+          fix: async () => {
+            let newContent = gradleContent;
+            const pluginSection = isKotlinDSL
+              ? 'plugins {\n    id("org.springframework.boot") version "2.7.0"\n    id("io.spring.dependency-management") version "1.0.11.RELEASE"\n'
+              : 'plugins {\n    id \'org.springframework.boot\' version \'2.7.0\'\n    id \'io.spring.dependency-management\' version \'1.0.11.RELEASE\'\n';
+
+            if (!newContent.includes('plugins {')) {
+              newContent = pluginSection + '}\n\n' + newContent;
+            } else if (!newContent.includes('org.springframework.boot')) {
+              newContent = newContent.replace('plugins {', pluginSection);
+            }
+
+            fs.writeFileSync(gradlePath, newContent);
+          }
+        });
+      }
     }
   }
 
   /**
-   * Vérifie si le répertoire actuel est un projet
+   * Vérification des dépendances
    */
-  private isProjectDirectory(): boolean {
-    // Vérifier la présence de fichiers caractéristiques d'un projet
+  async checkDependencies() {
+    const appPropertiesPath = path.join(process.cwd(), "src", "main", "resources", "application.properties");
+    const appYmlPath = path.join(process.cwd(), "src", "main", "resources", "application.yml");
+
+    // Vérifier si la configuration de base de données est spécifiée sans la dépendance appropriée
+    if ((fs.existsSync(appPropertiesPath) || fs.existsSync(appYmlPath))) {
+      const configPath = fs.existsSync(appPropertiesPath) ? appPropertiesPath : appYmlPath;
+      const configContent = fs.readFileSync(configPath, 'utf8');
+
+      // Vérifier JPA/Hibernate config
+      if (configContent.includes('hibernate') || configContent.includes('jpa')) {
+        const hasDependency = await this.checkDependencyExists('spring-boot-starter-data-jpa');
+
+        if (!hasDependency) {
+          this.issues.push({
+            id: 'missing-jpa-dependency',
+            level: 'error',
+            message: 'Configuration JPA présente mais dépendance manquante',
+            details: 'Le projet contient une configuration JPA/Hibernate mais pas la dépendance spring-boot-starter-data-jpa.',
+            fixable: true,
+            fix: async () => {
+              await this.addDependency('org.springframework.boot', 'spring-boot-starter-data-jpa');
+            }
+          });
+        }
+      }
+
+      // Vérifier la configuration Web
+      if (configContent.includes('server.port') || configContent.includes('server:')) {
+        const hasDependency = await this.checkDependencyExists('spring-boot-starter-web');
+
+        if (!hasDependency) {
+          this.issues.push({
+            id: 'missing-web-dependency',
+            level: 'error',
+            message: 'Configuration web présente mais dépendance manquante',
+            details: 'Le projet contient une configuration web mais pas la dépendance spring-boot-starter-web.',
+            fixable: true,
+            fix: async () => {
+              await this.addDependency('org.springframework.boot', 'spring-boot-starter-web');
+            }
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Vérification des fichiers de configuration
+   */
+  async checkApplicationProperties() {
+    const appPropertiesPath = path.join(process.cwd(), "src", "main", "resources", "application.properties");
+    const appYmlPath = path.join(process.cwd(), "src", "main", "resources", "application.yml");
+
+    // Vérifier si le fichier de configuration existe
+    if (!fs.existsSync(appPropertiesPath) && !fs.existsSync(appYmlPath)) {
+      this.issues.push({
+        id: 'missing-application-config',
+        level: 'warning',
+        message: 'Fichier de configuration application.properties/yml manquant',
+        details: 'Un projet Spring Boot devrait avoir un fichier de configuration.',
+        fixable: true,
+        fix: async () => {
+          const resourcesDir = path.join(process.cwd(), "src", "main", "resources");
+          if (!fs.existsSync(resourcesDir)) {
+            fs.mkdirSync(resourcesDir, { recursive: true });
+          }
+
+          fs.writeFileSync(appYmlPath, `# Configuration Spring Boot
+spring:
+  application:
+    name: ${this.projectDetails.name || 'spring-application'}
+  
+server:
+  port: 8080
+
+# Logging
+logging:
+  level:
+    root: INFO
+    ${this.projectDetails.packageName || 'com.example'}: DEBUG
+`);
+        }
+      });
+    }
+  }
+
+  /**
+   * Vérification de la configuration de base de données
+   */
+  async checkDatabaseConfiguration() {
+    // Vérifier si la configuration de base de données est correctement définie
+    const appPropertiesPath = path.join(process.cwd(), "src", "main", "resources", "application.properties");
+    const appYmlPath = path.join(process.cwd(), "src", "main", "resources", "application.yml");
+
+    if (fs.existsSync(appPropertiesPath) || fs.existsSync(appYmlPath)) {
+      const configPath = fs.existsSync(appPropertiesPath) ? appPropertiesPath : appYmlPath;
+      const configContent = fs.readFileSync(configPath, 'utf8');
+
+      // Vérifier si des propriétés de base de données sont spécifiées
+      const hasDbConfig = configContent.includes('datasource') ||
+                          configContent.includes('jdbc:') ||
+                          configContent.includes('spring.datasource');
+
+      // Vérifier si JPA est présent, mais sans configuration DB
+      const hasJpa = await this.checkDependencyExists('spring-boot-starter-data-jpa');
+
+      if (hasJpa && !hasDbConfig) {
+        this.issues.push({
+          id: 'missing-db-config',
+          level: 'warning',
+          message: 'Configuration de base de données manquante pour JPA',
+          details: 'JPA est présent mais il n\'y a pas de configuration de datasource.',
+          fixable: true,
+          fix: async () => {
+            // Ajouter une configuration H2 par défaut
+            if (configPath.endsWith('.yml')) {
+              let ymlContent = fs.readFileSync(configPath, 'utf8');
+              const dbConfig = `
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password: password
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+`;
+              if (!ymlContent.includes('spring:')) {
+                ymlContent = 'spring:\n' + ymlContent;
+              }
+              if (ymlContent.includes('spring:') && !ymlContent.includes('datasource:')) {
+                ymlContent = ymlContent.replace('spring:', 'spring:' + dbConfig);
+              }
+              fs.writeFileSync(configPath, ymlContent);
+            } else {
+              let propertiesContent = fs.readFileSync(configPath, 'utf8');
+              const dbConfig = `
+# Configuration de la base de données
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.datasource.driver-class-name=org.h2.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+`;
+              fs.writeFileSync(configPath, propertiesContent + dbConfig);
+            }
+
+            // Ajouter la dépendance H2 si nécessaire
+            const hasH2 = await this.checkDependencyExists('h2');
+            if (!hasH2) {
+              await this.addDependency('com.h2database', 'h2', 'runtime');
+            }
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * Vérification de la qualité du code
+   */
+  async checkCodeQuality() {
+    // Vérifier la présence de tests
+    const testDir = path.join(process.cwd(), "src", "test");
+    if (!fs.existsSync(testDir) || !fs.readdirSync(testDir, { recursive: true }).length) {
+      this.issues.push({
+        id: 'missing-tests',
+        level: 'warning',
+        message: 'Tests unitaires manquants',
+        details: 'Aucun test unitaire n\'a été trouvé dans le projet.',
+        fixable: false
+      });
+    }
+
+    // Vérifier la présence de Lombok sans configuration
+    const hasLombok = await this.checkDependencyExists('lombok');
+    const hasLombokConfig = fs.existsSync(path.join(process.cwd(), "lombok.config"));
+
+    if (hasLombok && !hasLombokConfig) {
+      this.issues.push({
+        id: 'missing-lombok-config',
+        level: 'info',
+        message: 'Configuration Lombok manquante',
+        details: 'Il est recommandé d\'avoir un fichier lombok.config pour une meilleure configuration.',
+        fixable: true,
+        fix: async () => {
+          fs.writeFileSync(path.join(process.cwd(), "lombok.config"),
+`# Configuration Lombok
+lombok.addLombokGeneratedAnnotation = true
+lombok.anyConstructor.addConstructorProperties = true
+lombok.nonNull.exceptionType = IllegalArgumentException
+`);
+        }
+      });
+    }
+  }
+
+  /**
+   * Vérification des problèmes de sécurité
+   */
+  async checkSecurityIssues() {
+    // Vérifier si Spring Security est configuré correctement
+    const hasSecurity = await this.checkDependencyExists('spring-boot-starter-security');
+
+    if (hasSecurity) {
+      // Vérifier si les fichiers de configuration sont présents
+      const securityConfigs = await this.findFiles("**/SecurityConfig*.java");
+
+      if (securityConfigs.length === 0) {
+        this.issues.push({
+          id: 'missing-security-config',
+          level: 'warning',
+          message: 'Configuration Spring Security manquante',
+          details: 'Spring Security est présent mais aucune classe de configuration n\'a été trouvée.',
+          fixable: false
+        });
+      }
+    }
+
+    // Vérifier les identifiants codés en dur
+    const appPropertiesPath = path.join(process.cwd(), "src", "main", "resources", "application.properties");
+    const appYmlPath = path.join(process.cwd(), "src", "main", "resources", "application.yml");
+
+    if (fs.existsSync(appPropertiesPath) || fs.existsSync(appYmlPath)) {
+      const configPath = fs.existsSync(appPropertiesPath) ? appPropertiesPath : appYmlPath;
+      const configContent = fs.readFileSync(configPath, 'utf8');
+
+      // Recherche de mots de passe non-cryptés
+      if (configContent.match(/(password|secret|key)\s*[:=]\s*[^\s${}][^\n]+/)) {
+        this.issues.push({
+          id: 'hardcoded-credentials',
+          level: 'error',
+          message: 'Identifiants codés en dur dans les fichiers de configuration',
+          details: 'Les mots de passe et secrets devraient être externalisés ou chiffrés.',
+          fixable: false
+        });
+      }
+    }
+  }
+
+  /**
+   * Vérifier la configuration frontend
+   */
+  async checkFrontendConfiguration() {
+    // Vérifier si le projet a un frontend
+    if (this.projectDetails.hasFrontend) {
+      // Vérifier le dossier frontend Angular
+      if (fs.existsSync(path.join(process.cwd(), "frontend")) &&
+          fs.existsSync(path.join(process.cwd(), "frontend", "package.json"))) {
+
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), "frontend", "package.json"), 'utf8'));
+
+          // Vérifier si le frontend est configuré pour le proxy
+          const hasProxyConfig = fs.existsSync(path.join(process.cwd(), "frontend", "proxy.conf.json"));
+
+          if (!hasProxyConfig) {
+            this.issues.push({
+              id: 'missing-proxy-config',
+              level: 'warning',
+              message: 'Configuration de proxy frontend manquante',
+              details: 'Un frontend Angular devrait avoir une configuration de proxy pour se connecter au backend.',
+              fixable: true,
+              fix: async () => {
+                const proxyConfig = {
+                  "/api": {
+                    "target": "http://localhost:8080",
+                    "secure": false,
+                    "changeOrigin": true
+                  }
+                };
+
+                fs.writeFileSync(
+                  path.join(process.cwd(), "frontend", "proxy.conf.json"),
+                  JSON.stringify(proxyConfig, null, 2)
+                );
+              }
+            });
+          }
+        } catch (e) {
+          // Ignorer les erreurs de parsing du package.json
+        }
+      }
+    }
+  }
+
+  /**
+   * Affiche les problèmes détectés
+   */
+  displayIssues() {
+    const errorCount = this.issues.filter(i => i.level === 'error').length;
+    const warningCount = this.issues.filter(i => i.level === 'warning').length;
+    const infoCount = this.issues.filter(i => i.level === 'info').length;
+    const fixableCount = this.issues.filter(i => i.fixable).length;
+
+    this.log(chalk.bold('\nRésumé du diagnostic:'));
+    this.log(`${chalk.red(`${errorCount} erreur(s)`)}, ${chalk.yellow(`${warningCount} avertissement(s)`)}, ${chalk.blue(`${infoCount} suggestion(s)`)} - ${chalk.green(`${fixableCount} problème(s) peuvent être corrigé(s) automatiquement`)}\n`);
+
+    if (this.issues.length === 0) {
+      this.log(boxen(chalk.green('✓ Félicitations! Aucun problème détecté dans votre projet.'), {
+        padding: 1,
+        margin: 1,
+        borderStyle: 'round',
+        borderColor: 'green'
+      }));
+      return;
+    }
+
+    // Afficher les erreurs d'abord
+    for (const level of ['error', 'warning', 'info']) {
+      const levelIssues = this.issues.filter(i => i.level === level);
+
+      if (levelIssues.length > 0) {
+        this.log(chalk.bold(`\n${level === 'error' ? 'Erreurs' : level === 'warning' ? 'Avertissements' : 'Suggestions'}:`));
+
+        levelIssues.forEach((issue, index) => {
+          const icon = issue.level === 'error' ? chalk.red('✗') :
+                       issue.level === 'warning' ? chalk.yellow('⚠') :
+                       chalk.blue('ℹ');
+
+          const fixable = issue.fixable ? chalk.green('[Fixable] ') : '';
+          this.log(`${icon} ${fixable}${issue.message}`);
+
+          if (this.options.verbose && issue.details) {
+            this.log(chalk.gray(`   └─ ${issue.details}`));
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * Tente de corriger automatiquement les problèmes
+   */
+  async fixIssues() {
+    const fixableIssues = this.issues.filter(i => i.fixable);
+
+    if (fixableIssues.length === 0) {
+      this.log(chalk.yellow("\nAucun problème ne peut être corrigé automatiquement."));
+      return;
+    }
+
+    this.log(chalk.bold("\nCorrection des problèmes:"));
+
+    for (const issue of fixableIssues) {
+
+      const spinner = createSpinner({
+        text: `Correction de ${issue.message}...`,
+        color: "primary"
+      });
+
+      try {
+        await issue.fix!();
+        spinner.succeed(`${issue.message} - Corrigé`);
+      } catch (e :any) {
+        spinner.fail(`Échec de la correction: ${issue.message}`);
+        if (this.options.verbose) {
+          this.log(chalk.red(`  └─ Erreur: ${e.message}`));
+        }
+      }
+    }
+  }
+
+  /**
+   * Phase de fin d'exécution
+   */
+  end() {
+    displaySectionEnd();
+
+    // Donner des conseils finaux
+    if (this.issues.length === 0) {
+      this.log(chalk.green("✓ Votre projet semble être en bonne santé!"));
+    } else {
+      const unfixedCount = this.issues.filter(i => !i.fixable).length;
+      if (unfixedCount > 0) {
+        this.log(chalk.yellow(`⚠ ${unfixedCount} problème(s) nécessitent une attention manuelle.`));
+        this.log(chalk.gray("  Utilisez l'option --verbose pour obtenir plus de détails sur ces problèmes."));
+      }
+    }
+
+    this.log(chalk.gray("\nAutres commandes utiles:"));
+    this.log(chalk.gray("  sfs add - Ajouter des composants au projet"));
+    this.log(chalk.gray("  sfs build - Construire le projet pour la production"));
+    this.log(chalk.gray("  sfs test - Exécuter les tests du projet"));
+  }
+
+  // Méthodes utilitaires
+
+  /**
+   * Vérifie si le répertoire courant est un projet Spring Boot
+   */
+  isProjectDirectory() {
     return fs.existsSync(path.join(process.cwd(), "pom.xml")) ||
            fs.existsSync(path.join(process.cwd(), "build.gradle")) ||
            fs.existsSync(path.join(process.cwd(), "build.gradle.kts"));
   }
 
   /**
-   * Exécute les vérifications sur le projet
+   * Vérifie si une dépendance existe dans le projet
    */
-  async diagnose() {
-    const spinner = createSpinner({
-      text: "Exécution des diagnostics...",
-      color: "primary"
-    });
-
-    spinner.start();
-
-    try {
-      // Vérifications de l'environnement
-      await this.checkEnvironment();
-
-      // Vérifications de la structure du projet
-      await this.checkProjectStructure();
-
-      // Vérifications de la configuration
-      await this.checkConfiguration();
-
-      // Vérifications des dépendances
-      await this.checkDependencies();
-
-      // Vérifications du code
-      await this.checkCode();
-
-      // Vérifications des tests
-      await this.checkTests();
-
-      spinner.succeed("Diagnostics terminés");
-    } catch (err) {
-      spinner.fail(`Erreur lors du diagnostic: ${err}`);
-      if (this.options.verbose) {
-        console.error(err);
+  async checkDependencyExists(artifactId: string) {
+    // Pour Maven
+    if (this.projectDetails.buildTool === 'Maven') {
+      try {
+        const pomContent = fs.readFileSync(path.join(process.cwd(), "pom.xml"), "utf8");
+        return pomContent.includes(`<artifactId>${artifactId}</artifactId>`);
+      } catch (e) {
+        return false;
       }
     }
+    // Pour Gradle
+    else if (this.projectDetails.buildTool && this.projectDetails.buildTool.includes('Gradle')) {
+      try {
+        const gradlePath = this.projectDetails.buildTool.includes('Kotlin')
+          ? path.join(process.cwd(), "build.gradle.kts")
+          : path.join(process.cwd(), "build.gradle");
+
+        const gradleContent = fs.readFileSync(gradlePath, "utf8");
+        return gradleContent.includes(artifactId);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**
-   * Vérifie l'environnement de développement
+   * Ajoute une dépendance au projet
    */
-  private async checkEnvironment() {
-    // Vérifier Java
-    try {
-      const javaVersion = execSync("java -version 2>&1").toString();
-      const versionMatch = javaVersion.match(/version "(.*?)"/);
-
-      if (versionMatch) {
-        const version = versionMatch[1];
-
-        // Vérifier la version de Java
-        if (version.startsWith("1.7") || version.startsWith("1.6")) {
-          this.issues.push({
-            id: "java-version",
-            level: "error",
-            message: `Version Java obsolète: ${version}`,
-            details: "Spring Boot 2.x+ nécessite Java 8+, et Spring Boot 3.x nécessite Java 17+",
-            fixable: false
-          });
-        } else if (this.projectDetails.springBootVersion &&
-                   this.projectDetails.springBootVersion.startsWith("3.") &&
-                   !version.startsWith("17") &&
-                   !version.startsWith("21")) {
-          this.issues.push({
-            id: "java-version-spring-boot-3",
-            level: "warning",
-            message: `Version Java non optimale pour Spring Boot 3.x: ${version}`,
-            details: "Spring Boot 3.x recommande Java 17+ pour des performances optimales",
-            fixable: false
-          });
-        }
-      }
-    } catch (err) {
-      this.issues.push({
-        id: "java-not-found",
-        level: "error",
-        message: "Java n'est pas installé ou n'est pas dans le PATH",
-        details: "Installez un JDK (Java Development Kit) et assurez-vous qu'il est dans votre PATH",
-        fixable: false
-      });
-    }
-
-    // Vérifier Maven/Gradle selon l'outil de build utilisé
-    if (this.projectDetails.buildTool === "Maven") {
-      try {
-        execSync("mvn --version");
-      } catch (err) {
-        this.issues.push({
-          id: "maven-not-found",
-          level: "warning",
-          message: "Maven n'est pas installé ou n'est pas dans le PATH",
-          details: "Le wrapper Maven sera utilisé, mais l'installation de Maven peut être préférable",
-          fixable: false
-        });
-      }
-    } else if (this.projectDetails.buildTool && this.projectDetails.buildTool.includes("Gradle")) {
-      try {
-        execSync("gradle --version");
-      } catch (err) {
-        this.issues.push({
-          id: "gradle-not-found",
-          level: "warning",
-          message: "Gradle n'est pas installé ou n'est pas dans le PATH",
-          details: "Le wrapper Gradle sera utilisé, mais l'installation de Gradle peut être préférable",
-          fixable: false
-        });
-      }
-    }
-
-    // Vérifier Node.js si projet frontend
-    if (this.projectDetails.hasFrontend) {
-      try {
-        const nodeVersion = execSync("node --version").toString().trim();
-
-        // Vérifier la version de Node.js
-        const versionNumber = nodeVersion.replace('v', '').split('.').map(Number)[0];
-
-        if (versionNumber < 14) {
-          this.issues.push({
-            id: "node-version",
-            level: "warning",
-            message: `Version Node.js obsolète: ${nodeVersion}`,
-            details: "Les frameworks frontend modernes recommandent Node.js 14+",
-            fixable: false
-          });
-        }
-      } catch (err) {
-        this.issues.push({
-          id: "node-not-found",
-          level: "warning",
-          message: "Node.js n'est pas installé ou n'est pas dans le PATH",
-          details: "Nécessaire pour le développement frontend",
-          fixable: false
-        });
-      }
-    }
-
-    // Vérifier l'espace disque
-    try {
-      const stats = fs.statfsSync(process.cwd());
-      const freeSpace = stats.bfree * stats.bsize;
-      const freeSpaceGB = freeSpace / (1024 * 1024 * 1024);
-
-      if (freeSpaceGB < 1) {
-        this.issues.push({
-          id: "disk-space",
-          level: "warning",
-          message: `Espace disque limité: ${freeSpaceGB.toFixed(2)} GB disponibles`,
-          details: "Le manque d'espace disque peut causer des problèmes lors du build",
-          fixable: false
-        });
-      }
-    } catch (err) {
-      // Ignorer les erreurs de vérification d'espace disque
-    }
-  }
-
-  /**
-   * Vérifie la structure du projet
-   */
-  private async checkProjectStructure() {
-    // Vérifier la présence des répertoires essentiels
-    const essentialDirs = [
-      ["src", "main", "java"],
-      ["src", "main", "resources"],
-      ["src", "test"]
-    ];
-
-    for (const dirPath of essentialDirs) {
-      const fullPath = path.join(process.cwd(), ...dirPath);
-      if (!fs.existsSync(fullPath)) {
-        this.issues.push({
-          id: `missing-dir-${dirPath.join('/')}`,
-          level: "warning",
-          message: `Répertoire ${dirPath.join('/')} manquant`,
-          details: `Ce répertoire est généralement présent dans un projet Spring Boot`,
-          fixable: true,
-          fix: async () => {
-            fs.mkdirSync(fullPath, { recursive: true });
-            this.log(chalk.green(`✓ Répertoire ${dirPath.join('/')} créé`));
-          }
-        });
-      }
-    }
-
-    // Vérifier le .gitignore
-    const gitignorePath = path.join(process.cwd(), ".gitignore");
-    if (!fs.existsSync(gitignorePath)) {
-      this.issues.push({
-        id: "missing-gitignore",
-        level: "warning",
-        message: "Fichier .gitignore manquant",
-        details: "Un fichier .gitignore est recommandé pour éviter de committer des fichiers inutiles",
-        fixable: true,
-        fix: async () => {
-          // Créer un .gitignore basique pour Spring Boot
-          const gitignoreContent = `
-# Compiled class file
-*.class
-
-# Log files
-*.log
-logs/
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs
-hs_err_pid*
-
-# Maven
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-# Gradle
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# STS / Eclipse
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-# IntelliJ IDEA
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-# NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-# VS Code
-.vscode/
-
-# Environments
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-
-# Frontend build
-/src/main/resources/static/
-`;
-
-          fs.writeFileSync(gitignorePath, gitignoreContent.trim());
-          this.log(chalk.green("✓ Fichier .gitignore créé"));
-        }
-      });
-    }
-
-    // Vérifier la présence des wrappers Maven ou Gradle
-    if (this.projectDetails.buildTool === "Maven") {
-      const mvnwPath = path.join(process.cwd(), process.platform === "win32" ? "mvnw.cmd" : "mvnw");
-
-      if (!fs.existsSync(mvnwPath)) {
-        this.issues.push({
-          id: "missing-maven-wrapper",
-          level: "warning",
-          message: "Wrapper Maven manquant",
-          details: "Le wrapper Maven permet d'exécuter Maven sans l'installer",
-          fixable: true,
-          fix: async () => {
-            try {
-              // Créer le wrapper Maven
-              execSync("mvn -N io.takari:maven:wrapper", { stdio: "inherit" });
-              this.log(chalk.green("✓ Wrapper Maven créé"));
-            } catch (err) {
-              this.log(chalk.red(`⚠️ Impossible de créer le wrapper Maven: ${err}`));
-            }
-          }
-        });
-      }
-    } else if (this.projectDetails.buildTool && this.projectDetails.buildTool.includes("Gradle")) {
-      const gradlewPath = path.join(process.cwd(), process.platform === "win32" ? "gradlew.bat" : "gradlew");
-
-      if (!fs.existsSync(gradlewPath)) {
-        this.issues.push({
-          id: "missing-gradle-wrapper",
-          level: "warning",
-          message: "Wrapper Gradle manquant",
-          details: "Le wrapper Gradle permet d'exécuter Gradle sans l'installer",
-          fixable: true,
-          fix: async () => {
-            try {
-              // Créer le wrapper Gradle
-              execSync("gradle wrapper", { stdio: "inherit" });
-              this.log(chalk.green("✓ Wrapper Gradle créé"));
-            } catch (err) {
-              this.log(chalk.red(`⚠️ Impossible de créer le wrapper Gradle: ${err}`));
-            }
-          }
-        });
-      }
-    }
-
-    // Vérifier la présence d'un README.md
-    const readmePath = path.join(process.cwd(), "README.md");
-    if (!fs.existsSync(readmePath)) {
-      this.issues.push({
-        id: "missing-readme",
-        level: "info",
-        message: "Fichier README.md manquant",
-        details: "Un README aide les autres développeurs à comprendre votre projet",
-        fixable: true,
-        fix: async () => {
-          // Créer un README basique
-          const readmeContent = `# ${this.projectDetails.name || "Spring Boot Application"}
-
-## Description
-
-Ce projet est une application Spring Boot.
-
-## Prérequis
-
-- Java ${this.projectDetails.springBootVersion && this.projectDetails.springBootVersion.startsWith("3.") ? "17" : "8"}+
-- ${this.projectDetails.buildTool || "Maven/Gradle"}
-${this.projectDetails.hasFrontend ? "- Node.js 14+" : ""}
-
-## Installation
-
-\`\`\`bash
-# Cloner le dépôt
-git clone <URL_DU_DEPOT>
-cd ${this.projectDetails.name || "application"}
-
-# Construire le projet
-${this.projectDetails.buildTool === "Maven" ? "mvn clean install" : "./gradlew build"}
-\`\`\`
-
-## Exécution
-
-\`\`\`bash
-${this.projectDetails.buildTool === "Maven" ? "mvn spring-boot:run" : "./gradlew bootRun"}
-\`\`\`
-
-## Fonctionnalités
-
-- À compléter...
-
-## Structure du projet
-
-\`\`\`
-src/
-├── main/
-│   ├── java/          # Code source Java
-│   └── resources/     # Ressources et configuration
-└── test/              # Tests
-\`\`\`
-`;
-
-          fs.writeFileSync(readmePath, readmeContent);
-          this.log(chalk.green("✓ Fichier README.md créé"));
-        }
-      });
-    }
-  }
-
-  /**
-   * Vérifie la configuration du projet
-   */
-  private async checkConfiguration() {
-    // Vérifier le fichier application.properties ou application.yml
-    const propPath = path.join(process.cwd(), "src", "main", "resources", "application.properties");
-    const ymlPath = path.join(process.cwd(), "src", "main", "resources", "application.yml");
-
-    if (!fs.existsSync(propPath) && !fs.existsSync(ymlPath)) {
-      this.issues.push({
-        id: "missing-app-config",
-        level: "error",
-        message: "Fichier de configuration Spring Boot manquant",
-        details: "application.properties ou application.yml est requis pour la configuration de Spring Boot",
-        fixable: true,
-        fix: async () => {
-          // Créer un fichier application.properties basique
-          const content = `# Configuration Spring Boot
-spring.application.name=${this.projectDetails.name || 'application'}
-
-# Configuration du serveur
-server.port=8080
-
-# Configuration de la base de données (à personnaliser)
-# spring.datasource.url=jdbc:h2:mem:testdb
-# spring.datasource.username=sa
-# spring.datasource.password=password
-# spring.jpa.hibernate.ddl-auto=update
-
-# Configuration des logs
-logging.level.root=INFO
-logging.level.${this.projectDetails.packageName || 'com.example'}=DEBUG
-
-# Configuration des profils
-spring.profiles.active=dev
-`;
-          fs.writeFileSync(propPath, content);
-          this.log(chalk.green("✓ Fichier application.properties créé"));
-        }
-      });
-    } else {
-      // Si le fichier existe, vérifier des configurations essentielles
-      try {
-        const configPath = fs.existsSync(propPath) ? propPath : ymlPath;
-        const content = fs.readFileSync(configPath, "utf8");
-
-        if (!content.includes("server.port") && !content.includes("server:") && !content.includes("port:")) {
-          this.issues.push({
-            id: "missing-server-port",
-            level: "info",
-            message: "Configuration du port serveur manquante",
-            details: "Il est recommandé de définir explicitement server.port pour éviter les conflits",
-            fixable: false
-          });
-        }
-
-        if (!content.includes("spring.application.name") && !content.includes("application:") && !content.includes("name:")) {
-          this.issues.push({
-            id: "missing-app-name",
-            level: "info",
-            message: "Nom d'application manquant",
-            details: "spring.application.name est recommandé pour l'identification dans les logs et pour Spring Cloud",
-            fixable: false
-          });
-        }
-      } catch (err) {
-        if (this.options.verbose) {
-          this.log(chalk.red(`Erreur lors de la lecture du fichier de configuration: ${err}`));
-        }
-      }
-    }
-
-    // Vérifier les profils de configuration
-    const devConfigPath = path.join(process.cwd(), "src", "main", "resources", "application-dev.properties");
-    const prodConfigPath = path.join(process.cwd(), "src", "main", "resources", "application-prod.properties");
-    const devYmlPath = path.join(process.cwd(), "src", "main", "resources", "application-dev.yml");
-    const prodYmlPath = path.join(process.cwd(), "src", "main", "resources", "application-prod.yml");
-
-    if (!fs.existsSync(devConfigPath) && !fs.existsSync(devYmlPath) &&
-        !fs.existsSync(prodConfigPath) && !fs.existsSync(prodYmlPath)) {
-      this.issues.push({
-        id: "missing-profiles",
-        level: "warning",
-        message: "Profils de configuration manquants",
-        details: "Il est recommandé d'utiliser des profils Spring (dev, prod) pour différentes configurations",
-        fixable: false
-      });
-    }
-  }
-
-  /**
-   * Vérifie les dépendances du projet
-   */
-  private async checkDependencies() {
-    // Vérifier les dépendances Maven ou Gradle
-    if (this.projectDetails.buildTool === "Maven") {
+  async addDependency(groupId: string, artifactId: string, scope?: string) {
+    // Pour Maven
+    if (this.projectDetails.buildTool === 'Maven') {
       const pomPath = path.join(process.cwd(), "pom.xml");
-      if (fs.existsSync(pomPath)) {
-        try {
-          const pomContent = fs.readFileSync(pomPath, "utf8");
+      let pomContent = fs.readFileSync(pomPath, "utf8");
 
-          // Vérifier les dépendances essentielles
-          if (!pomContent.includes("spring-boot-starter-web")) {
-            this.issues.push({
-              id: "missing-web-starter",
-              level: "info",
-              message: "Dépendance spring-boot-starter-web manquante",
-              details: "Cette dépendance est nécessaire pour les applications Web Spring Boot",
-              fixable: false
-            });
-          }
+      const dependencyXml = `
+        <dependency>
+            <groupId>${groupId}</groupId>
+            <artifactId>${artifactId}</artifactId>
+            ${scope ? `<scope>${scope}</scope>` : ''}
+        </dependency>`;
 
-          if (!pomContent.includes("spring-boot-starter-test")) {
-            this.issues.push({
-              id: "missing-test-starter",
-              level: "warning",
-              message: "Dépendance spring-boot-starter-test manquante",
-              details: "Cette dépendance est recommandée pour les tests d'applications Spring Boot",
-              fixable: false
-            });
-          }
+      // Insérer juste avant la fermeture de la section dependencies
+      pomContent = pomContent.replace(
+        '</dependencies>',
+        `${dependencyXml}\n    </dependencies>`
+      );
 
-          // Vérifier les vulnérabilités connues (simulé ici)
-          if (this.projectDetails.springBootVersion &&
-              (this.projectDetails.springBootVersion.startsWith("1.") ||
-               this.projectDetails.springBootVersion.startsWith("2.0") ||
-               this.projectDetails.springBootVersion.startsWith("2.1"))) {
-            this.issues.push({
-              id: "vulnerable-spring-boot",
-              level: "error",
-              message: `Spring Boot ${this.projectDetails.springBootVersion} a des vulnérabilités connues`,
-              details: "Mettez à jour vers une version plus récente de Spring Boot",
-              fixable: false
-            });
-          }
-
-        } catch (err) {
-          if (this.options.verbose) {
-            this.log(chalk.red(`Erreur lors de la lecture de pom.xml: ${err}`));
-          }
-        }
-      }
-    } else if (this.projectDetails.buildTool && this.projectDetails.buildTool.includes("Gradle")) {
-      const isKotlinDSL = this.projectDetails.buildTool.includes("Kotlin");
-      const gradlePath = path.join(process.cwd(), isKotlinDSL ? "build.gradle.kts" : "build.gradle");
-
-      if (fs.existsSync(gradlePath)) {
-        try {
-          const gradleContent = fs.readFileSync(gradlePath, "utf8");
-
-          // Vérifier les dépendances essentielles
-          if (!gradleContent.includes("spring-boot-starter-web")) {
-            this.issues.push({
-              id: "missing-web-starter",
-              level: "info",
-              message: "Dépendance spring-boot-starter-web manquante",
-              details: "Cette dépendance est nécessaire pour les applications Web Spring Boot",
-              fixable: false
-            });
-          }
-
-          if (!gradleContent.includes("spring-boot-starter-test")) {
-            this.issues.push({
-              id: "missing-test-starter",
-              level: "warning",
-              message: "Dépendance spring-boot-starter-test manquante",
-              details: "Cette dépendance est recommandée pour les tests d'applications Spring Boot",
-              fixable: false
-            });
-          }
-
-        } catch (err) {
-          if (this.options.verbose) {
-            this.log(chalk.red(`Erreur lors de la lecture du fichier gradle: ${err}`));
-          }
-        }
-      }
+      fs.writeFileSync(pomPath, pomContent);
     }
+    // Pour Gradle
+    else if (this.projectDetails.buildTool && this.projectDetails.buildTool.includes('Gradle')) {
+      const isKotlinDSL = this.projectDetails.buildTool.includes('Kotlin');
+      const gradlePath = isKotlinDSL
+        ? path.join(process.cwd(), "build.gradle.kts")
+        : path.join(process.cwd(), "build.gradle");
 
-    // Si c'est un projet frontend, vérifier package.json
-    if (this.projectDetails.hasFrontend) {
-      const packageJsonPath = path.join(process.cwd(), "package.json");
+      let gradleContent = fs.readFileSync(gradlePath, "utf8");
+      let dependencyLine;
 
-      if (fs.existsSync(packageJsonPath)) {
-        try {
-          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-
-          // Vérifier les scripts essentiels
-          if (!packageJson.scripts || !packageJson.scripts.build) {
-            this.issues.push({
-              id: "missing-build-script",
-              level: "warning",
-              message: "Script de build manquant dans package.json",
-              details: "Un script 'build' est généralement nécessaire pour les applications frontend",
-              fixable: false
-            });
-          }
-
-          // Vérifier les dépendances obsolètes (ex: React)
-          if (packageJson.dependencies && packageJson.dependencies.react) {
-            const reactVersion = packageJson.dependencies.react.replace(/[^0-9.]/g, '');
-            const majorVersion = parseInt(reactVersion.split('.')[0]);
-
-            if (majorVersion < 16) {
-              this.issues.push({
-                id: "obsolete-react",
-                level: "warning",
-                message: `Version obsolète de React (v${reactVersion})`,
-                details: "La version de React est obsolète. Envisagez une mise à jour.",
-                fixable: false
-              });
-            }
-          }
-        } catch (err) {
-          if (this.options.verbose) {
-            this.log(chalk.red(`Erreur lors de la lecture de package.json: ${err}`));
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Vérifie la qualité du code
-   */
-  private async checkCode() {
-    // Vérifier la présence de fichiers de configuration pour les linters
-    const lintConfigs = [
-      { file: ".eslintrc.js", name: "ESLint" },
-      { file: ".eslintrc.json", name: "ESLint" },
-      { file: "tslint.json", name: "TSLint" },
-      { file: "checkstyle.xml", name: "Checkstyle" },
-      { file: "pmd.xml", name: "PMD" },
-      { file: ".editorconfig", name: "EditorConfig" }
-    ];
-
-    let hasAnyLinter = false;
-
-    for (const config of lintConfigs) {
-      if (fs.existsSync(path.join(process.cwd(), config.file))) {
-        hasAnyLinter = true;
-        break;
-      }
-    }
-
-    if (!hasAnyLinter) {
-      this.issues.push({
-        id: "missing-code-quality-tools",
-        level: "warning",
-        message: "Aucun outil de qualité du code détecté",
-        details: "Envisagez d'utiliser des outils comme ESLint, Checkstyle, PMD ou EditorConfig pour maintenir une qualité de code cohérente",
-        fixable: true,
-        fix: async () => {
-          // Créer un .editorconfig basique
-          const editorConfigContent = `root = true
-
-[*]
-charset = utf-8
-end_of_line = lf
-indent_size = 2
-indent_style = space
-insert_final_newline = true
-trim_trailing_whitespace = true
-
-[*.md]
-trim_trailing_whitespace = false
-
-[*.java]
-indent_size = 4
-
-[*.{xml,html}]
-indent_size = 2
-`;
-          fs.writeFileSync(path.join(process.cwd(), ".editorconfig"), editorConfigContent);
-          this.log(chalk.green("✓ Fichier .editorconfig créé"));
-        }
-      });
-    }
-
-    // Vérifier la documentation du code (JavaDoc)
-    if (this.projectDetails.packageName) {
-      try {
-        const srcMainJava = path.join(process.cwd(), "src", "main", "java");
-        if (fs.existsSync(srcMainJava)) {
-          let javaFilesWithoutJavadoc = 0;
-          let totalJavaFiles = 0;
-
-          // Fonction récursive pour vérifier les fichiers Java
-          const checkJavaFiles = (dir: string) => {
-            const files = fs.readdirSync(dir);
-
-            for (const file of files) {
-              const fullPath = path.join(dir, file);
-              const stat = fs.statSync(fullPath);
-
-              if (stat.isDirectory()) {
-                checkJavaFiles(fullPath);
-              } else if (file.endsWith(".java")) {
-                totalJavaFiles++;
-
-                const content = fs.readFileSync(fullPath, "utf8");
-                // Vérifier si le fichier contient des commentaires JavaDoc
-                if (!content.includes("/**") || !content.includes("*/")) {
-                  javaFilesWithoutJavadoc++;
-                }
-              }
-            }
-          };
-
-          checkJavaFiles(srcMainJava);
-
-          if (totalJavaFiles > 0 && javaFilesWithoutJavadoc / totalJavaFiles > 0.5) {
-            this.issues.push({
-              id: "missing-javadoc",
-              level: "info",
-              message: `Documentation du code insuffisante (${javaFilesWithoutJavadoc}/${totalJavaFiles} fichiers sans JavaDoc)`,
-              details: "La documentation du code avec JavaDoc est recommandée pour la maintenabilité",
-              fixable: false
-            });
-          }
-        }
-      } catch (err) {
-        if (this.options.verbose) {
-          this.log(chalk.red(`Erreur lors de la vérification de la documentation du code: ${err}`));
-        }
-      }
-    }
-  }
-
-  /**
-   * Vérifie les tests du projet
-   */
-  private async checkTests() {
-    const srcTestJava = path.join(process.cwd(), "src", "test", "java");
-
-    // Vérifier s'il y a des tests
-    if (fs.existsSync(srcTestJava)) {
-      try {
-        let testCount = 0;
-
-        // Fonction récursive pour compter les fichiers de test
-        const countTestFiles = (dir: string) => {
-          const files = fs.readdirSync(dir);
-
-          for (const file of files) {
-            const fullPath = path.join(dir, file);
-            const stat = fs.statSync(fullPath);
-
-            if (stat.isDirectory()) {
-              countTestFiles(fullPath);
-            } else if (file.endsWith("Test.java") || file.endsWith("Tests.java") || file.endsWith("IT.java")) {
-              testCount++;
-
-              // Vérifier le contenu du fichier de test
-              const content = fs.readFileSync(fullPath, "utf8");
-              if (!content.includes("@Test")) {
-                this.issues.push({
-                  id: `invalid-test-${file}`,
-                  level: "warning",
-                  message: `Le fichier de test ${file} ne contient pas d'annotations @Test`,
-                  details: "Les fichiers de test doivent contenir des méthodes avec l'annotation @Test",
-                  fixable: false
-                });
-              }
-            }
-          }
-        };
-
-        countTestFiles(srcTestJava);
-
-        if (testCount === 0) {
-          this.issues.push({
-            id: "no-tests",
-            level: "warning",
-            message: "Aucun fichier de test trouvé",
-            details: "Il est recommandé d'avoir des tests pour votre application",
-            fixable: false
-          });
-        }
-      } catch (err) {
-        if (this.options.verbose) {
-          this.log(chalk.red(`Erreur lors de la vérification des tests: ${err}`));
-        }
-      }
-    } else {
-      this.issues.push({
-        id: "missing-test-directory",
-        level: "warning",
-        message: "Répertoire de tests manquant",
-        details: "Il est recommandé d'avoir des tests pour votre application",
-        fixable: true,
-        fix: async () => {
-          fs.mkdirSync(path.join(process.cwd(), "src", "test", "java"), { recursive: true });
-          this.log(chalk.green("✓ Répertoire de tests créé"));
-        }
-      });
-    }
-
-    // Vérifier la configuration de couverture de code
-    const pomPath = path.join(process.cwd(), "pom.xml");
-    const gradlePath = path.join(process.cwd(), "build.gradle");
-    const gradleKtsPath = path.join(process.cwd(), "build.gradle.kts");
-
-    let hasCoveragePlugin = false;
-
-    if (fs.existsSync(pomPath)) {
-      const content = fs.readFileSync(pomPath, "utf8");
-      hasCoveragePlugin = content.includes("jacoco") || content.includes("cobertura");
-    } else if (fs.existsSync(gradlePath)) {
-      const content = fs.readFileSync(gradlePath, "utf8");
-      hasCoveragePlugin = content.includes("jacoco") || content.includes("id 'jacoco'");
-    } else if (fs.existsSync(gradleKtsPath)) {
-      const content = fs.readFileSync(gradleKtsPath, "utf8");
-      hasCoveragePlugin = content.includes("jacoco") || content.includes("id(\"jacoco\")");
-    }
-
-    if (!hasCoveragePlugin) {
-      this.issues.push({
-        id: "missing-coverage",
-        level: "info",
-        message: "Outil de couverture de code manquant",
-        details: "JaCoCo ou un autre outil de couverture est recommandé pour suivre la qualité des tests",
-        fixable: false
-      });
-    }
-  }
-
-  /**
-   * Affiche les problèmes détectés et propose des corrections
-   */
-  async prompting() {
-    // Exécuter les diagnostics
-    await this.diagnose();
-
-    // Si aucun problème n'a été détecté
-    if (this.issues.length === 0) {
-      this.log(boxen(chalk.green.bold("✓ Aucun problème détecté dans votre projet!"), {
-        padding: 1,
-        margin: 1,
-        borderColor: "green",
-        title: "Diagnostic SFS"
-      }));
-      return;
-    }
-
-    // Trier les problèmes par niveau de gravité
-    const errors = this.issues.filter(i => i.level === "error");
-    const warnings = this.issues.filter(i => i.level === "warning");
-    const infos = this.issues.filter(i => i.level === "info");
-
-    // Afficher un résumé des problèmes
-    this.log(boxen(
-      `${chalk.bold("Résultat du diagnostic SFS")}\n\n` +
-      `${chalk.red.bold(errors.length)} erreurs\n` +
-      `${chalk.yellow.bold(warnings.length)} avertissements\n` +
-      `${chalk.blue.bold(infos.length)} suggestions`,
-      {
-        padding: 1,
-        margin: 1,
-        borderColor: errors.length > 0 ? "red" : warnings.length > 0 ? "yellow" : "blue",
-        title: "Diagnostic SFS"
-      }
-    ));
-
-    // Si l'option --fix est activée, corriger automatiquement les problèmes fixables
-    if (this.options.fix) {
-      const fixableIssues = this.issues.filter(i => i.fixable);
-
-      if (fixableIssues.length > 0) {
-        this.log(chalk.green(`\nCorrection automatique de ${fixableIssues.length} problèmes...`));
-
-        for (const issue of fixableIssues) {
-          this.log(chalk.gray(`Correction de: ${issue.message}`));
-          try {
-            if (issue.fix) {
-              await issue.fix();
-            }
-          } catch (err) {
-            this.log(chalk.red(`Échec de la correction: ${err}`));
-          }
-        }
+      if (isKotlinDSL) {
+        // Kotlin DSL format
+        const scopePrefix = scope ? `${scope}` : 'implementation';
+        dependencyLine = `${scopePrefix}("${groupId}:${artifactId}")`;
       } else {
-        this.log(chalk.yellow("\nAucun problème automatiquement corrigible n'a été détecté."));
-      }
-    }
-    // Sinon, afficher les problèmes et proposer des corrections
-    else {
-      // Afficher d'abord les erreurs
-      if (errors.length > 0) {
-        displaySectionTitle("ERREURS");
-        for (const issue of errors) {
-          this.log(chalk.red.bold(`✖ ${issue.message}`));
-          this.log(chalk.gray(`  ${issue.details}`));
-        }
+        // Groovy DSL format
+        const scopePrefix = scope ? `${scope}` : 'implementation';
+        dependencyLine = `${scopePrefix} '${groupId}:${artifactId}'`;
       }
 
-      // Puis les avertissements
-      if (warnings.length > 0) {
-        displaySectionTitle("AVERTISSEMENTS");
-        for (const issue of warnings) {
-          this.log(chalk.yellow.bold(`⚠ ${issue.message}`));
-          this.log(chalk.gray(`  ${issue.details}`));
-        }
+      // Trouver la section dependencies
+      const dependenciesMatch = gradleContent.match(/dependencies\s*\{/);
+      if (dependenciesMatch) {
+        const position = dependenciesMatch.index! + dependenciesMatch[0].length;
+        gradleContent =
+          gradleContent.substring(0, position) +
+          `\n    ${dependencyLine}` +
+          gradleContent.substring(position);
+      } else {
+        gradleContent += `\ndependencies {\n    ${dependencyLine}\n}`;
       }
 
-      // Enfin les suggestions
-      if (infos.length > 0) {
-        displaySectionTitle("SUGGESTIONS");
-        for (const issue of infos) {
-          this.log(chalk.blue.bold(`ℹ ${issue.message}`));
-          this.log(chalk.gray(`  ${issue.details}`));
-        }
-      }
-
-      // Proposer de corriger les problèmes automatiquement
-      const fixableIssues = this.issues.filter(i => i.fixable);
-
-      if (fixableIssues.length > 0) {
-        const answer = await this.prompt({
-          type: "confirm",
-          name: "fix",
-          message: `Voulez-vous corriger automatiquement ${fixableIssues.length} problèmes?`,
-          default: true
-        });
-
-        if (answer.fix) {
-          this.log(chalk.green(`\nCorrection de ${fixableIssues.length} problèmes...`));
-
-          for (const issue of fixableIssues) {
-            this.log(chalk.gray(`Correction de: ${issue.message}`));
-            try {
-              if (issue.fix) {
-                await issue.fix();
-              }
-            } catch (err) {
-              this.log(chalk.red(`Échec de la correction: ${err}`));
-            }
-          }
-
-          this.log(chalk.green(`\n✓ ${fixableIssues.length} problèmes corrigés!`));
-        }
-      }
+      fs.writeFileSync(gradlePath, gradleContent);
     }
   }
 
   /**
-   * Étape de fin
+   * Recherche des fichiers selon un modèle glob
    */
-  end() {
-    displaySectionEnd();
-
-    // Message pour indiquer la fin du diagnostic
-    this.log(chalk.bold.blue("Diagnostic terminé"));
-
-    if (this.issues.length > 0) {
-      const fixableCount = this.issues.filter(i => i.fixable).length;
-      const nonFixableCount = this.issues.length - fixableCount;
-
-      this.log(chalk.yellow(`${nonFixableCount} problèmes non automatiquement corrigibles nécessitent votre attention.`));
-
-      // Afficher des conseils généraux
-      this.log("\n" + boxen(
-        chalk.bold("Conseils pour améliorer votre projet:") + "\n\n" +
-        "• Gardez vos dépendances à jour\n" +
-        "• Écrivez des tests unitaires et d'intégration\n" +
-        "• Documentez votre code avec JavaDoc\n" +
-        "• Utilisez des outils d'analyse statique\n" +
-        "• Suivez les bonnes pratiques Spring Boot",
-        {
-          padding: 1,
-          margin: 1,
-          borderColor: "blue",
-          title: "SFS Tips"
-        }
-      ));
-    } else {
-      this.log(chalk.green.bold("✓ Votre projet respecte toutes les bonnes pratiques vérifiées!"));
+  async findFiles(pattern: string): Promise<string[]> {
+    try {
+      // Utiliser glob directement au lieu de this.expand
+      const glob = require('glob');
+      return new Promise<string[]>((resolve, reject) => {
+        glob(pattern, { cwd: process.cwd(), nodir: true }, (err: Error | null, files: string[]) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(files);
+          }
+        });
+      });
+    } catch (e) {
+      return [];
     }
   }
 }

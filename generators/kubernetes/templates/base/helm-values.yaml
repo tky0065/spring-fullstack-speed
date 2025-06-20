@@ -1,0 +1,90 @@
+# Default values for <%= appNameKebab %> Helm chart
+# This is a YAML-formatted file.
+
+# Application information
+application:
+  name: <%= appNameKebab %>
+  version: 1.0.0
+
+# Replica count for the deployment
+replicaCount: <%= replicas %>
+
+# Container image configuration
+image:
+  repository: <%= dockerImage.split(':')[0] %>
+  tag: <%= dockerImage.includes(':') ? dockerImage.split(':')[1] : 'latest' %>
+  pullPolicy: Always
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: <%= servicePort %>
+  targetPort: <%= containerPort %>
+
+# Ingress configuration
+ingress:
+  enabled: <%= createIngress %>
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: <%= appNameKebab %>.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: <%= appNameKebab %>-tls
+      hosts:
+        - <%= appNameKebab %>.example.com
+
+# Resources configuration
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Autoscaling configuration
+autoscaling:
+  enabled: <%= enableAutoscaling %>
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Persistence configuration
+persistence:
+  enabled: <%= createPVC %>
+  size: 1Gi
+  storageClassName: standard
+
+# Database configuration
+database:
+  type: <%= database %>
+  <% if (database === 'mysql') { %>
+  host: "mysql-service"
+  port: 3306
+  <% } else if (database === 'postgresql') { %>
+  host: "postgresql-service"
+  port: 5432
+  <% } else if (database === 'mongodb') { %>
+  host: "mongodb-service"
+  port: 27017
+  <% } %>
+  name: <%= appNameKebab %>
+  username: app_user
+  # password is stored in values-secrets.yaml or set via --set database.password=xxx
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: "prod"
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: <%= configureMonitoring %>
+  interval: 15s
+  path: /actuator/prometheus

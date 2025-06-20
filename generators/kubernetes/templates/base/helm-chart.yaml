@@ -1,0 +1,13 @@
+apiVersion: v2
+kind: Chart
+name: <%= appNameKebab %>
+description: Helm chart for <%= appName %> Spring Boot application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: <%= appName %> Team
+keywords:
+  - spring-boot
+  - java
+  - web
+

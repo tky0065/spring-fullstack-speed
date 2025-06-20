@@ -1,0 +1,115 @@
+package <%= packageName %>.repository;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import <%= packageName %>.entity.<%= entityName %>;
+import <%= packageName %>.repository.<%= entityName %>Repository;
+<% if (useTestContainers) { %>
+import <%= packageName %>.config.AbstractContainerBaseTest;
+
+@DataJpaTest
+@ActiveProfiles("test")
+public class <%= entityName %>RepositoryTest extends AbstractContainerBaseTest {
+<% } else { %>
+@DataJpaTest
+@ActiveProfiles("test")
+public class <%= entityName %>RepositoryTest {
+<% } %>
+
+    @Autowired
+    private <%= entityName %>Repository <%= entityNameLower %>Repository;
+
+    private <%= entityName %> test<%= entityName %>;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize test entity
+        test<%= entityName %> = new <%= entityName %>();
+        // Set properties for your entity
+        // test<%= entityName %>.setName("Test Name");
+        // test<%= entityName %>.setEmail("test@example.com");
+
+        // Save test entity
+        test<%= entityName %> = <%= entityNameLower %>Repository.save(test<%= entityName %>);
+    }
+
+    @Test
+    @DisplayName("Test find by ID")
+    void testFindById() {
+        // When
+        Optional<<%= entityName %>> found = <%= entityNameLower %>Repository.findById(test<%= entityName %>.getId());
+
+        // Then
+        assertTrue(found.isPresent());
+        assertEquals(test<%= entityName %>.getId(), found.get().getId());
+        // Add more assertions for other properties
+    }
+
+    @Test
+    @DisplayName("Test find all")
+    void testFindAll() {
+        // When
+        List<<%= entityName %>> <%= entityNameLower %>List = <%= entityNameLower %>Repository.findAll();
+
+        // Then
+        assertFalse(<%= entityNameLower %>List.isEmpty());
+        assertTrue(<%= entityNameLower %>List.contains(test<%= entityName %>));
+    }
+
+    @Test
+    @DisplayName("Test save")
+    void testSave() {
+        // Given
+        <%= entityName %> new<%= entityName %> = new <%= entityName %>();
+        // Set properties for new entity
+        // new<%= entityName %>.setName("New Test");
+        // new<%= entityName %>.setEmail("new-test@example.com");
+
+        // When
+        <%= entityName %> saved = <%= entityNameLower %>Repository.save(new<%= entityName %>);
+
+        // Then
+        assertNotNull(saved.getId());
+        // Add more assertions for other properties
+    }
+
+    @Test
+    @DisplayName("Test update")
+    void testUpdate() {
+        // Given
+        // Update a property
+        // test<%= entityName %>.setName("Updated Name");
+
+        // When
+        <%= entityName %> updated = <%= entityNameLower %>Repository.save(test<%= entityName %>);
+
+        // Then
+        assertEquals(test<%= entityName %>.getId(), updated.getId());
+        // assertEquals("Updated Name", updated.getName());
+        // Add more assertions for other properties
+    }
+
+    @Test
+    @DisplayName("Test delete")
+    void testDelete() {
+        // When
+        <%= entityNameLower %>Repository.delete(test<%= entityName %>);
+
+        // Then
+        Optional<<%= entityName %>> deleted = <%= entityNameLower %>Repository.findById(test<%= entityName %>.getId());
+        assertFalse(deleted.isPresent());
+    }
+
+    // Add additional test methods for custom repository methods here
+
+}

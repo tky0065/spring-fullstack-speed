@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <%= appNameKebab %>
+  namespace: <%= appNameKebab %>-ns
+  labels:
+    app: <%= appNameKebab %>
+spec:
+  replicas: <%= replicas %>
+  selector:
+    matchLabels:
+      app: <%= appNameKebab %>
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: <%= appNameKebab %>
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: <%= appNameKebab %>
+        image: <%= dockerImage %>
+        imagePullPolicy: Always
+        ports:
+        - containerPort: <%= containerPort %>
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: <%= containerPort %>
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: <%= containerPort %>
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+          failureThreshold: 6
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        <% if (createConfigMap) { %>
+        envFrom:
+        - configMapRef:
+            name: <%= appNameKebab %>-config
+        <% } %>
+        <% if (createSecrets) { %>
+        - secretRef:
+            name: <%= appNameKebab %>-secrets
+        <% } %>
+        <% if (database !== 'h2' && createPVC) { %>
+        volumeMounts:
+        - name: <%= appNameKebab %>-data
+          mountPath: /app/data
+        <% } %>
+      <% if (database !== 'h2' && createPVC) { %>
+      volumes:
+      - name: <%= appNameKebab %>-data
+        persistentVolumeClaim:
+          claimName: <%= appNameKebab %>-pvc
+      <% } %>
+
