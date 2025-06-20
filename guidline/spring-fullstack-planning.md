@@ -423,19 +423,19 @@ Architecture Générale
 
 ### Module 9.3 : Commandes Utilitaires
 - [X] Implémenter `sfs add` (composants)
-- [x] Créer `sfs generate` (CRUD)
-- [x] Implémenter `sfs generate` (dtos)
-- [x] Implémenter `sfs generate` (entity)
-- [x] Implémenter `sfs serve` (dev server)
-- [x] Créer `sfs test` (tests)
-- [x] Implémenter `sfs build` (production)
-- [x] Créer `sfs deploy` (déploiement)
-- [x] Implémenter `sfs migrate` (DB)
+- [X] Créer `sfs generate` (CRUD)
+- [X] Implémenter `sfs generate` (dtos)
+- [X] Implémenter `sfs generate` (entity)
+- [X] Implémenter `sfs serve` (dev server)
+- [X] Créer `sfs test` (tests)
+- [X] Implémenter `sfs build` (production)
+- [X] Créer `sfs deploy` (déploiement)
+- [X] Implémenter `sfs migrate` (DB)
 - [X] Créer `sfs doctor` (diagnostic)
 - [X] Implémenter `sfs upgrade` (projet)
 - [X] Créer `sfs plugins` (extensions)
-- [ ] Configurer les aliases
-- [ ] Tester toutes les commandes
+- [X] Configurer les aliases (raccourcis pour les commandes)
+- [X] Tester toutes les commandes
 
 ---
 
@@ -579,7 +579,7 @@ Architecture Générale
 ### Frontend
 - React 18+ avec openapi generator
 - Vue.js 3+ avec openapi generator
-- Angular 20 + standalone , signal api 
+- Angular 20 + standalone , signal api
 - Thymeleaf 3.x
 - JTE templates
 
