@@ -50,6 +50,7 @@ export function getPresets() {
       additionalFeatures: ["openapi", "tests"],
       springBootVersion: "3.1.0",
     },
+    // Nouveaux presets ajoutés
     fullstack: {
       appName: "sfs-fullstack",
       packageName: "com.example.fullstack",
@@ -57,68 +58,122 @@ export function getPresets() {
       frontendFramework: "React",
       database: "PostgreSQL",
       includeAuth: true,
-      authType: "JWT+OAuth2",
-      additionalFeatures: ["openapi", "tests", "docker"],
-      springBootVersion: "3.1.5",
+      authType: "OAuth2",
+      additionalFeatures: ["openapi", "tests", "docker", "redis", "elasticsearch"],
+      springBootVersion: "3.2.0",
     },
     microservice: {
       appName: "sfs-microservice",
-      packageName: "com.example.microservice",
+      packageName: "com.example.micro",
       buildTool: "Gradle",
-      frontendFramework: "none",
-      database: "MongoDB",
+      frontendFramework: "None",
+      database: "MySQL",
       includeAuth: true,
       authType: "JWT",
-      additionalFeatures: ["openapi", "tests", "docker", "kubernetes", "kafka"],
+      additionalFeatures: ["openapi", "tests", "docker", "kafka", "prometheus"],
       springBootVersion: "3.2.0",
-    },
-    minimal: {
-      appName: "sfs-minimal",
-      packageName: "com.example.minimal",
-      buildTool: "Maven",
-      frontendFramework: "none",
-      database: "H2",
-      includeAuth: false,
-      additionalFeatures: [],
-      springBootVersion: "3.1.0",
     }
   };
 }
 
 /**
- * Affiche un message d'aide contextuelle
- * @param message Le message d'aide à afficher
+ * Affiche un message d'aide contextuel
+ * @param message Message d'aide à afficher
  */
-export function displayHelpMessage(message: string) {
-  console.log(HELP_COLOR(`💡 ${message}`));
+export function displayContextualHelp(message: string): void {
+  console.log(HELP_COLOR(`ℹ️ ${message}`));
 }
 
 /**
- * Affiche un message de succès
- * @param message Le message de succès à afficher
- */
-export function displaySuccess(message: string) {
-  console.log(SUCCESS_COLOR(`✓ ${message}`));
-}
-
-/**
- * Affiche un message d'erreur
- * @param message Le message d'erreur à afficher
- */
-export function displayError(message: string) {
-  console.log(ERROR_COLOR(`✗ ${message}`));
-}
-
-/**
- * Génère une question de confirmation avec style personnalisé
- * @param name Nom de la question
- * @param message Message à afficher
+ * Affiche un message de confirmation avec formatage
+ * @param message Message à confirmer
  * @param defaultValue Valeur par défaut (true/false)
- * @returns Question formattée pour yeoman-generator
+ * @returns Question de type confirmation
  */
-export function createConfirmQuestion(name: string, message: string, defaultValue: boolean = true): YeomanQuestion {
+export function createConfirmationPrompt(
+  message: string,
+  defaultValue: boolean = true
+): YeomanQuestion {
   return {
-    type: 'confirm',
+    type: "confirm",
+    name: "confirmation",
+    message: `${chalk.bold(message)} ${defaultValue ? chalk.gray("(Y/n)") : chalk.gray("(y/N)")}`,
+    default: defaultValue,
+  };
+}
+
+/**
+ * Crée un menu de sélection avec options
+ * @param name Nom de la propriété à définir
+ * @param message Message à afficher
+ * @param choices Options disponibles
+ * @param defaultChoice Option par défaut
+ * @returns Question de type liste
+ */
+export function createSelectionMenu(
+  name: string,
+  message: string,
+  choices: string[] | { name: string; value: any }[],
+  defaultChoice?: string
+): YeomanQuestion {
+  return {
+    type: "list",
+    name,
+    message: chalk.bold(message),
+    choices: choices.map((choice) => {
+      if (typeof choice === "string") {
+        const isDefault = choice === defaultChoice;
+        return {
+          name: `${isDefault ? SELECTED_PREFIX : OPTION_PREFIX} ${choice} ${
+            isDefault ? chalk.gray("(recommandé)") : ""
+          }`,
+          value: choice,
+          short: choice,
+        };
+      }
+      return choice;
+    }),
+    default: defaultChoice,
+  };
+}
+
+/**
+ * Crée un champ de saisie avec validation
+ * @param name Nom de la propriété à définir
+ * @param message Message à afficher
+ * @param defaultValue Valeur par défaut
+ * @param validator Fonction de validation
+ * @returns Question de type input avec validation
+ */
+export function createValidatedQuestion(
+  name: string,
+  message: string,
+  defaultValue: string,
+  validator: (input: string) => boolean | string
+): YeomanQuestion {
+  return {
+    type: "input",
+    name,
+    message: chalk.cyan(message),
+    default: defaultValue,
+    validate: validator
+  };
+}
+
+/**
+ * Crée un champ de confirmation simple
+ * @param name Nom de la propriété à définir
+ * @param message Message à afficher
+ * @param defaultValue Valeur par défaut
+ * @returns Question de type confirmation
+ */
+export function createConfirmQuestion(
+  name: string,
+  message: string,
+  defaultValue: boolean = true
+): YeomanQuestion {
+  return {
+    type: "confirm",
     name,
     message: chalk.cyan(message),
     default: defaultValue
@@ -126,26 +181,64 @@ export function createConfirmQuestion(name: string, message: string, defaultValu
 }
 
 /**
- * Génère une question avec validation des réponses
- * @param name Nom de la question
+ * Crée une liste de cases à cocher pour la sélection multiple
+ * @param name Nom de la propriété à définir
  * @param message Message à afficher
- * @param defaultValue Valeur par défaut
- * @param validator Fonction de validation
- * @returns Question formattée pour yeoman-generator
+ * @param choices Options disponibles
+ * @param defaultChoices Options sélectionnées par défaut
+ * @returns Question de type checkbox
  */
-export function createValidatedQuestion(
+export function createMultiSelect(
   name: string,
   message: string,
-  defaultValue: string = '',
-  validator?: (input: string) => boolean | string
+  choices: string[] | { name: string; value: any; checked?: boolean }[],
+  defaultChoices: string[] = []
 ): YeomanQuestion {
   return {
-    type: 'input',
+    type: "checkbox",
     name,
-    message: chalk.cyan(message),
-    default: defaultValue,
-    validate: validator
+    message: chalk.bold(message),
+    choices: choices.map((choice) => {
+      if (typeof choice === "string") {
+        return {
+          name: choice,
+          value: choice,
+          checked: defaultChoices.includes(choice),
+        };
+      }
+      return choice;
+    }),
   };
+}
+
+/**
+ * Affiche un message de succès formaté
+ * @param message Message à afficher
+ */
+export function displaySuccess(message: string): void {
+  console.log(SUCCESS_COLOR(`✓ ${message}`));
+}
+
+/**
+ * Affiche un message d'erreur formaté
+ * @param message Message d'erreur
+ */
+export function displayError(message: string): void {
+  console.log(ERROR_COLOR(`✗ ${message}`));
+}
+
+/**
+ * Affiche une barre de progression
+ * @param progress Pourcentage de progression (0-100)
+ * @param width Largeur de la barre en caractères
+ */
+export function displayProgressBar(progress: number, width: number = 40): void {
+  const filledWidth = Math.floor(progress / 100 * width);
+  const bar = '█'.repeat(filledWidth) + '░'.repeat(width - filledWidth);
+  process.stdout.write(`\r${bar} ${progress.toFixed(1)}%`);
+  if (progress >= 100) {
+    process.stdout.write('\n');
+  }
 }
 
 /**

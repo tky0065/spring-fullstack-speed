@@ -55,7 +55,11 @@
     "yeoman-test": "^10.1.1"
   },
   "dependencies": {
+    "boxen": "^8.0.1",
     "chalk": "^5.4.1",
+    "keypress": "^0.2.1",
+    "portfinder": "^1.0.37",
+    "tabtab": "^3.0.2",
     "type-fest": "4.41.0",
     "typescript": "5.8.3",
     "typescript-eslint": "8.34.1",
