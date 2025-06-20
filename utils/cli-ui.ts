@@ -136,7 +136,7 @@ export function createSpinner(options: SpinnerOptions = {}): Ora {
 
   return ora({
     text: COLORS[color](text),
-    spinner: options.spinner || 'dots',
+    spinner: options.spinner ? options.spinner as any : 'dots',
     color: color === 'primary' ? 'blue' : color === 'secondary' ? 'cyan' : 'white',
   });
 }
