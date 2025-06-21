@@ -1,6 +1,8 @@
 import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
 import yosay from "yosay";
+import fs from 'fs';
+import path from 'path';
 import {
   getPresets,
   getBasicQuestions,
@@ -34,6 +36,8 @@ import {
   generateTests,
   generateMavenOrGradle
 } from "./generator-methods.js";
+import { postGenerationChecksAndAdvice } from "./post-generation-checks.js";
+import { increaseEventListenerLimit } from "../../utils/event-listener-fix.js";
 
 export default class AppGenerator extends BaseGenerator {
   declare answers: any;
@@ -69,6 +73,9 @@ export default class AppGenerator extends BaseGenerator {
   }
 
   initializing() {
+    // Augmenter la limite d'écouteurs d'événements pour éviter les problèmes d'interface
+    increaseEventListenerLimit(25);
+
     this.log(chalk.blue("Initialisation du générateur SFS (Spring-Fullstack-Speed)..."));
   }
 
@@ -288,20 +295,81 @@ export default class AppGenerator extends BaseGenerator {
           this.answers.frontendFramework !== 'JTE') {
         // Installation des dépendances frontend
         this.log(chalk.blue("Installation des dépendances frontend..."));
-        this.spawnCommandSync("npm", ["install"], { cwd: "frontend" });
+
+        try {
+          // Utiliser des commandes compatibles avec Windows
+          const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+          // Vérifier si le dossier frontend existe
+          if (!fs.existsSync('frontend')) {
+            this.log(chalk.yellow("Le dossier 'frontend' n'existe pas. Création du dossier..."));
+            fs.mkdirSync('frontend', { recursive: true });
+          }
+
+          this.log(chalk.blue("Exécution de npm install dans le dossier frontend..."));
+          // Utiliser --legacy-peer-deps par défaut pour éviter les erreurs de dépendances connues
+          try {
+            this.log(chalk.blue("Installation avec --legacy-peer-deps pour éviter les conflits de dépendances..."));
+            this.spawnCommandSync(npmCmd, ["install", "--legacy-peer-deps"], { cwd: "frontend" });
+            this.log(chalk.green("✅ Installation réussie avec --legacy-peer-deps."));
+          } catch (error) {
+            this.log(chalk.yellow("⚠️ L'installation avec --legacy-peer-deps a échoué, tentative avec --force..."));
+            try {
+              this.spawnCommandSync(npmCmd, ["install", "--force"], { cwd: "frontend" });
+              this.log(chalk.green("✅ Installation réussie avec --force."));
+            } catch (forceError) {
+              throw new Error("L'installation a échoué avec toutes les méthodes");
+            }
+          }
+          this.log(chalk.green("✅ Installation des dépendances frontend terminée."));
+        } catch (error) {
+          this.log(chalk.yellow("⚠️ L'installation automatique des dépendances frontend a échoué."));
+          this.log(chalk.yellow("Vous pouvez les installer manuellement plus tard avec l'une des commandes suivantes :"));
+          this.log(chalk.cyan("  cd frontend && npm install"));
+          this.log(chalk.cyan("  cd frontend && npm install --legacy-peer-deps"));
+          this.log(chalk.cyan("  cd frontend && npm install --force"));
+          console.error("Détail de l'erreur :", error);
+        }
       }
 
       // Installation des dépendances backend
       this.log(chalk.blue("Compilation du projet backend..."));
-      if (this.answers.buildTool === 'Maven') {
-        this.spawnCommandSync("./mvnw", ["clean", "compile"], { stdio: "ignore" });
-      } else {
-        this.spawnCommandSync("./gradlew", ["clean", "compileJava"], { stdio: "ignore" });
+      try {
+        if (this.answers.buildTool === 'Maven') {
+          const mvnCmd = process.platform === 'win32' ? 'mvnw.cmd' : './mvnw';
+          try {
+            // Tentative de compilation Maven avec plus de détails d'erreur
+            this.spawnCommandSync(mvnCmd, ["clean", "compile"], { stdio: "inherit" });
+          } catch (error) {
+            this.log(chalk.yellow("⚠️ Tentative de résolution des dépendances sans compilation..."));
+            this.spawnCommandSync(mvnCmd, ["dependency:resolve"], { stdio: "inherit" });
+            throw new Error("La compilation a échoué mais les dépendances ont été résolues");
+          }
+        } else {
+          const gradleCmd = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
+          try {
+            this.spawnCommandSync(gradleCmd, ["clean", "compileJava"], { stdio: "inherit" });
+          } catch (error) {
+            this.log(chalk.yellow("⚠️ Tentative de résolution des dépendances sans compilation..."));
+            this.spawnCommandSync(gradleCmd, ["dependencies"], { stdio: "inherit" });
+            throw new Error("La compilation a échoué mais les dépendances ont été résolues");
+          }
+        }
+        this.log(chalk.green("✅ Compilation du projet backend terminée."));
+      } catch (error) {
+        this.log(chalk.yellow("⚠️ La compilation automatique du backend a échoué."));
+        this.log(chalk.yellow("Vous pouvez le compiler manuellement plus tard."));
+        if (this.answers.buildTool === 'Maven') {
+          this.log(chalk.cyan("  ./mvnw clean compile"));
+        } else {
+          this.log(chalk.cyan("  ./gradlew clean compileJava"));
+        }
+        console.error("Détail de l'erreur :", error);
       }
     }
   }
 
-  end() {
+  async end() {
     this.log(chalk.green.bold("\n🎉 Félicitations! Votre projet Spring-Fullstack a été généré avec succès!"));
     this.log("\nVoici quelques commandes utiles pour démarrer:");
 
@@ -323,5 +391,8 @@ export default class AppGenerator extends BaseGenerator {
 
     this.log(chalk.cyan("\nConsultez le README.md pour plus d'informations."));
     this.log(chalk.yellow("\nMerci d'utiliser Spring-Fullstack-Speed! 🚀"));
+
+    // Vérifications et conseils post-génération
+    await postGenerationChecksAndAdvice(this, this.answers);
   }
 }

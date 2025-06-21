@@ -5,40 +5,38 @@ Tous les changements notables dans ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-06-20
+## [1.0.0] - 2025-06-21
 
 ### Ajouté
-- Générateur principal d'applications Spring Boot avec différentes options de frontend
-- Support pour React , Vue.js a, Angular, Thymeleaf et JTE
-- Support pour différentes bases de données (PostgreSQL, MySQL, MongoDB, H2)
-- Générateur d'entités JPA avec relations
-- Générateur de DTOs et mappeurs
-- Générateur de modules applicatifs
-- Générateur d'opérations CRUD
-- Générateur de tests unitaires et d'intégration
-- Support pour l'authentification JWT et OAuth2
-- Configuration automatique de Docker et docker-compose
-- Support pour Maven et Gradle
-- Interface utilisateur CLI interactive avec menus de navigation
-- Système de templates extensible
-- Documentation utilisateur complète
+- Générateur d'applications Spring Boot avec plusieurs options de base de données (H2, MySQL, PostgreSQL, MongoDB)
+- Support pour plusieurs frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE)
+- Générateur d'entités avec validations et relations
+- Générateur de DTOs avec plusieurs stratégies de mapping (manuel, MapStruct, ModelMapper)
+- Générateur CRUD avec pagination, tri et composants frontend
+- Générateur de modules pour organiser le code par domaine fonctionnel
+- Générateur de recherche avec support pour Elasticsearch
+- Générateur de notifications (email, SMS, push, websocket)
+- Générateur de conteneurisation Docker (simple, multi-stage, compose)
+- Générateur de déploiement pour différentes plateformes cloud (AWS, Azure, GCP, Heroku)
+- Générateur CI/CD pour différentes plateformes (GitHub Actions, GitLab CI, Jenkins)
+- Tests unitaires, d'intégration, end-to-end et de cas limites
+- Documentation complète des générateurs et cas d'utilisation
+- Support multi-plateforme (Windows, Linux, macOS)
+
+### Changé
+- Refactoring majeur de l'architecture des générateurs pour plus de modularité
+- Amélioration de l'interface utilisateur CLI
+- Optimisation des templates pour les dernières versions des frameworks
 
 ### Corrigé
-- Résolution des problèmes de compilation TypeScript
-- Correction des erreurs de typage avec prompt() dans les générateurs
-- Correction des problèmes avec les promesses non résolues
-- Amélioration de la cohérence des options entre générateurs
-- Ajout de la propriété authType manquante dans tous les objets de configuration
+- Problèmes de compatibilité ESM/CommonJS
+- Inconsistances dans les conventions de nommage
+- Bugs dans la génération des relations entre entités
 
-## [0.9.0] - 2025-05-15
+## [Non publié]
 
-### Ajouté
-- Version bêta avec les fonctionnalités de base
-- Premier support pour Spring Boot avec React
-- Génération de projets Maven
-- Support initial pour PostgreSQL
-- Tests unitaires de base
-
-### Connu
-- Problèmes de compilation TypeScript
-- Incohérences entre certains générateurs
+### À venir
+- Support pour GraphQL
+- Génération de tests automatisés pour le code client
+- Support pour les microservices
+- Assistant d'architecture avec intelligence artificielle

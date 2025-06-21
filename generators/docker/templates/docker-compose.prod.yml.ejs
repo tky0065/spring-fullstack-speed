@@ -1,0 +1,64 @@
+version: '3.8'
+
+# Configuration de production qui étend docker-compose.yml
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    # En production, nous n'exposons pas directement les ports du backend
+    # car tout passe par Nginx
+<% if (databaseType !== 'h2' && databaseType !== 'none') { %>
+    depends_on:
+  <% if (databaseType === 'mysql') { %>
+      - mysql
+  <% } else if (databaseType === 'postgres') { %>
+      - postgres
+  <% } else if (databaseType === 'mongodb') { %>
+      - mongodb
+  <% } %>
+<% } %>
+
+<% if (includeFrontend) { %>
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    # En production, nous n'exposons pas directement les ports du frontend
+    # car tout passe par Nginx
+<% } %>
+
+<% if (includeNginx) { %>
+  nginx:
+    restart: always
+<% } %>
+
+<% if (databaseType !== 'h2' && databaseType !== 'none') { %>
+  <% if (databaseType === 'mysql') { %>
+  mysql:
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${appName}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+  <% } else if (databaseType === 'postgres') { %>
+  postgres:
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${appName}
+  <% } else if (databaseType === 'mongodb') { %>
+  mongodb:
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD}
+      - MONGO_INITDB_DATABASE=${appName}
+  <% } %>
+<% } %>

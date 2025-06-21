@@ -1,0 +1,49 @@
+package <%= packageName %>.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/example")
+@Tag(name = "Exemple", description = "API d'exemple avec documentation OpenAPI")
+public class ExampleApiController {
+
+    @Operation(summary = "Obtenir un élément par ID",
+               description = "Récupère un élément en utilisant son identifiant unique")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Élément trouvé",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = String.class))),
+        @ApiResponse(responseCode = "404", description = "Élément non trouvé",
+                    content = @Content),
+        @ApiResponse(responseCode = "500", description = "Erreur serveur",
+                    content = @Content)
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<String> getById(
+            @Parameter(description = "ID de l'élément à récupérer")
+            @PathVariable Long id) {
+        return ResponseEntity.ok("Élément avec ID: " + id);
+    }
+
+    @Operation(summary = "Créer un nouvel élément",
+               description = "Crée un nouvel élément avec les données fournies")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Élément créé"),
+        @ApiResponse(responseCode = "400", description = "Requête invalide"),
+        @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    @PostMapping
+    public ResponseEntity<String> create(
+            @Parameter(description = "Données de l'élément à créer")
+            @RequestBody String payload) {
+        return ResponseEntity.ok("Élément créé avec les données: " + payload);
+    }
+}

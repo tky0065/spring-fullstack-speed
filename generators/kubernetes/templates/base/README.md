@@ -24,7 +24,7 @@ kubernetes/
 │       ├── values.yaml          # Valeurs par défaut
 │       └── templates/           # Templates Helm
 │           ├── deployment.yaml  # Template de déploiement
-│           ├── service.yaml     # Template de service
+│           ��── service.yaml     # Template de service
 │           ├── ingress.yaml     # Template d'ingress
 │           ├── configmap.yaml   # Template de configmap
 │           ├── secrets.yaml     # Template de secrets
@@ -49,168 +49,175 @@ kubernetes/
 ## Prérequis
 
 - Kubernetes 1.19+
-- kubectl configuré pour votre cluster
-<% if (deploymentType === 'helm') { %>- Helm 3.0+<% } %>
-<% if (deploymentType === 'kustomize') { %>- Kustomize 4.0+<% } %>
-<% if (enableServiceMesh) { %>- Istio installé sur votre cluster<% } %>
-<% if (configureMonitoring) { %>- Prometheus Operator installé sur votre cluster<% } %>
+- kubectl installé et configuré
+- accès à un cluster Kubernetes
+<% if (deploymentType === 'helm') { %>- Helm 3+ installé<% } %>
+<% if (deploymentType === 'kustomize') { %>- kustomize installé<% } %>
 
-## Déploiement
+## Commandes de déploiement
 
 ### Préparation
 
-1. Assurez-vous que les secrets sont correctement configurés
-   <% if (deploymentType === 'raw-manifests') { %>
-   ```bash
-   # Éditer le fichier de secrets avant le déploiement
-   vim kubernetes/base/secrets.yaml
-   ```
-   <% } else if (deploymentType === 'helm') { %>
-   ```bash
-   # Créer un fichier values-secrets.yaml pour stocker les valeurs sensibles
-   cat > kubernetes/helm/<%= appNameKebab %>/values-secrets.yaml << EOF
-   database:
-     password: votre_mot_de_passe_sécurisé
-   
-   security:
-     jwtSecret: votre_clé_jwt_sécurisée_très_longue
-   EOF
-   ```
-   <% } else if (deploymentType === 'kustomize') { %>
-   ```bash
-   # Créer un fichier de secrets pour kustomize
-   cat > kubernetes/kustomize/overlays/prod/secrets.env << EOF
-   SPRING_DATASOURCE_PASSWORD=votre_mot_de_passe_sécurisé
-   JWT_SECRET=votre_clé_jwt_sécurisée_très_longue
-   EOF
-   
-   # Ajouter au fichier kustomization.yaml
-   # secretGenerator:
-   # - name: <%= appNameKebab %>-secrets
-   #   envs:
-   #   - secrets.env
-   ```
-   <% } %>
-
-2. Vérifiez et ajustez les configurations selon vos besoins
-
-### Déploiement de l'application
-
-<% if (deploymentType === 'raw-manifests') { %>
 ```bash
 # Créer le namespace
-kubectl apply -f kubernetes/base/namespace.yaml
+kubectl apply -f namespace.yaml
 
-# Déployer toutes les ressources
-kubectl apply -f kubernetes/base/
+# Créer les secrets (si applicable)
+kubectl apply -f secrets.yaml
+
+# Créer les configmaps
+kubectl apply -f configmap.yaml
+```
+
+<% if (deploymentType === 'raw-manifests') { %>
+### Déploiement avec les manifests Kubernetes standards
+
+```bash
+# Déployer l'application
+kubectl apply -f deployment.yaml
+
+# Déployer le service
+kubectl apply -f service.yaml
+
+<% if (createIngress === true) { %># Déployer l'ingress
+kubectl apply -f ingress.yaml
+<% } %>
+
+<% if (createPVC === true) { %># Déployer le volume persistant (si applicable)
+kubectl apply -f pvc.yaml
+<% } %>
+
+<% if (enableAutoscaling === true) { %># Déployer la configuration d'autoscaling
+kubectl apply -f hpa.yaml
+<% } %>
+
+# Déployer tous les composants d'un coup
+kubectl apply -f .
 ```
 <% } else if (deploymentType === 'helm') { %>
-```bash
-# Installer le chart avec les valeurs par défaut
-helm install <%= appNameKebab %> kubernetes/helm/<%= appNameKebab %>/ --namespace <%= appNameKebab %>-ns --create-namespace
+### Déploiement avec Helm
 
-# Ou avec des valeurs personnalisées
-helm install <%= appNameKebab %> kubernetes/helm/<%= appNameKebab %>/ --namespace <%= appNameKebab %>-ns --create-namespace -f kubernetes/helm/<%= appNameKebab %>/values-secrets.yaml
+```bash
+# Ajouter le repo Helm (si applicable)
+# helm repo add <repo-name> <repo-url>
+# helm repo update
+
+# Installation du chart
+helm install <%= appNameKebab %> ./helm/<%= appNameKebab %> \
+  --namespace <%= appNameKebab %> \
+  --create-namespace
+
+# Mise à jour du chart
+helm upgrade <%= appNameKebab %> ./helm/<%= appNameKebab %> \
+  --namespace <%= appNameKebab %>
+
+# Visualiser les ressources déployées
+helm list -n <%= appNameKebab %>
+
+# Supprimer le déploiement
+helm uninstall <%= appNameKebab %> -n <%= appNameKebab %>
 ```
 <% } else if (deploymentType === 'kustomize') { %>
-```bash
-# Déployer avec kustomize pour l'environnement de développement
-kubectl apply -k kubernetes/kustomize/overlays/dev/
+### Déploiement avec Kustomize
 
-# Ou pour l'environnement de production
-kubectl apply -k kubernetes/kustomize/overlays/prod/
+```bash
+# Déploiement de l'environnement de développement
+kubectl apply -k ./kustomize/overlays/dev
+
+# Déploiement de l'environnement de production
+kubectl apply -k ./kustomize/overlays/prod
+
+# Visualiser les ressources qui seraient appliquées (sans les déployer)
+kubectl kustomize ./kustomize/overlays/dev
+
+# Supprimer les ressources
+kubectl delete -k ./kustomize/overlays/dev
 ```
 <% } %>
 
 ## Vérification du déploiement
 
 ```bash
-# Vérifier que les pods sont en cours d'exécution
-kubectl get pods -n <%= appNameKebab %>-ns
+# Vérifier les déploiements
+kubectl get deployments -n <%= appNameKebab %>
+
+# Vérifier les pods
+kubectl get pods -n <%= appNameKebab %>
 
 # Vérifier les services
-kubectl get svc -n <%= appNameKebab %>-ns
+kubectl get services -n <%= appNameKebab %>
 
-# Vérifier les journaux
-kubectl logs -f deployment/<%= appNameKebab %> -n <%= appNameKebab %>-ns
-```
-
-<% if (createIngress) { %>
-## Accès à l'application
-
-Une fois le déploiement terminé, l'application sera accessible via l'URL configurée dans l'Ingress :
-
-```
-https://<%= appNameKebab %>.example.com
-```
-
-Note : Assurez-vous de configurer votre DNS pour pointer vers l'adresse IP de votre Ingress Controller.
+<% if (createIngress === true) { %># Vérifier les ingress
+kubectl get ingress -n <%= appNameKebab %>
 <% } %>
 
-<% if (enableAutoscaling) { %>
-## Autoscaling
+# Afficher les logs d'un pod (remplacer <pod-name>)
+kubectl logs <pod-name> -n <%= appNameKebab %>
 
-L'application est configurée avec un Horizontal Pod Autoscaler (HPA) qui ajuste automatiquement le nombre de pods en fonction de l'utilisation des ressources :
+# Entrer dans un pod en mode shell
+kubectl exec -it <pod-name> -n <%= appNameKebab %> -- /bin/sh
+```
+
+## Monitoring et dépannage
 
 ```bash
-# Vérifier l'état de l'autoscaler
-kubectl get hpa -n <%= appNameKebab %>-ns
-```
-<% } %>
+# Afficher les détails d'un pod
+kubectl describe pod <pod-name> -n <%= appNameKebab %>
 
-<% if (enableServiceMesh) { %>
+# Afficher les détails d'un déploiement
+kubectl describe deployment <%= appNameKebab %> -n <%= appNameKebab %>
+
+# Surveiller les ressources utilisées par les pods
+kubectl top pod -n <%= appNameKebab %>
+
+# Vérifier les événements du namespace
+kubectl get events -n <%= appNameKebab %>
+```
+
+<% if (enableServiceMesh === true) { %>
 ## Service Mesh (Istio)
 
-Cette application est configurée pour fonctionner avec Istio. Les ressources suivantes sont déployées :
-
-- VirtualService : Configure le routage du trafic
-- DestinationRule : Configure les politiques de gestion du trafic
-
 ```bash
-# Vérifier les ressources Istio
-kubectl get virtualservice -n <%= appNameKebab %>-ns
-kubectl get destinationrule -n <%= appNameKebab %>-ns
+# Vérifier les virtual services
+kubectl get virtualservices -n <%= appNameKebab %>
+
+# Vérifier les destination rules
+kubectl get destinationrules -n <%= appNameKebab %>
+
+# Vérifier les gateways
+kubectl get gateways -n <%= appNameKebab %>
 ```
 <% } %>
 
-<% if (configureMonitoring) { %>
-## Monitoring
-
-Cette application est configurée pour être surveillée par Prometheus. Un ServiceMonitor est déployé pour collecter les métriques depuis l'endpoint `/actuator/prometheus` :
-
-```bash
-# Vérifier le ServiceMonitor
-kubectl get servicemonitor -n <%= appNameKebab %>-ns
-```
-
-Vous pouvez visualiser ces métriques dans Grafana en important le dashboard pour Spring Boot.
-<% } %>
-
-## Nettoyage
+## Mise à jour de l'application
 
 <% if (deploymentType === 'raw-manifests') { %>
 ```bash
-# Supprimer toutes les ressources
-kubectl delete -f kubernetes/base/
+# Modifier l'image ou la configuration dans deployment.yaml, puis:
+kubectl apply -f deployment.yaml
 ```
 <% } else if (deploymentType === 'helm') { %>
 ```bash
-# Désinstaller le chart
-helm uninstall <%= appNameKebab %> -n <%= appNameKebab %>-ns
+# Mettre à jour les valeurs dans values.yaml ou passer directement des valeurs:
+helm upgrade <%= appNameKebab %> ./helm/<%= appNameKebab %> \
+  --namespace <%= appNameKebab %> \
+  --set image.tag=nouvelle-version
 ```
 <% } else if (deploymentType === 'kustomize') { %>
 ```bash
-# Supprimer les ressources déployées avec kustomize
-kubectl delete -k kubernetes/kustomize/overlays/dev/
+# Modifier les patchs dans le dossier overlays, puis:
+kubectl apply -k ./kustomize/overlays/dev
 ```
 <% } %>
 
-## Configuration avancée
+## Nettoyer les ressources
 
-Consultez la documentation spécifique à chaque composant pour des configurations plus avancées :
+```bash
+<% if (deploymentType === 'raw-manifests') { %># Supprimer toutes les ressources
+kubectl delete -f .<% } else if (deploymentType === 'helm') { %># Désinstaller le helm chart
+helm uninstall <%= appNameKebab %> -n <%= appNameKebab %><% } else if (deploymentType === 'kustomize') { %># Supprimer toutes les ressources
+kubectl delete -k ./kustomize/overlays/dev<% } %>
 
-- [Documentation Kubernetes](https://kubernetes.io/docs/)
-<% if (deploymentType === 'helm') { %>- [Documentation Helm](https://helm.sh/docs/)<% } %>
-<% if (deploymentType === 'kustomize') { %>- [Documentation Kustomize](https://kubectl.docs.kubernetes.io/guides/introduction/kustomize/)<% } %>
-<% if (enableServiceMesh) { %>- [Documentation Istio](https://istio.io/latest/docs/)<% } %>
-<% if (configureMonitoring) { %>- [Documentation Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/getting-started.md)<% } %>
+# Supprimer le namespace (attention: supprime toutes les ressources du namespace)
+kubectl delete namespace <%= appNameKebab %>
+```

@@ -59,11 +59,12 @@ function validateEnumValues(input: string): boolean | string {
   return true;
 }
 
-export default class EntityGenerator extends BaseGenerator {
+// Assurez-vous d'exporter correctement la classe pour qu'elle soit compatible avec CommonJS et ESM
+export class EntityGenerator extends BaseGenerator {
   // Utiliser une approche différente pour la déclaration des options
   declare options: any; // Type any pour contourner le problème de compatibilité
   declare answers: EntityGeneratorAnswers;
-  declare projectConfig: ProjectConfig;
+  declare projectConfig: ProjectConfig | undefined;
   // Initialiser les tableaux vides directement
   entityFields: EntityField[] = [];
 
@@ -113,23 +114,21 @@ export default class EntityGenerator extends BaseGenerator {
     });
   }
 
-  async initializing() {
+  initializing() {
     this.log(SECTION_DIVIDER);
     this.log(chalk.bold.blue("🧩 GÉNÉRATEUR D'ENTITÉS SPRING FULLSTACK"));
     this.log(SECTION_DIVIDER);
     this.log(HELP_COLOR("Ce générateur va créer une entité Java avec tous les composants associés"));
     this.log("");
 
-    try {
-      this.projectConfig = await this.readProjectConfig();
+    // Charger la configuration du projet si disponible
+    this.projectConfig = this._loadProjectConfig();
 
-      if (!this.projectConfig) {
-        this.log(ERROR_COLOR("❌ Impossible de trouver la configuration du projet. Assurez-vous d'être dans un projet Spring Fullstack."));
-        process.exit(1);
-      }
-    } catch (error) {
-      this.log(ERROR_COLOR(`❌ Erreur lors de l'initialisation: ${error}`));
-      process.exit(1);
+    // Vérifier si un projet existe dans le dossier courant
+    if (!this.projectConfig) {
+      this.log(ERROR_COLOR("❌ Aucun projet Spring Boot n'a été détecté dans ce dossier."));
+      this.log(INFO_COLOR("💡 Assurez-vous d'être dans un projet Spring Boot créé avec SFS avant d'utiliser cette commande."));
+      // Continuer tout de même pour l'utilisateur
     }
   }
 
@@ -154,51 +153,75 @@ export default class EntityGenerator extends BaseGenerator {
     this.log(ERROR_COLOR(`❌ ${message}`));
   }
 
-  /**
-   * Récupérer la configuration du projet
-   */
-  async readProjectConfig() {
+  // Ajouter une méthode privée pour valider le nom d'entité
+  private _validateEntityName(input: string): boolean | string {
+    if (!input) return "Le nom de l'entité est requis";
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
+      return "Le nom de l'entité doit commencer par une majuscule (PascalCase) et ne contenir que des lettres et des chiffres";
+    }
+    return true;
+  }
+
+  // Ajouter une méthode privée pour charger la configuration du projet
+  private _loadProjectConfig(): ProjectConfig | undefined {
     try {
-      const configPath = path.join(process.cwd(), '.yo-rc.json');
-      if (fs.existsSync(configPath)) {
-        const configContent = fs.readFileSync(configPath, 'utf8');
-        const config = JSON.parse(configContent);
-        return config['generator-spring-fullstack'] || null;
+      // Rechercher un fichier pom.xml ou build.gradle pour inférer la configuration du projet
+      const pomExists = fs.existsSync(path.join(process.cwd(), 'pom.xml'));
+      const gradleExists = fs.existsSync(path.join(process.cwd(), 'build.gradle')) ||
+        fs.existsSync(path.join(process.cwd(), 'build.gradle.kts'));
+
+      if (!pomExists && !gradleExists) {
+        return undefined;
       }
-      return null;
+
+      // Configuration par défaut complète
+      return {
+        appName: path.basename(process.cwd()),
+        packageName: "com.example.app", // Valeur par défaut à remplacer par une détection réelle
+        buildTool: pomExists ? "maven" : "gradle",
+        database: "h2", // Valeur par défaut
+        frontendFramework: "none", // Valeur par défaut
+        authEnabled: false, // Valeur par défaut
+        authType: "none", // Valeur par défaut optionnelle
+        features: [] // Tableau vide pour les fonctionnalités
+      };
     } catch (error) {
-      this.log(ERROR_COLOR(`Erreur lors de la lecture de la configuration: ${error}`));
-      return null;
+      this.log(chalk.red(`Erreur lors du chargement de la configuration: ${error}`));
+      return undefined;
     }
   }
 
   async prompting() {
-    if (!this.options.entityName || this.options.interactive) {
-      this.log(SECTION_DIVIDER);
-      this.log(STEP_PREFIX + chalk.bold("CONFIGURATION DE L'ENTITÉ"));
-      this.log(SECTION_DIVIDER);
+    this.log(chalk.cyan("Démarrage du processus de création d'entité..."));
 
-      // Questions de base pour l'entité
-      const answers = await this.prompt<EntityGeneratorAnswers>([
+    // Préparer les réponses avec les options CLI ou les valeurs par défaut
+    const opts = this.options;
+    const answers: Partial<EntityGeneratorAnswers> = {
+      entityName: opts.entityName,
+      packageName: opts.package || (this.projectConfig?.packageName ? `${this.projectConfig.packageName}.domain` : undefined),
+      // Ajouter d'autres valeurs par défaut si nécessaire...
+    };
+
+    // Ne procéder aux questions que si le mode interactif est activé (par défaut)
+    if (opts.interactive !== false) {
+      // Questions pour l'entité
+      this.log(chalk.bold.blue("\n🏗️ PARAMÈTRES DE L'ENTITÉ"));
+
+      // Utiliser le typage générique pour résoudre le problème de compatibilité
+      const entityQuestions: Array<any> = [
         {
           type: "input",
           name: "entityName",
-          message: chalk.cyan("Nom de l'entité:"),
-          default: this.options.entityName,
-          validate: (input: string) => {
-            if (!input) return "Le nom de l'entité est requis";
-            if (!/^[A-Z][a-zA-Z0-9]*$/.test(input)) {
-              return "Le nom de l'entité doit commencer par une majuscule et ne contenir que des lettres et chiffres";
-            }
-            return true;
-          }
+          message: "Nom de l'entité (PascalCase):",
+          default: answers.entityName || "Example",
+          validate: this._validateEntityName
         },
         {
           type: "input",
           name: "packageName",
           message: chalk.cyan("Package:"),
           default: () => this.options.package ||
-                       (this.projectConfig ? `${this.projectConfig.packageName}.domain` : "com.example.domain"),
+            (this.projectConfig ? `${this.projectConfig.packageName}.domain` : "com.example.domain"),
           validate: (input: string) => {
             if (!input) return "Le package est requis";
             if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
@@ -237,27 +260,16 @@ export default class EntityGenerator extends BaseGenerator {
           message: chalk.cyan("Ajouter des champs d'audit (createdBy, createdDate, etc.)?"),
           default: true
         }
-      ]);
+      ];
 
-      this.answers = answers;
+      // Lancer les questions avec le typage corrigé
+      Object.assign(answers, await this.prompt(entityQuestions as any));
 
-      // Demander à l'utilisateur de définir les champs de l'entité
-      await this.askForFields();
-    } else {
-      this.answers = {
-        entityName: this.options.entityName || '',
-        packageName: this.options.package ||
-                  (this.projectConfig ? `${this.projectConfig.packageName}.domain` : "com.example.domain"),
-        generateRepository: !this.options.skipRepository,
-        generateService: !this.options.skipService,
-        generateController: !this.options.skipController,
-        generateDto: !this.options.skipDto,
-        auditable: true
-      };
-
-      // En mode non-interactif, on demanderait ici de définir les champs via un fichier JSON ou des arguments
-      this.log(HELP_COLOR("Mode non-interactif: utilisez un fichier de définition d'entité ou ajoutez des champs manuellement plus tard."));
+      // Vous pouvez ajouter d'autres séries de questions ici...
     }
+
+    // Stocker les réponses pour une utilisation ultérieure
+    this.answers = answers as EntityGeneratorAnswers;
   }
 
   /**
@@ -385,7 +397,7 @@ export default class EntityGenerator extends BaseGenerator {
       this.displaySuccess(`Champ '${field.name}' ajouté`);
 
       // Demander si l'utilisateur veut ajouter un autre champ
-      const { addMoreFields } = await this.prompt<{addMoreFields: boolean}>({
+      const { addMoreFields } = await this.prompt<{ addMoreFields: boolean }>({
         type: "confirm",
         name: "addMoreFields",
         message: chalk.cyan("Ajouter un autre champ?"),
@@ -405,166 +417,194 @@ export default class EntityGenerator extends BaseGenerator {
     });
   }
 
+  /**
+   * Génère les fichiers pour l'entité et ses composants associés
+   */
   writing() {
-    if (this.entityFields.length === 0 && this.options.interactive) {
-      this.displayError("Aucun champ défini pour l'entité. Génération annulée.");
+    const { entityName, packageName, generateRepository, generateService, generateController, generateDto, auditable } = this.answers;
+
+    if (!entityName) {
+      this.displayError("Nom de l'entité non défini. Génération annulée.");
       return;
     }
+
+    // Créer le chemin du package pour les fichiers Java
+    const packagePath = packageName.replace(/\./g, '/');
+    const mainDir = `src/main/java/${packagePath}`;
+
+    // Préparer les données communes pour les templates
+    const templateData = {
+      entityName,
+      packageName,
+      fields: this.entityFields,
+      auditable,
+      dateTimeImport: this.hasDateTimeFields(),
+      bigDecimalImport: this.hasBigDecimalFields(),
+    };
 
     this.log("");
     this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES FICHIERS"));
     this.log(SECTION_DIVIDER);
 
-    const entityName = this.answers.entityName;
-    const packagePath = this.answers.packageName.replace(/\./g, '/');
+    try {
+      // Créer les répertoires nécessaires
+      this.ensureDirectoryExists(mainDir);
+      const entityDir = `${mainDir}/entity`;
+      this.ensureDirectoryExists(entityDir);
 
-    // Préparer les données pour les templates
-    const templateData = {
-      entityName: entityName,
-      packageName: this.answers.packageName,
-      tableName: this._generateTableName(entityName),
-      fields: this._prepareFieldsForTemplate(this.entityFields),
-      hasDateFields: this._hasDateFields(),
-      hasBigDecimalFields: this._hasBigDecimalFields(),
-      imports: this._generateImports(),
-      auditable: this.answers.auditable
-    };
+      // Générer le fichier d'entité
+      this.renderTemplate(
+        'entity/Entity.java.ejs',
+        `${entityDir}/${entityName}.java`,
+        templateData
+      );
+      this.displaySuccess(`Entité ${entityName}.java générée`);
 
-    // Créer les dossiers nécessaires
-    const srcMainJavaDir = path.join(process.cwd(), 'src/main/java');
+      // Générer le Repository si demandé
+      if (generateRepository) {
+        const repositoryPackageName = packageName.replace(/\.entity$|\.domain$/, '.repository');
+        const repositoryPackagePath = repositoryPackageName.replace(/\./g, '/');
+        const repositoryDir = `src/main/java/${repositoryPackagePath}`;
+        this.ensureDirectoryExists(repositoryDir);
 
-    // Dossier de l'entité
-    const entityDir = path.join(srcMainJavaDir, packagePath);
-    this.createDirectory(entityDir);
+        this.renderTemplate(
+          'repository/Repository.java.ejs',
+          `${repositoryDir}/${entityName}Repository.java`,
+          {
+            ...templateData,
+            packageName: repositoryPackageName,
+            entityPackageName: packageName
+          }
+        );
+        this.displaySuccess(`Repository ${entityName}Repository.java généré`);
+      }
 
-    // Générer le fichier de l'entité
-    this.displayHelpMessage(`Génération de l'entité ${entityName}...`);
-    const entityPath = path.join(entityDir, `${entityName}.java`);
-    this.renderEjsTemplate('Entity.java.ejs', entityPath, templateData);
+      // Générer le Service si demandé
+      if (generateService) {
+        const servicePackageName = packageName.replace(/\.entity$|\.domain$/, '.service');
+        const servicePackagePath = servicePackageName.replace(/\./g, '/');
+        const serviceDir = `src/main/java/${servicePackagePath}`;
+        this.ensureDirectoryExists(serviceDir);
 
-    this.displaySuccess(`Entité ${entityName}.java générée`);
+        // Interface du service
+        this.renderTemplate(
+          'service/Service.java.ejs',
+          `${serviceDir}/${entityName}Service.java`,
+          {
+            ...templateData,
+            packageName: servicePackageName,
+            entityPackageName: packageName,
+            repositoryPackageName: packageName.replace(/\.entity$|\.domain$/, '.repository')
+          }
+        );
 
-    // Générer le repository si demandé
-    if (this.answers.generateRepository) {
-      const repositoryPackagePath = this.answers.packageName.replace('.domain', '.repository').replace(/\./g, '/');
-      const repositoryDir = path.join(srcMainJavaDir, repositoryPackagePath);
-      this.createDirectory(repositoryDir);
+        // Implémentation du service
+        this.renderTemplate(
+          'service/ServiceImpl.java.ejs',
+          `${serviceDir}/${entityName}ServiceImpl.java`,
+          {
+            ...templateData,
+            packageName: servicePackageName,
+            entityPackageName: packageName,
+            repositoryPackageName: packageName.replace(/\.entity$|\.domain$/, '.repository')
+          }
+        );
+        this.displaySuccess(`Service ${entityName}Service.java et implémentation générés`);
+      }
 
-      const repositoryPath = path.join(repositoryDir, `${entityName}Repository.java`);
-      this.renderEjsTemplate('Repository.java.ejs', repositoryPath, templateData);
+      // Générer le Controller si demandé
+      if (generateController) {
+        const controllerPackageName = packageName.replace(/\.entity$|\.domain$/, '.controller');
+        const controllerPackagePath = controllerPackageName.replace(/\./g, '/');
+        const controllerDir = `src/main/java/${controllerPackagePath}`;
+        this.ensureDirectoryExists(controllerDir);
 
-      this.displaySuccess(`Repository ${entityName}Repository.java généré`);
-    }
+        this.renderTemplate(
+          'controller/Controller.java.ejs',
+          `${controllerDir}/${entityName}Controller.java`,
+          {
+            ...templateData,
+            packageName: controllerPackageName,
+            entityPackageName: packageName,
+            servicePackageName: packageName.replace(/\.entity$|\.domain$/, '.service'),
+            dtoPackageName: packageName.replace(/\.entity$|\.domain$/, '.dto'),
+            useDto: generateDto,
+            entityNamePlural: pluralize(entityName),
+            entityNameLower: entityName.charAt(0).toLowerCase() + entityName.slice(1)
+          }
+        );
+        this.displaySuccess(`Controller ${entityName}Controller.java généré`);
+      }
 
-    // Générer le service si demandé
-    if (this.answers.generateService) {
-      const servicePackagePath = this.answers.packageName.replace('.domain', '.service').replace(/\./g, '/');
-      const serviceDir = path.join(srcMainJavaDir, servicePackagePath);
-      this.createDirectory(serviceDir);
+      // Générer le DTO si demandé
+      if (generateDto) {
+        const dtoPackageName = packageName.replace(/\.entity$|\.domain$/, '.dto');
+        const dtoPackagePath = dtoPackageName.replace(/\./g, '/');
+        const dtoDir = `src/main/java/${dtoPackagePath}`;
+        this.ensureDirectoryExists(dtoDir);
 
-      const servicePath = path.join(serviceDir, `${entityName}Service.java`);
-      this.renderEjsTemplate('Service.java.ejs', servicePath, templateData);
+        this.renderTemplate(
+          'dto/EntityDTO.java.ejs',
+          `${dtoDir}/${entityName}DTO.java`,
+          {
+            ...templateData,
+            packageName: dtoPackageName,
+            entityPackageName: packageName
+          }
+        );
+        this.displaySuccess(`DTO ${entityName}DTO.java généré`);
+      }
 
-      this.displaySuccess(`Service ${entityName}Service.java généré`);
-    }
+      // Génération réussie
+      this.log("");
+      this.log(SUCCESS_COLOR(`✅ Génération de l'entité ${entityName} et de ses composants terminée avec succès!`));
 
-    // Générer le controller si demandé
-    if (this.answers.generateController) {
-      const controllerPackagePath = this.answers.packageName.replace('.domain', '.controller').replace(/\./g, '/');
-      const controllerDir = path.join(srcMainJavaDir, controllerPackagePath);
-      this.createDirectory(controllerDir);
-
-      const controllerPath = path.join(controllerDir, `${entityName}Controller.java`);
-      this.renderEjsTemplate('Controller.java.ejs', controllerPath, templateData);
-
-      this.displaySuccess(`Controller ${entityName}Controller.java généré`);
-    }
-
-    // Générer les DTOs si demandés (à implémenter plus tard)
-    if (this.answers.generateDto) {
-      this.displayHelpMessage("La génération des DTOs sera implémentée dans une version future");
+    } catch (error) {
+      this.displayError(`Erreur lors de la génération des fichiers: ${error}`);
     }
   }
 
   /**
-   * Génère un nom de table à partir du nom de l'entité
-   * @param entityName Nom de l'entité
-   * @returns Nom de table au format snake_case
+   * Vérifie si l'entité a des champs de type date/heure
    */
-  private _generateTableName(entityName: string): string {
-    // Convertir camelCase en snake_case
-    return entityName
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
-      .toLowerCase();
-  }
-
-  /**
-   * Vérifie si l'entité contient des champs de type date
-   * @returns true si l'entité a des champs de type date
-   */
-  private _hasDateFields(): boolean {
+  hasDateTimeFields(): boolean {
     return this.entityFields.some(field =>
-      ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant'].includes(field.type)
+      ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant', 'Date'].includes(field.type)
     );
   }
 
   /**
-   * Vérifie si l'entité contient des champs de type BigDecimal
-   * @returns true si l'entité a des champs de type BigDecimal
+   * Vérifie si l'entité a des champs de type BigDecimal
    */
-  private _hasBigDecimalFields(): boolean {
+  hasBigDecimalFields(): boolean {
     return this.entityFields.some(field => field.type === 'BigDecimal');
   }
 
   /**
-   * Génère les imports nécessaires pour l'entité
-   * @returns Liste des imports
+   * Assure que le répertoire existe
    */
-  private _generateImports(): string[] {
-    const imports: string[] = [];
-
-    // Ajouter les imports pour les types spéciaux
-    if (this._hasDateFields()) {
-      if (this.entityFields.some(field => field.type === 'LocalDate')) {
-        imports.push('java.time.LocalDate');
-      }
-      if (this.entityFields.some(field => field.type === 'LocalDateTime')) {
-        imports.push('java.time.LocalDateTime');
-      }
-      if (this.entityFields.some(field => field.type === 'LocalTime')) {
-        imports.push('java.time.LocalTime');
-      }
-      if (this.entityFields.some(field => field.type === 'ZonedDateTime')) {
-        imports.push('java.time.ZonedDateTime');
-      }
-      if (this.entityFields.some(field => field.type === 'Instant')) {
-        imports.push('java.time.Instant');
-      }
+  ensureDirectoryExists(dirPath: string): void {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      this.log(chalk.yellow(`📁 Création du répertoire: ${dirPath}`));
     }
-
-    return imports;
   }
 
   /**
-   * Prépare les champs pour les templates
-   * @param fields Liste des champs de l'entité
-   * @returns Liste des champs préparés avec des informations supplémentaires
+   * Render un template EJS et écrit le résultat dans un fichier
    */
-  private _prepareFieldsForTemplate(fields: EntityField[]): any[] {
-    return fields.map(field => ({
-      ...field,
-      columnName: this._fieldNameToColumnName(field.name)
-    }));
-  }
-
-  /**
-   * Convertit un nom de champ en nom de colonne
-   * @param fieldName Nom du champ
-   * @returns Nom de colonne au format snake_case
-   */
-  private _fieldNameToColumnName(fieldName: string): string {
-    return fieldName
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
-      .toLowerCase();
+  renderTemplate(templatePath: string, destPath: string, data: any): void {
+    this.fs.copyTpl(
+      this.templatePath(templatePath),
+      this.destinationPath(destPath),
+      data
+    );
   }
 }
+
+// Exporter également en tant que default pour compatibilité avec le système de modules ESM
+export default EntityGenerator;
+
+// Assurer la compatibilité avec CommonJS
+module.exports = EntityGenerator;
+module.exports.default = EntityGenerator;

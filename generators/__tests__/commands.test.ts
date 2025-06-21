@@ -3,9 +3,18 @@ import fs from 'fs';
 import assert from 'yeoman-assert';
 import helpers from 'yeoman-test';
 import { fileURLToPath } from 'url';
+import { describe, it, expect, jest, beforeAll } from '@jest/globals';
+import { EventEmitter } from 'events';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Configurer explicitement l'environnement pour les tests
+beforeAll(() => {
+  process.env.NODE_ENV = 'test';
+  // Augmenter la limite d'écouteurs d'événements pour éviter les avertissements
+  EventEmitter.defaultMaxListeners = 20;
+});
 
 describe('Test des commandes CLI', () => {
   describe('Test des commandes principales', () => {
@@ -16,14 +25,20 @@ describe('Test des commandes CLI', () => {
       // Récupérer le contenu du fichier index.ts
       const indexContent = fs.readFileSync(path.join(__dirname, '../index.ts'), 'utf8');
 
-      // Vérifier que toutes les commandes principales sont enregistrées (format ES Modules)
-      [
-        'add', 'generate', 'serve', 'test', 'build',
-        'deploy', 'migrate', 'doctor', 'upgrade', 'plugins'
-      ].forEach(cmd => {
-        const capitalizedCmd = cmd.charAt(0).toUpperCase() + cmd.slice(1);
-        assert.fileContent(path.join(__dirname, '../index.ts'), `${capitalizedCmd}Generator`);
+      // Vérifier que les générateurs principaux sont exportés
+      const mainGenerators = [
+        'App', 'Entity', 'Crud', 'Module', 'Dtos',
+        'Add', 'Generate', 'Serve', 'Test', 'Deploy',
+        'Migrate', 'Doctor', 'Upgrade', 'Plugins'
+      ];
+
+      // Vérifier que chaque générateur principal est exporté
+      mainGenerators.forEach(generator => {
+        assert.fileContent(path.join(__dirname, '../index.ts'), `export { default as ${generator}Generator }`);
       });
+
+      // Vérifier que l'objet GENERATOR_TYPES contient tous les types nécessaires
+      assert.fileContent(path.join(__dirname, '../index.ts'), 'BUILD: \'build\'');
     });
   });
 

@@ -102,388 +102,368 @@ export default class KubernetesGenerator extends BaseGenerator {
         default: 'raw-manifests'
       },
       {
+        type: 'input',
+        name: 'namespace',
+        message: chalk.cyan('Nom du namespace Kubernetes ?'),
+        default: (answers: any) => {
+          return appName;
+        }
+      },
+      {
         type: 'confirm',
         name: 'createIngress',
-        message: chalk.cyan('Voulez-vous créer une configuration Ingress ?'),
+        message: chalk.cyan('Créer une configuration d\'Ingress ?'),
         default: true
       },
       {
         type: 'confirm',
         name: 'createConfigMap',
-        message: chalk.cyan('Voulez-vous créer un ConfigMap pour les variables d\'environnement ?'),
+        message: chalk.cyan('Créer un ConfigMap pour les variables d\'environnement ?'),
         default: true
       },
       {
         type: 'confirm',
         name: 'createSecrets',
-        message: chalk.cyan('Voulez-vous créer des Secrets Kubernetes ?'),
+        message: chalk.cyan('Créer un Secret pour les informations sensibles ?'),
         default: true
       },
       {
         type: 'confirm',
         name: 'createPVC',
-        message: chalk.cyan('Voulez-vous configurer le stockage persistant (PVC) ?'),
+        message: chalk.cyan('Créer un PersistentVolumeClaim pour le stockage persistant ?'),
         default: database !== 'h2'
       },
       {
         type: 'confirm',
         name: 'enableAutoscaling',
-        message: chalk.cyan('Voulez-vous activer l\'auto-scaling horizontal (HPA) ?'),
+        message: chalk.cyan('Activer l\'autoscaling horizontal (HPA) ?'),
         default: false
       },
       {
         type: 'confirm',
         name: 'enableServiceMesh',
-        message: chalk.cyan('Voulez-vous configurer un service mesh (Istio) ?'),
-        default: false
+        message: chalk.cyan('Ajouter configurations pour Service Mesh (Istio) ?'),
+        default: false,
+        when: (answers: any) => answers.deploymentType !== 'helm'
       },
       {
-        type: 'confirm',
-        name: 'configureMonitoring',
-        message: chalk.cyan('Voulez-vous configurer la surveillance Prometheus/Grafana ?'),
-        default: false
+        type: 'input',
+        name: 'replicas',
+        message: chalk.cyan('Nombre initial de réplicas ?'),
+        default: '2',
+        validate: (input: string) => {
+          const num = parseInt(input, 10);
+          if (isNaN(num) || num < 1) {
+            return 'Veuillez saisir un nombre valide supérieur à 0';
+          }
+          return true;
+        }
       }
     ]);
   }
 
   configuring() {
-    this.log(STEP_PREFIX + chalk.bold('ENREGISTREMENT DE LA CONFIGURATION...'));
-
-    // Stocker la configuration pour une utilisation ultérieure
-    this.config.set('kubernetesConfig', this.answers);
-
-    this.displaySuccess('Configuration Kubernetes enregistrée');
+    this.log(STEP_PREFIX + "Configuration des paramètres Kubernetes...");
+    this.config.set('kubernetes', this.answers);
+    this.config.save();
   }
 
   writing() {
-    const config = this.config.getAll();
-    const appName = config.appName || 'spring-app';
+    const { deploymentType } = this.answers;
 
-      const appNameKebab = typeof appName === 'string' ? appName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'sfs-app';
+    this.log(STEP_PREFIX + "Création des fichiers Kubernetes...");
 
-    // Créer un dossier kubernetes dans le projet
-    const kubernetesDir = path.join(this.destinationPath(), 'kubernetes');
-    this.createDirectory(kubernetesDir);
+    this.createDirectory('kubernetes');
 
-    // Données de template communes
+    // Créer les dossiers de base selon l'organisation standard
+    if (deploymentType === 'raw-manifests' || deploymentType === 'kustomize') {
+      this.createDirectory('kubernetes/base');
+      this.createDirectory('kubernetes/overlays');
+      this.createDirectory('kubernetes/overlays/dev');
+      this.createDirectory('kubernetes/overlays/prod');
+    }
+
+    // Créer les dossiers pour les ressources par type
+    if (deploymentType === 'raw-manifests') {
+      this.createDirectory('kubernetes/deployments');
+      this.createDirectory('kubernetes/services');
+      this.createDirectory('kubernetes/config');
+
+      if (this.answers.createIngress) {
+        this.createDirectory('kubernetes/ingress');
+      }
+
+      if (this.answers.createPVC) {
+        this.createDirectory('kubernetes/storage');
+      }
+
+      if (this.answers.enableAutoscaling) {
+        this.createDirectory('kubernetes/autoscaling');
+      }
+
+      if (this.answers.enableServiceMesh) {
+        this.createDirectory('kubernetes/service-mesh');
+      }
+    }
+
+    this._generateManifests();
+
+    if (deploymentType === 'helm') {
+      this._generateHelmCharts();
+    } else if (deploymentType === 'kustomize') {
+      this._generateKustomizeConfigs();
+    }
+
+    this._generateDocumentation();
+  }
+
+  _generateManifests() {
+    const deploymentType = this.answers.deploymentType;
+    const appName = this.config.get('appName') || 'spring-app';
+    const appPort = this.config.get('serverPort') || 8080;
+    const database = this.config.get('database') || 'h2';
+    const namespace = this.answers.namespace || appName;
+    const replicas = parseInt(this.answers.replicas, 10) || 2;
+
     const templateData = {
       appName,
-      appNameKebab,
-      containerPort: 8080,
-      servicePort: 80,
-      replicas: 2,
-      database: config.database || 'mysql',
-      frontendFramework: config.frontendFramework || 'react',
-      namespace: 'default',
-      dockerImage: `${appNameKebab}:latest`,
+      appPort,
+      database,
+      namespace,
+      replicas,
       ...this.answers
     };
 
-    // Générer les manifests selon le type choisi
-    if (this.answers.deploymentType === 'raw-manifests') {
-      this._generateRawManifests(kubernetesDir, templateData);
-    } else if (this.answers.deploymentType === 'helm') {
-      this._generateHelmCharts(kubernetesDir, templateData);
-    } else if (this.answers.deploymentType === 'kustomize') {
-      this._generateKustomize(kubernetesDir, templateData);
+    // Namespace
+    if (deploymentType === 'raw-manifests') {
+      this.fs.copyTpl(
+        this.templatePath('base/namespace.yaml'),
+        this.destinationPath('kubernetes/base/namespace.yaml'),
+        templateData
+      );
     }
 
-    // Générer README avec instructions
-    this._generateDocumentation(kubernetesDir, templateData);
-  }
-
-  _generateRawManifests(kubernetesDir: string, templateData: any) {
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES MANIFESTS KUBERNETES"));
-
-    // Créer les sous-dossiers pour organiser les manifests
-    const baseDir = path.join(kubernetesDir, 'base');
-    this.createDirectory(baseDir);
-
-    // Générer namespace.yaml
-    this.fs.copyTpl(
-      this.templatePath('base/namespace.yaml'),
-      path.join(baseDir, 'namespace.yaml'),
-      templateData
-    );
-
-    // Générer deployment.yaml
+    // Deployment
     this.fs.copyTpl(
       this.templatePath('deployments/deployment.yaml'),
-      path.join(baseDir, 'deployment.yaml'),
+      this.destinationPath(`kubernetes/deployments/${appName}-deployment.yaml`),
       templateData
     );
 
-    // Générer service.yaml
+    // Service
     this.fs.copyTpl(
       this.templatePath('services/service.yaml'),
-      path.join(baseDir, 'service.yaml'),
+      this.destinationPath(`kubernetes/services/${appName}-service.yaml`),
       templateData
     );
 
-    // Générer ingress si demandé
-    if (templateData.createIngress) {
-      this.fs.copyTpl(
-        this.templatePath('ingress/ingress.yaml'),
-        path.join(baseDir, 'ingress.yaml'),
-        templateData
-      );
-    }
-
-    // Générer configmap si demandé
-    if (templateData.createConfigMap) {
+    // ConfigMap si demandé
+    if (this.answers.createConfigMap) {
       this.fs.copyTpl(
         this.templatePath('config/configmap.yaml'),
-        path.join(baseDir, 'configmap.yaml'),
+        this.destinationPath(`kubernetes/config/${appName}-configmap.yaml`),
         templateData
       );
     }
 
-    // Générer secrets si demandé
-    if (templateData.createSecrets) {
+    // Secrets si demandé
+    if (this.answers.createSecrets) {
       this.fs.copyTpl(
         this.templatePath('config/secrets.yaml'),
-        path.join(baseDir, 'secrets.yaml'),
+        this.destinationPath(`kubernetes/config/${appName}-secrets.yaml`),
         templateData
       );
     }
 
-    // Générer PVC si demandé
-    if (templateData.createPVC) {
+    // Ingress si demandé
+    if (this.answers.createIngress) {
+      this.fs.copyTpl(
+        this.templatePath('ingress/ingress.yaml'),
+        this.destinationPath(`kubernetes/ingress/${appName}-ingress.yaml`),
+        templateData
+      );
+    }
+
+    // PVC si demandé
+    if (this.answers.createPVC) {
       this.fs.copyTpl(
         this.templatePath('storage/pvc.yaml'),
-        path.join(baseDir, 'pvc.yaml'),
+        this.destinationPath(`kubernetes/storage/${appName}-pvc.yaml`),
         templateData
       );
     }
 
-    // Générer HPA si demandé
-    if (templateData.enableAutoscaling) {
+    // HPA si demandé
+    if (this.answers.enableAutoscaling) {
       this.fs.copyTpl(
         this.templatePath('deployments/hpa.yaml'),
-        path.join(baseDir, 'hpa.yaml'),
+        this.destinationPath(`kubernetes/autoscaling/${appName}-hpa.yaml`),
         templateData
       );
     }
 
-    // Générer ServiceMesh (Istio) si demandé
-    if (templateData.enableServiceMesh) {
-      const istioDir = path.join(kubernetesDir, 'istio');
-      this.createDirectory(istioDir);
-
+    // Service Mesh (Istio) si demandé
+    if (this.answers.enableServiceMesh) {
       this.fs.copyTpl(
         this.templatePath('deployments/virtualservice.yaml'),
-        path.join(istioDir, 'virtualservice.yaml'),
+        this.destinationPath(`kubernetes/service-mesh/${appName}-virtualservice.yaml`),
         templateData
       );
 
       this.fs.copyTpl(
         this.templatePath('deployments/destinationrule.yaml'),
-        path.join(istioDir, 'destinationrule.yaml'),
+        this.destinationPath(`kubernetes/service-mesh/${appName}-destinationrule.yaml`),
         templateData
       );
     }
 
-    // Générer la configuration de monitoring si demandé
-    if (templateData.configureMonitoring) {
-      const monitoringDir = path.join(kubernetesDir, 'monitoring');
-      this.createDirectory(monitoringDir);
+    // Fichiers kustomization.yaml pour les environnements
+    if (deploymentType === 'kustomize') {
+      this.fs.copyTpl(
+        this.templatePath('base/kustomization.yaml'),
+        this.destinationPath('kubernetes/base/kustomization.yaml'),
+        templateData
+      );
 
       this.fs.copyTpl(
-        this.templatePath('monitoring/servicemonitor.yaml'),
-        path.join(monitoringDir, 'servicemonitor.yaml'),
+        this.templatePath('base/kustomization-dev.yaml'),
+        this.destinationPath('kubernetes/overlays/dev/kustomization.yaml'),
         templateData
       );
-    }
 
-    this.displaySuccess('Manifests Kubernetes générés avec succès');
+      this.fs.copyTpl(
+        this.templatePath('base/kustomization-prod.yaml'),
+        this.destinationPath('kubernetes/overlays/prod/kustomization.yaml'),
+        templateData
+      );
+
+      // Ajout du patch pour l'environnement de production (plus de réplicas)
+      this.fs.copyTpl(
+        this.templatePath('deployments/deployment-patch.yaml'),
+        this.destinationPath('kubernetes/overlays/prod/deployment-patch.yaml'),
+        {
+          ...templateData,
+          replicas: Math.max(replicas * 2, 3) // Au moins 3 réplicas en prod, ou le double de dev
+        }
+      );
+    }
   }
 
-  _generateHelmCharts(kubernetesDir: string, templateData: any) {
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES CHARTS HELM"));
+  _generateHelmCharts() {
+    const appName = this.config.get('appName') || 'spring-app';
+    const appPort = this.config.get('serverPort') || 8080;
+    const namespace = this.answers.namespace || appName;
 
-    // Créer la structure Helm charts
-    const helmDir = path.join(kubernetesDir, 'helm');
-    const chartDir = path.join(helmDir, templateData.appNameKebab);
-    const templatesDir = path.join(chartDir, 'templates');
+    const templateData = {
+      appName,
+      appPort,
+      namespace,
+      ...this.answers
+    };
 
-    this.createDirectory(helmDir);
-    this.createDirectory(chartDir);
-    this.createDirectory(templatesDir);
+    // Créer la structure de dossier Helm
+    this.createDirectory(`kubernetes/helm/${appName}`);
+    this.createDirectory(`kubernetes/helm/${appName}/templates`);
+    this.createDirectory(`kubernetes/helm/${appName}/charts`);
 
-    // Générer Chart.yaml
+    // Chart.yaml
     this.fs.copyTpl(
       this.templatePath('base/helm-chart.yaml'),
-      path.join(chartDir, 'Chart.yaml'),
+      this.destinationPath(`kubernetes/helm/${appName}/Chart.yaml`),
       templateData
     );
 
-    // Générer values.yaml
+    // values.yaml
     this.fs.copyTpl(
       this.templatePath('base/helm-values.yaml'),
-      path.join(chartDir, 'values.yaml'),
+      this.destinationPath(`kubernetes/helm/${appName}/values.yaml`),
       templateData
     );
 
-    // Générer les templates Helm
+    // Templates
     this.fs.copyTpl(
-      this.templatePath('deployments/helm-deployment.yaml'),
-      path.join(templatesDir, 'deployment.yaml'),
+      this.templatePath('deployments/deployment.yaml'),
+      this.destinationPath(`kubernetes/helm/${appName}/templates/deployment.yaml`),
       templateData
     );
 
     this.fs.copyTpl(
       this.templatePath('services/helm-service.yaml'),
-      path.join(templatesDir, 'service.yaml'),
+      this.destinationPath(`kubernetes/helm/${appName}/templates/service.yaml`),
       templateData
     );
 
-    if (templateData.createIngress) {
-      this.fs.copyTpl(
-        this.templatePath('ingress/helm-ingress.yaml'),
-        path.join(templatesDir, 'ingress.yaml'),
-        templateData
-      );
-    }
-
-    if (templateData.createConfigMap) {
+    if (this.answers.createConfigMap) {
       this.fs.copyTpl(
         this.templatePath('config/helm-configmap.yaml'),
-        path.join(templatesDir, 'configmap.yaml'),
+        this.destinationPath(`kubernetes/helm/${appName}/templates/configmap.yaml`),
         templateData
       );
     }
 
-    if (templateData.createSecrets) {
+    if (this.answers.createSecrets) {
       this.fs.copyTpl(
         this.templatePath('config/helm-secrets.yaml'),
-        path.join(templatesDir, 'secrets.yaml'),
+        this.destinationPath(`kubernetes/helm/${appName}/templates/secrets.yaml`),
         templateData
       );
     }
 
-    if (templateData.createPVC) {
+    if (this.answers.createIngress) {
+      this.fs.copyTpl(
+        this.templatePath('ingress/helm-ingress.yaml'),
+        this.destinationPath(`kubernetes/helm/${appName}/templates/ingress.yaml`),
+        templateData
+      );
+    }
+
+    if (this.answers.createPVC) {
       this.fs.copyTpl(
         this.templatePath('storage/helm-pvc.yaml'),
-        path.join(templatesDir, 'pvc.yaml'),
+        this.destinationPath(`kubernetes/helm/${appName}/templates/pvc.yaml`),
         templateData
       );
     }
 
-    if (templateData.enableAutoscaling) {
-      this.fs.copyTpl(
-        this.templatePath('deployments/helm-hpa.yaml'),
-        path.join(templatesDir, 'hpa.yaml'),
-        templateData
-      );
-    }
+    // NOTES.txt avec instructions d'utilisation
+    this.fs.write(
+      this.destinationPath(`kubernetes/helm/${appName}/templates/NOTES.txt`),
+      `Félicitations ! Votre application ${appName} a été déployée.
 
-    this.displaySuccess('Charts Helm générés avec succès');
+Accédez à votre application avec:
+
+  kubectl port-forward -n ${namespace} svc/${appName} ${appPort}:${appPort}
+
+Ou si vous avez un Ingress, utilisez l'URL: http://${appName}.example.com`
+    );
   }
 
-  _generateKustomize(kubernetesDir: string, templateData: any) {
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES CONFIGURATIONS KUSTOMIZE"));
-
-    // Créer la structure Kustomize
-    const kustomizeDir = path.join(kubernetesDir, 'kustomize');
-    const baseDir = path.join(kustomizeDir, 'base');
-    const overlaysDir = path.join(kustomizeDir, 'overlays');
-    const devDir = path.join(overlaysDir, 'dev');
-    const prodDir = path.join(overlaysDir, 'prod');
-
-    this.createDirectory(kustomizeDir);
-    this.createDirectory(baseDir);
-    this.createDirectory(overlaysDir);
-    this.createDirectory(devDir);
-    this.createDirectory(prodDir);
-
-    // Générer kustomization.yaml de base
-    this.fs.copyTpl(
-      this.templatePath('base/kustomization.yaml'),
-      path.join(baseDir, 'kustomization.yaml'),
-      templateData
-    );
-
-    // Générer les ressources de base
-    this.fs.copyTpl(
-      this.templatePath('deployments/deployment.yaml'),
-      path.join(baseDir, 'deployment.yaml'),
-      templateData
-    );
-
-    this.fs.copyTpl(
-      this.templatePath('services/service.yaml'),
-      path.join(baseDir, 'service.yaml'),
-      templateData
-    );
-
-    // Générer kustomization.yaml pour dev
-    this.fs.copyTpl(
-      this.templatePath('base/kustomization-dev.yaml'),
-      path.join(devDir, 'kustomization.yaml'),
-      templateData
-    );
-
-    // Générer kustomization.yaml pour prod
-    this.fs.copyTpl(
-      this.templatePath('base/kustomization-prod.yaml'),
-      path.join(prodDir, 'kustomization.yaml'),
-      templateData
-    );
-
-    // Générer des patches pour les overlays
-    this.fs.copyTpl(
-      this.templatePath('deployments/deployment-patch.yaml'),
-      path.join(devDir, 'deployment-patch.yaml'),
-      {...templateData, replicas: 1} // Moins de replicas pour dev
-    );
-
-    this.fs.copyTpl(
-      this.templatePath('deployments/deployment-patch.yaml'),
-      path.join(prodDir, 'deployment-patch.yaml'),
-      {...templateData, replicas: 3} // Plus de replicas pour prod
-    );
-
-    this.displaySuccess('Configurations Kustomize générées avec succès');
+  _generateKustomizeConfigs() {
+    // Déjà implémenté dans _generateManifests
   }
 
-  _generateDocumentation(kubernetesDir: string, templateData: any) {
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DE LA DOCUMENTATION KUBERNETES"));
+  _generateDocumentation() {
+    const appName = this.config.get('appName') || 'spring-app';
+    const namespace = this.answers.namespace || appName;
+    const deploymentType = this.answers.deploymentType;
 
-    // Générer le README.md
+    // README avec instructions d'utilisation
     this.fs.copyTpl(
       this.templatePath('base/README.md'),
-      path.join(kubernetesDir, 'README.md'),
-      templateData
+      this.destinationPath('kubernetes/README.md'),
+      {
+        appName,
+        namespace,
+        deploymentType,
+        ...this.answers
+      }
     );
-
-    this.displaySuccess('Documentation Kubernetes générée');
   }
 
   end() {
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("CONFIGURATION KUBERNETES TERMINÉE"));
     this.log(SECTION_DIVIDER);
-    this.displaySuccess('Configurations Kubernetes générées avec succès!');
-    this.log(HELP_COLOR('Consultez le fichier README.md dans le dossier kubernetes pour les instructions de déploiement.'));
-
-    const deployType = this.answers.deploymentType === 'helm' ? 'Helm' :
-                       this.answers.deploymentType === 'kustomize' ? 'Kustomize' :
-                       'kubectl apply';
-
-    this.log(chalk.cyan(`\nCommande pour déployer votre application:`));
-
-    if (this.answers.deploymentType === 'raw-manifests') {
-      this.log(INFO_COLOR(`kubectl apply -f kubernetes/base/`));
-    } else if (this.answers.deploymentType === 'helm') {
-      const appName = this.config.get('appName');
-      const appNameKebab = typeof appName === 'string' ? appName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'my-app';
-      this.log(INFO_COLOR(`helm install ${appName || 'my-app'} kubernetes/helm/${appNameKebab}`));
-    } else if (this.answers.deploymentType === 'kustomize') {
-      this.log(INFO_COLOR(`kubectl apply -k kubernetes/kustomize/overlays/dev`));
-    }
+    this.log(STEP_PREFIX + SUCCESS_COLOR("Configuration Kubernetes générée avec succès!"));
+    this.log(INFO_COLOR("Consultez le fichier kubernetes/README.md pour les instructions de déploiement."));
+    this.log(SECTION_DIVIDER);
   }
 }

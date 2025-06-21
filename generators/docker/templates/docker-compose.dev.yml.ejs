@@ -1,0 +1,52 @@
+version: '3.8'
+
+# Configuration de développement qui étend docker-compose.yml
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile.backend.dev
+    ports:
+      - "8080:8080"
+      - "8000:8000"  # Port pour débogage Java
+    volumes:
+      - .:/app
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JAVA_OPTS=-Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=8000,suspend=n
+<% if (databaseType !== 'h2' && databaseType !== 'none') { %>
+    depends_on:
+  <% if (databaseType === 'mysql') { %>
+      - mysql
+  <% } else if (databaseType === 'postgres') { %>
+      - postgres
+  <% } else if (databaseType === 'mongodb') { %>
+      - mongodb
+  <% } %>
+<% } %>
+
+<% if (includeFrontend) { %>
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/dev/Dockerfile.frontend.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+<% } %>
+
+<% if (includeNginx) { %>
+  # En mode développement, Nginx est optionnel car on accède
+  # généralement directement aux services sur leurs ports respectifs
+  nginx:
+    ports:
+      - "80:80"
+    # Désactivé par défaut en dev (décommentez pour l'activer)
+    profiles:
+      - donotstart
+<% } %>

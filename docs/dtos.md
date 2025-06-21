@@ -1,130 +1,349 @@
-# Guide des DTOs
+# Guide complet sur les DTOs avec Spring-Fullstack-Speed
 
-Ce guide explique comment générer et utiliser des DTOs (Data Transfer Objects) avec Spring-Fullstack-Speed (SFS).
+Ce guide explique comment générer et utiliser les DTOs (Data Transfer Objects) dans les applications créées avec Spring-Fullstack-Speed.
 
-## Qu'est-ce qu'un DTO ?
+## Table des matières
 
-Les DTOs (Data Transfer Objects) sont des objets utilisés pour transférer des données entre les couches de votre application. Ils permettent de :
-- Contrôler les données exposées par votre API
-- Séparer les modèles de données de la couche présentation
-- Optimiser les transferts de données
+- [Introduction aux DTOs](#introduction-aux-dtos)
+- [Pourquoi utiliser des DTOs](#pourquoi-utiliser-des-dtos)
+- [Génération de DTOs](#génération-de-dtos)
+- [Types de mappers](#types-de-mappers)
+- [Personnalisation des DTOs](#personnalisation-des-dtos)
+- [DTOs spécialisés](#dtos-spécialisés)
+- [Validation des DTOs](#validation-des-dtos)
+- [Utilisation dans les contrôleurs](#utilisation-dans-les-contrôleurs)
+- [Bonnes pratiques](#bonnes-pratiques)
+- [Exemples complets](#exemples-complets)
 
-## Types de DTOs supportés
+## Introduction aux DTOs
 
-SFS peut générer plusieurs types de DTOs pour chaque entité :
+Un DTO (Data Transfer Object) est un patron de conception utilisé pour transférer des données entre différentes couches d'une application, particulièrement entre le serveur et le client dans les API REST. Les DTOs permettent de:
 
-- **Create DTO** : Pour les opérations de création (POST)
-- **Update DTO** : Pour les opérations de mise à jour (PUT/PATCH)
-- **Response DTO** : Pour les réponses renvoyées par l'API
-- **List DTO** : Pour les listes d'objets (souvent avec moins de champs)
-- **Search DTO** : Pour les critères de recherche
+- Séparer les modèles de persistance (entités) des modèles d'API
+- Contrôler précisément quelles données sont exposées
+- Adapter la structure des données aux besoins spécifiques des clients
+- Éviter des problèmes comme la sérialisation circulaire ou l'exposition de données sensibles
 
-## Générer des DTOs
+Dans Spring-Fullstack-Speed, les DTOs sont générés automatiquement à partir des entités existantes, avec des options de personnalisation.
 
-Pour générer des DTOs pour une entité existante, utilisez la commande :
+## Pourquoi utiliser des DTOs
+
+### Avantages des DTOs
+
+1. **Sécurité** : Ne pas exposer directement les entités permet de contrôler quelles données sont accessibles.
+2. **Performance** : Transférer uniquement les données nécessaires réduit la charge réseau.
+3. **Découplage** : Les changements dans le modèle de persistance n'affectent pas directement l'API.
+4. **Transformation** : Les DTOs peuvent présenter les données dans un format plus adapté aux besoins du client.
+5. **Validation** : Les règles de validation peuvent être spécifiques à chaque cas d'utilisation.
+
+### Inconvénients des DTOs
+
+1. **Code supplémentaire** : Nécessite de maintenir des classes supplémentaires et des mappeurs.
+2. **Complexité** : Ajoute une couche d'indirection dans votre application.
+
+Spring-Fullstack-Speed résout ces inconvénients en générant automatiquement le code nécessaire.
+
+## Génération de DTOs
+
+Pour générer des DTOs pour une entité existante, utilisez la commande suivante :
+
+```bash
+sfs --dtos --entity=Product
+```
+
+En mode interactif :
 
 ```bash
 sfs dtos
 ```
 
-Vous serez guidé par une série de questions :
+### Options disponibles
 
-1. **Nom de l'entité** : L'entité pour laquelle générer les DTOs
-2. **Package** : Le package où placer les DTOs (par défaut `dto`)
-3. **Types de DTOs** : Sélectionnez les types de DTOs à générer
-4. **Validation** : Ajout de validations aux DTOs
-5. **Mapper** : Génération d'un mapper entre l'entité et les DTOs
+| Option | Description | Valeur par défaut | Exemple |
+|--------|-------------|-------------------|---------|
+| `--entity` | Nom de l'entité pour générer les DTOs | - | `--entity=Product` |
+| `--mapper-type` | Type de mapper | mapstruct | `--mapper-type=manual` |
+| `--include-validation` | Inclure les validations | true | `--include-validation=true` |
+| `--dto-suffix` | Suffixe pour les DTOs | DTO | `--dto-suffix=Response` |
+| `--create-update` | Générer DTOs spécifiques pour création/mise à jour | false | `--create-update=true` |
 
-## Structure des DTOs générés
-
-Le générateur crée des classes Java avec des noms clairs :
-
-```
-com.example.dto/
-├── ProductCreateDto.java   # DTO pour la création
-├── ProductUpdateDto.java   # DTO pour la mise à jour
-├── ProductResponseDto.java # DTO pour les réponses
-├── ProductListDto.java     # DTO pour les listes
-└── ProductMapper.java      # Mapper (si demandé)
+Exemple complet :
+```bash
+sfs --dtos --entity=Product --mapper-type=mapstruct --include-validation=true --create-update=true
 ```
 
-## Exemple de DTO généré
+## Types de mappers
+
+Spring-Fullstack-Speed prend en charge deux types de mappers pour la conversion entre entités et DTOs :
+
+### MapStruct
+
+MapStruct est un générateur de code qui simplifie considérablement l'implémentation des mappeurs. Il génère du code Java à la compilation, ce qui le rend très performant.
+
+Exemple de générateur avec MapStruct :
+```bash
+sfs --dtos --entity=Product --mapper-type=mapstruct
+```
+
+Le code généré ressemblera à :
 
 ```java
-package com.example.dto;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
-import java.math.BigDecimal;
-
-@Data
-public class ProductCreateDto {
-    @NotBlank(message = "Le nom est obligatoire")
-    @Size(max = 100, message = "Le nom ne peut pas dépasser 100 caractères")
-    private String name;
-    
-    @Size(max = 500, message = "La description ne peut pas dépasser 500 caractères")
-    private String description;
-    
-    @NotNull(message = "Le prix est obligatoire")
-    private BigDecimal price;
-    
-    private Integer quantity;
-}
-```
-
-## Mappers
-
-Les mappers générés utilisent [MapStruct](https://mapstruct.org/) pour faciliter la conversion entre entités et DTOs :
-
-```java
-package com.example.dto;
-
-import com.example.domain.Product;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-
 @Mapper(componentModel = "spring")
 public interface ProductMapper {
-    ProductResponseDto toResponseDto(Product entity);
+    ProductDTO toDTO(Product product);
     
-    @Mapping(target = "id", ignore = true)
-    Product toEntity(ProductCreateDto dto);
+    Product toEntity(ProductDTO productDTO);
     
-    @Mapping(target = "id", ignore = true)
-    void updateEntityFromDto(ProductUpdateDto dto, @MappingTarget Product entity);
-    
-    ProductListDto toListDto(Product entity);
+    List<ProductDTO> toDTOList(List<Product> products);
 }
 ```
 
-## Intégration avec les controllers
+### Manuel
 
-Les DTOs s'intègrent naturellement dans vos controllers REST :
+Si vous préférez une approche plus explicite ou si vous avez des besoins de mapping complexes, vous pouvez choisir de générer un mappeur manuel :
+
+```bash
+sfs --dtos --entity=Product --mapper-type=manual
+```
+
+Le code généré ressemblera à :
 
 ```java
-@RestController
-@RequestMapping("/api/products")
-public class ProductController {
-    private final ProductService productService;
-    private final ProductMapper productMapper;
+@Component
+public class ProductMapper {
     
-    @PostMapping
-    public ResponseEntity<ProductResponseDto> create(@Valid @RequestBody ProductCreateDto dto) {
-        Product product = productMapper.toEntity(dto);
-        Product saved = productService.save(product);
-        return ResponseEntity.ok(productMapper.toResponseDto(saved));
+    public ProductDTO toDTO(Product product) {
+        if (product == null) {
+            return null;
+        }
+        
+        ProductDTO dto = new ProductDTO();
+        dto.setId(product.getId());
+        dto.setName(product.getName());
+        dto.setPrice(product.getPrice());
+        dto.setDescription(product.getDescription());
+        // Autres mappings...
+        
+        return dto;
     }
+    
+    public Product toEntity(ProductDTO dto) {
+        // Code de mapping...
+    }
+    
+    public List<ProductDTO> toDTOList(List<Product> products) {
+        // Code de mapping...
+    }
+}
+```
+
+## Personnalisation des DTOs
+
+Après la génération, vous pouvez personnaliser les DTOs selon vos besoins :
+
+### Ajouter des champs calculés
+
+```java
+@Getter
+@Setter
+public class ProductDTO {
+    private Long id;
+    private String name;
+    private Double price;
+    private String description;
+    
+    // Champ calculé
+    public Double getPriceWithTax() {
+        return price * 1.2; // Prix avec 20% de taxe
+    }
+}
+```
+
+### Ajouter des annotations spécifiques
+
+```java
+@Getter
+@Setter
+public class ProductDTO {
+    private Long id;
+    
+    @JsonProperty("product_name")
+    private String name;
+    
+    @JsonFormat(pattern = "###,##0.00 €")
+    private Double price;
+    
+    @JsonProperty("product_description")
+    private String description;
+}
+```
+
+## DTOs spécialisés
+
+Spring-Fullstack-Speed peut générer des DTOs spécialisés pour différents cas d'utilisation :
+
+### DTOs de création et mise à jour
+
+```bash
+sfs --dtos --entity=Product --create-update=true
+```
+
+Cette commande génère :
+- `ProductDTO` : DTO standard
+- `CreateProductDTO` : DTO pour la création (sans ID)
+- `UpdateProductDTO` : DTO pour la mise à jour
+
+Exemple de code généré :
+
+```java
+@Getter
+@Setter
+public class CreateProductDTO {
+    @NotBlank
+    private String name;
+    
+    @NotNull @Min(0)
+    private Double price;
+    
+    private String description;
+}
+
+@Getter
+@Setter
+public class UpdateProductDTO {
+    @NotBlank
+    private String name;
+    
+    @NotNull @Min(0)
+    private Double price;
+    
+    private String description;
+}
+```
+
+### DTOs avec projections
+
+Vous pouvez également créer des DTOs qui ne contiennent qu'un sous-ensemble des champs :
+
+```java
+@Getter
+@Setter
+public class ProductSummaryDTO {
+    private Long id;
+    private String name;
+    private Double price;
+    // Description omise intentionnellement
 }
 ```
 
 ## Validation des DTOs
 
-Les DTOs générés incluent des annotations de validation Jakarta Bean Validation qui sont automatiquement validées lorsque vous utilisez l'annotation `@Valid` dans vos controllers.
+Les DTOs générés incluent automatiquement les annotations de validation basées sur les contraintes définies dans l'entité source :
 
-## Prochaines étapes
+```java
+@Getter
+@Setter
+public class ProductDTO {
+    private Long id;
+    
+    @NotBlank
+    @Size(min = 3, max = 100)
+    private String name;
+    
+    @NotNull
+    @Min(0)
+    private Double price;
+    
+    @Size(max = 500)
+    private String description;
+}
+```
 
-- [Implémentez des opérations CRUD](./crud.md) qui utilisent vos DTOs
-- [Créez un module fonctionnel](./modules.md) complet
+## Utilisation dans les contrôleurs
+
+Voici comment utiliser les DTOs dans les contrôleurs REST générés :
+
+```java
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+    
+    private final ProductService productService;
+    private final ProductMapper productMapper;
+    
+    public ProductController(ProductService productService, ProductMapper productMapper) {
+        this.productService = productService;
+        this.productMapper = productMapper;
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductDTO> getProduct(@PathVariable Long id) {
+        Product product = productService.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        return ResponseEntity.ok(productMapper.toDTO(product));
+    }
+    
+    @PostMapping
+    public ResponseEntity<ProductDTO> createProduct(@Valid @RequestBody CreateProductDTO createProductDTO) {
+        Product product = productMapper.toEntity(createProductDTO);
+        Product savedProduct = productService.save(product);
+        return ResponseEntity.created(URI.create("/api/products/" + savedProduct.getId()))
+                .body(productMapper.toDTO(savedProduct));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, 
+                                                   @Valid @RequestBody UpdateProductDTO updateProductDTO) {
+        // Code de mise à jour...
+    }
+    
+    @GetMapping
+    public ResponseEntity<List<ProductDTO>> getAllProducts() {
+        List<Product> products = productService.findAll();
+        return ResponseEntity.ok(productMapper.toDTOList(products));
+    }
+}
+```
+
+## Bonnes pratiques
+
+1. **Nommez clairement vos DTOs** : Utilisez des noms qui reflètent leur usage (`ProductResponseDTO`, `CreateProductRequest`, etc.).
+
+2. **Ne mélangez pas les responsabilités** : Gardez vos DTOs simples et concentrés sur un seul objectif.
+
+3. **Validez au niveau du DTO** : Les validations doivent être appliquées sur les DTOs, pas sur les entités directement dans le controller.
+
+4. **Créez des DTOs spécialisés** : Pour les grandes entités, créez des DTOs spécifiques à chaque cas d'utilisation pour améliorer les performances.
+
+5. **Utilisez des projections** : Pour les requêtes en lecture seule qui ne nécessitent qu'un sous-ensemble de données.
+
+6. **Documentez vos DTOs** : Ajoutez des annotations Swagger/OpenAPI pour documenter clairement votre API.
+
+## Exemples complets
+
+### Exemple 1 : Génération standard avec MapStruct
+
+```bash
+sfs --dtos --entity=Customer --mapper-type=mapstruct
+```
+
+### Exemple 2 : DTOs spécialisés pour création et mise à jour
+
+```bash
+sfs --dtos --entity=Order --create-update=true --include-validation=true
+```
+
+### Exemple 3 : DTO avec suffixe personnalisé
+
+```bash
+sfs --dtos --entity=User --dto-suffix=Response --mapper-type=manual
+```
+
+### Exemple 4 : DTO pour entité avec relations
+
+```bash
+sfs --entity --name=Department --fields=name:String:required --relationships=oneToMany:Employee
+sfs --dtos --entity=Department
+```
+
+Le DTO généré gérera correctement la relation avec les employés.

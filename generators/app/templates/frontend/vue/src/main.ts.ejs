@@ -1,87 +1,14 @@
-import { createApp } from 'vue';
-import { createRouter, createWebHistory } from 'vue-router';
-import { VueQueryPlugin } from '@tanstack/vue-query';
-import App from './App.vue';
-import pinia from './stores';
-import './assets/main.css';
+import './assets/main.css'
 
-// Import des pages
-import Home from './pages/Home.vue';
-import About from './pages/About.vue';
-import NotFound from './pages/NotFound.vue';
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 
-// Import des pages d'authentification
-import Login from './pages/Auth/Login.vue';
-import Register from './pages/Auth/Register.vue';
-import ForgotPassword from './pages/Auth/ForgotPassword.vue';
-import ResetPassword from './pages/Auth/ResetPassword.vue';
+import App from './App.vue'
+import router from './router'
 
-/**
- * Configuration des routes de l'application
- */
-const routes = [
-  { path: '/', component: Home, name: 'home' },
-  { path: '/about', component: About, name: 'about' },
+const app = createApp(App)
 
-  // Routes d'authentification
-  { path: '/login', component: Login, name: 'login' },
-  { path: '/register', component: Register, name: 'register' },
-  { path: '/forgot-password', component: ForgotPassword, name: 'forgot-password' },
-  { path: '/reset-password/:token', component: ResetPassword, name: 'reset-password' },
+app.use(createPinia())
+app.use(router)
 
-  // Route 404
-  { path: '/:pathMatch(.*)*', component: NotFound, name: 'not-found' }
-];
-
-/**
- * Création du router Vue
- */
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-});
-
-/**
- * Protection des routes qui nécessitent une authentification
- */
-router.beforeEach((to, from, next) => {
-  // Récupérer le token du localStorage
-  const token = localStorage.getItem('auth_token');
-
-  // Routes qui nécessitent une authentification
-  const requiresAuth = to.meta.requiresAuth;
-
-  if (requiresAuth && !token) {
-    // Rediriger vers la page de connexion si l'utilisateur n'est pas authentifié
-    next({ name: 'login', query: { redirect: to.fullPath } });
-  } else {
-    // Sinon, continuer normalement
-    next();
-  }
-});
-
-/**
- * Création et montage de l'application Vue
- */
-const app = createApp(App);
-
-// Configuration de Vue Query
-const vueQueryPluginOptions = {
-  queryClientConfig: {
-    defaultOptions: {
-      queries: {
-        refetchOnWindowFocus: false,
-        retry: 1,
-        staleTime: 30000,
-      },
-    },
-  },
-};
-
-// Utilisation des plugins
-app.use(pinia);
-app.use(router);
-app.use(VueQueryPlugin, vueQueryPluginOptions);
-
-// Montage de l'application
-app.mount('#app');
+app.mount('#app')

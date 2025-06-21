@@ -1,94 +1,102 @@
+/**
+ * Script de diagnostic pour les tests - Version simplifiée
+ * Écrit les résultats dans un fichier pour faciliter la consultation
+ */
 const fs = require('fs');
-const path = require('path');
 const { execSync } = require('child_process');
+const path = require('path');
 
-console.log('🔍 Script de diagnostic pour Spring-Fullstack-Speed');
-console.log('================================================');
-console.log(`Version Node.js: ${process.version}`);
-console.log(`Répertoire courant: ${process.cwd()}`);
-console.log('');
+// Fichier de sortie pour les résultats
+const outputFile = path.join(__dirname, 'test-diagnostic-results.txt');
 
-// Vérifier l'existence des fichiers clés
-console.log('1. Vérification des fichiers essentiels:');
-const essentialFiles = [
-  'package.json',
-  'tsconfig.json',
-  'jest.config.js',
-  'generators/base-generator.ts',
-  'generators/app/index.ts',
-  'utils/config.ts'
-];
-
-for (const file of essentialFiles) {
-  if (fs.existsSync(file)) {
-    console.log(`✅ ${file} existe`);
-  } else {
-    console.log(`❌ ${file} n'existe PAS`);
-  }
-}
-console.log('');
-
-// Vérifier si le dossier dist existe et contient des fichiers
-console.log('2. Vérification de la compilation TypeScript:');
-if (fs.existsSync('dist')) {
-  console.log('✅ Le dossier dist existe');
-  const distFiles = fs.readdirSync('dist').filter(f => f.endsWith('.js')).length;
-  console.log(`   - ${distFiles} fichiers .js trouvés dans le dossier dist`);
-} else {
-  console.log('❌ Le dossier dist n\'existe PAS - le projet n\'a pas été compilé');
-}
-console.log('');
-
-// Vérifier les fichiers de test
-console.log('3. Vérification des fichiers de test:');
-function countTestFiles(dir) {
-  let count = 0;
-
-  try {
-    const files = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const file of files) {
-      const fullPath = path.join(dir, file.name);
-
-      if (file.isDirectory()) {
-        count += countTestFiles(fullPath);
-      } else if (file.name.endsWith('.test.ts') || file.name.endsWith('.test.js')) {
-        console.log(`   - Fichier de test trouvé: ${fullPath}`);
-        count++;
-      }
-    }
-  } catch (error) {
-    console.error(`Erreur lors de la lecture du répertoire ${dir}:`, error.message);
-  }
-
-  return count;
+// Fonction pour écrire dans le fichier de log et la console
+function log(message) {
+  fs.appendFileSync(outputFile, message + '\n');
+  console.log(message);
 }
 
-const testCount = countTestFiles('./generators');
-console.log(`Total: ${testCount} fichiers de test trouvés dans les générateurs`);
-console.log('');
+// Nettoyer le fichier de résultats précédent
+if (fs.existsSync(outputFile)) {
+  fs.unlinkSync(outputFile);
+}
 
-// Vérifier les erreurs de compilation TypeScript
-console.log('4. Vérification des erreurs de compilation TypeScript:');
+log('=== Diagnostic des tests Spring-Fullstack-Speed ===');
+log(`Date: ${new Date().toISOString()}`);
+log(`Node version: ${process.version}`);
+log('');
+
+// 1. Vérifier la structure du projet
+log('=== Vérification de la structure du projet ===');
 try {
-  console.log('Exécution de tsc --noEmit pour vérifier les erreurs...');
-  execSync('npx tsc --noEmit', { encoding: 'utf8' });
-  console.log('✅ Aucune erreur TypeScript détectée');
+  const generators = fs.readdirSync(path.join(__dirname, 'generators'));
+  log(`Générateurs trouvés: ${generators.join(', ')}`);
 } catch (error) {
-  console.log('❌ Erreurs TypeScript détectées:');
-  console.log(error.stdout);
+  log(`Erreur lors de la lecture des générateurs: ${error.message}`);
 }
-console.log('');
+log('');
 
-// Vérifier si Jest est correctement installé
-console.log('5. Vérification de l\'installation de Jest:');
+// 2. Fixer les variables d'environnement pour les tests
+log('=== Configuration de l\'environnement de test ===');
+process.env.NODE_ENV = 'test';
+process.env.JEST_WORKER_ID = '1';
+require('events').EventEmitter.defaultMaxListeners = 25;
+log('Variables d\'environnement configurées pour les tests');
+log('Limite d\'écouteurs d\'événements augmentée à 25');
+log('');
+
+// 3. Exécuter les tests simples
+log('=== Exécution des tests simples ===');
 try {
-  const jestVersion = execSync('npx jest --version', { encoding: 'utf8' }).trim();
-  console.log(`✅ Jest version ${jestVersion} est installé`);
+  const testResult = execSync('node --experimental-vm-modules node_modules/jest/bin/jest.js --testMatch "**/generators/__tests__/cli-ui.test.ts" --no-watchman --detectOpenHandles', { encoding: 'utf8' });
+  log('Résultat des tests simples:');
+  log(testResult);
 } catch (error) {
-  console.log('❌ Problème avec l\'installation de Jest:');
-  console.log(error.message);
+  log('Erreur lors des tests simples:');
+  log(error.message);
+  // Continuer malgré l'erreur
 }
+log('');
 
-console.log('');
-console.log('Diagnostic terminé.');
+// 4. Vérification du mock d'inquirer
+log('=== Configuration du mock d\'inquirer ===');
+try {
+  const inquirerMockCode = `
+  // Test simple du mock d'inquirer
+  const inquirer = require('inquirer');
+  const originalPrompt = inquirer.prompt;
+  
+  // Remplacer la méthode prompt par un mock
+  inquirer.prompt = jest.fn().mockImplementation(() => {
+    return Promise.resolve({
+      startOption: 'quickstart',
+      confirmed: true
+    });
+  });
+  
+  // Vérifier que le mock fonctionne
+  inquirer.prompt([{ type: 'list', name: 'test', choices: ['a', 'b'] }])
+    .then(answers => console.log('Mock d\'inquirer fonctionne:', answers))
+    .catch(err => console.error('Erreur avec le mock d\'inquirer:', err));
+  `;
+
+  // Écrire ce code dans un fichier temporaire
+  const tempFile = path.join(__dirname, 'temp-inquirer-test.js');
+  fs.writeFileSync(tempFile, inquirerMockCode);
+
+  // Exécuter le test
+  log('Test du mock d\'inquirer:');
+  const inquirerTestResult = execSync(`node -e "jest.mock = (module, factory) => factory(); ${inquirerMockCode}"`, { encoding: 'utf8' });
+  log(inquirerTestResult);
+
+  // Nettoyer
+  if (fs.existsSync(tempFile)) {
+    fs.unlinkSync(tempFile);
+  }
+} catch (error) {
+  log('Erreur lors du test du mock d\'inquirer:');
+  log(error.message);
+}
+log('');
+
+log('=== Fin du diagnostic ===');
+log(`Les résultats complets sont disponibles dans: ${outputFile}`);

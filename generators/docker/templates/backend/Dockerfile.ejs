@@ -1,0 +1,28 @@
+# Dockerfile multi-étapes pour l'application Spring Boot
+# Étape 1: Build de l'application
+FROM eclipse-temurin:<%= javaVersion %>-jdk-alpine AS build
+WORKDIR /app
+
+# Copier les fichiers du projet
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+COPY src src
+
+# Rendre le script mvnw exécutable et construire l'application
+RUN chmod +x mvnw
+RUN ./mvnw clean package -DskipTests
+
+# Étape 2: Création de l'image de production
+FROM eclipse-temurin:<%= javaVersion %>-jre-alpine
+WORKDIR /app
+
+# Variables d'environnement
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV JAVA_OPTS=""
+
+# Copier le JAR depuis l'étape de build
+COPY --from=build /app/target/*.jar app.jar
+
+# Démarrer l'application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

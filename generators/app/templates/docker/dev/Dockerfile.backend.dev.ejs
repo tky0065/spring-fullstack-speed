@@ -1,0 +1,20 @@
+FROM eclipse-temurin:<%= javaVersion %>-jdk
+
+WORKDIR /workspace
+
+# Installer Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Active le reload à chaud
+ENV SPRING_DEVTOOLS_RESTART_ENABLED=true
+ENV SPRING_DEVTOOLS_LIVERELOAD_ENABLED=true
+
+# Port pour le live reload
+EXPOSE 35729
+# Port pour l'application
+EXPOSE 8080
+
+CMD ["./mvnw", "spring-boot:run", "-Dspring-boot.run.jvmArguments=\"-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005\""]

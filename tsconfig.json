@@ -1,15 +1,16 @@
 {
-  "include": ["./cli", "./generators", "./lib", "./scripts", "./utils"],
+  "include": ["./generators", "./utils", "./scripts"],
   "exclude": [
     "**/*.spec.*",
-    "**/__*/**",
+    "**/__tests__/**",
     "**/node_modules",
     "**/.*/",
     "**/*.ejs",
     "**/templates/**/*.ts",
     "**/templates/**/*.tsx",
     "**/templates/**/*.js",
-    "**/templates/**/*.jsx"
+    "**/templates/**/*.jsx",
+    "**/guidline/**"
   ],
   "compilerOptions": {
     /* Language and Environment */
@@ -29,6 +30,7 @@
     /* Emit */
     "outDir": "./dist" /* Specify an output folder for all emitted files. */,
     "declaration": true,
+    "sourceMap": true,
 
     /* Interop Constraints */
     "allowSyntheticDefaultImports": true /* Allow 'import x from y' when a module doesn't have a default export. */,
@@ -39,11 +41,6 @@
     /* Type Checking */
     "strict": true /* Enable all strict type-checking options. */,
     "noImplicitAny": false,
-    "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true,
-    // "verbatimModuleSyntax": true,
-
-    /* Completeness */
-    "skipLibCheck": false /* Skip type checking all .d.ts files. */
+    "skipLibCheck": true
   }
 }

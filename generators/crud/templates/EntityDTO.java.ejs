@@ -1,0 +1,47 @@
+package <%= packageName %>;
+
+import java.io.Serializable;
+<% if (imports && imports.length > 0) { %>
+<% imports.forEach(function(imp) { %>
+import <%= imp %>;
+<% }); %>
+<% } %>
+
+/**
+ * DTO (Data Transfer Object) pour l'entité <%= entityName %>
+ */
+public class <%= className %> implements Serializable {
+
+    private Long id;
+<% if (fields && fields.length > 0) { %>
+<% fields.forEach(function(field) { %>
+
+    private <%= field.type %> <%= field.name %>;
+<% }); %>
+
+    // Constructeurs
+    public <%= className %>() {
+    }
+
+    // Getters et Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+<% fields.forEach(function(field) { %>
+
+    public <%= field.type %> get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() {
+        return <%= field.name %>;
+    }
+
+    public void set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= field.type %> <%= field.name %>) {
+        this.<%= field.name %> = <%= field.name %>;
+    }
+<% }); %>
+<% } else { %>
+    // Pas de champs définis
+<% } %>
+}

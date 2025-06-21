@@ -20,6 +20,8 @@ export { default as MigrateGenerator } from './migrate/index.js';
 export { default as DoctorGenerator } from './doctor/index.js';
 export { default as UpgradeGenerator } from './upgrade/index.js';
 export { default as PluginsGenerator } from './plugins/index.js';
+export { default as KubernetesGenerator } from './kubernetes/index.js';
+export { default as DockerGenerator } from './docker/index.js';
 
 // Définit les types de générateurs disponibles
 export const GENERATOR_TYPES = {
@@ -37,7 +39,9 @@ export const GENERATOR_TYPES = {
   MIGRATE: 'migrate',
   DOCTOR: 'doctor',
   UPGRADE: 'upgrade',
-  PLUGINS: 'plugins'
+  PLUGINS: 'plugins',
+  KUBERNETES: 'kubernetes',
+  DOCKER: 'docker'
 };
 
 // Définition des alias pour les commandes principales
@@ -49,6 +53,7 @@ export const COMMAND_ALIASES = {
   'c': 'crud',
   'a': 'add',
   's': 'serve',
-  'b': 'build',
-  't': 'test'
+  't': 'test',
+  'k': 'kubernetes',
+  'doc': 'docker'
 };

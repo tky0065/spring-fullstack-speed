@@ -1,0 +1,17 @@
+package <%= packageName %>.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class SwaggerUIConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        // Redirection pour accéder facilement à l'UI Swagger
+        registry.addRedirectViewController("/api", "/swagger-ui/index.html");
+        registry.addRedirectViewController("/api/", "/swagger-ui/index.html");
+        registry.addRedirectViewController("/api/docs", "/swagger-ui/index.html");
+    }
+}

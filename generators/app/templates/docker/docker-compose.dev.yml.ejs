@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Service de base de données
+  db:
+    image: <%= database === 'PostgreSQL' ? 'postgres:15-alpine' : database === 'MySQL' ? 'mysql:8' : database === 'MariaDB' ? 'mariadb:10.11' : 'mongo:6-jammy' %>
+<% if (database === 'PostgreSQL') { %>
+    environment:
+      - POSTGRES_DB=<%= appName %>
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+<% } else if (database === 'MySQL' || database === 'MariaDB') { %>
+    environment:
+      - MYSQL_DATABASE=<%= appName %>
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+<% } else if (database === 'MongoDB') { %>
+    environment:
+      - MONGO_INITDB_DATABASE=<%= appName %>
+      - MONGO_INITDB_ROOT_USERNAME=mongodb
+      - MONGO_INITDB_ROOT_PASSWORD=mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+<% } %>
+    networks:
+      - app-network
+
+  # Service backend Spring Boot (mode développement avec live reload)
+  backend:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile.backend.dev
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+<% if (database === 'PostgreSQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/<%= appName %>
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+<% } else if (database === 'MySQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/<%= appName %>?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+<% } else if (database === 'MariaDB') { %>
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://db:3306/<%= appName %>
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+<% } else if (database === 'MongoDB') { %>
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:mongodb@db:27017/<%= appName %>
+<% } %>
+    ports:
+      - "8080:8080"
+      - "35729:35729" # Live reload
+    volumes:
+      - ./:/workspace:cached
+      - maven_repo:/root/.m2
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Service frontend Vue.js (mode développement avec hot reload)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/dev/Dockerfile.frontend.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+<% if (database === 'PostgreSQL') { %>
+  postgres_data:
+<% } else if (database === 'MySQL' || database === 'MariaDB') { %>
+  mysql_data:
+<% } else if (database === 'MongoDB') { %>
+  mongodb_data:
+<% } %>
+  maven_repo:

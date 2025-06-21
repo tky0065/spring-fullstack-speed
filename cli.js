@@ -5,46 +5,77 @@
  * Ce fichier permet d'exécuter le générateur via la commande 'sfs'
  */
 
-import yeoman from "yeoman-environment";
+import { createEnv } from "yeoman-environment";
 import chalk from "chalk";
 import path from "path";
 import { fileURLToPath } from "url";
-import { COMMAND_ALIASES } from "./generators/index.js";
+import { COMMAND_ALIASES } from "./dist/generators/index.js";
 
 // Récupération du chemin du fichier actuel en module ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const env = yeoman.createEnv();
+// Création de l'environnement Yeoman
+const env = createEnv();
 const args = process.argv.slice(2);
 let generatorName = args[0] || "app";
 
+// Afficher les informations de débogage pour le diagnostic
+if (process.env.SFS_DEBUG) {
+  console.log('Arguments reçus:', args);
+  console.log('Générateur demandé:', generatorName);
+  console.log('Aliases disponibles:', COMMAND_ALIASES);
+}
+
 // Gestion des alias de commandes
-if (generatorName in COMMAND_ALIASES) {
+if (COMMAND_ALIASES[generatorName]) {
+  if (process.env.SFS_DEBUG) {
+    console.log(`Alias trouvé: ${generatorName} -> ${COMMAND_ALIASES[generatorName]}`);
+  }
   generatorName = COMMAND_ALIASES[generatorName];
 }
 
 // Gestion des sous-commandes avec alias (comme "g e" pour "generate entity")
-if (generatorName === "generate" && args.length > 1 && args[1] in COMMAND_ALIASES) {
+if (generatorName === "generate" && args.length > 1 && COMMAND_ALIASES[args[1]]) {
+  if (process.env.SFS_DEBUG) {
+    console.log(`Sous-alias trouvé: ${args[1]} -> ${COMMAND_ALIASES[args[1]]}`);
+  }
   args[1] = COMMAND_ALIASES[args[1]];
 }
 
-// Enregistrement des générateurs disponibles
-env.register(path.join(__dirname, 'generators/app'), 'sfs:app');
-env.register(path.join(__dirname, 'generators/entity'), 'sfs:entity');
-env.register(path.join(__dirname, 'generators/crud'), 'sfs:crud');
-env.register(path.join(__dirname, 'generators/module'), 'sfs:module');
-env.register(path.join(__dirname, 'generators/dtos'), 'sfs:dtos');
-env.register(path.join(__dirname, 'generators/add'), 'sfs:add');
-env.register(path.join(__dirname, 'generators/generate'), 'sfs:generate');
-env.register(path.join(__dirname, 'generators/serve'), 'sfs:serve');
-env.register(path.join(__dirname, 'generators/test'), 'sfs:test');
-env.register(path.join(__dirname, 'generators/build'), 'sfs:build');
-env.register(path.join(__dirname, 'generators/deploy'), 'sfs:deploy');
-env.register(path.join(__dirname, 'generators/migrate'), 'sfs:migrate');
-env.register(path.join(__dirname, 'generators/doctor'), 'sfs:doctor');
-env.register(path.join(__dirname, 'generators/upgrade'), 'sfs:upgrade');
-env.register(path.join(__dirname, 'generators/plugins'), 'sfs:plugins');
+// Enregistrement des générateurs disponibles en utilisant la structure correcte
+// Inspiré de JHipster qui utilise les chemins vers les fichiers compilés
+const availableGenerators = [
+  { name: 'app', path: './dist/generators/app/index.js' },
+  { name: 'entity', path: './dist/generators/entity/index.js' },
+  { name: 'crud', path: './dist/generators/crud/index.js' },
+  { name: 'module', path: './dist/generators/module/index.js' },
+  { name: 'dtos', path: './dist/generators/dtos/index.js' },
+  { name: 'add', path: './dist/generators/add/index.js' },
+  { name: 'generate', path: './dist/generators/generate/index.js' },
+  { name: 'serve', path: './dist/generators/serve/index.js' },
+  { name: 'test', path: './dist/generators/test/index.js' },
+  { name: 'deploy', path: './dist/generators/deploy/index.js' },
+  { name: 'migrate', path: './dist/generators/migrate/index.js' },
+  { name: 'doctor', path: './dist/generators/doctor/index.js' },
+  { name: 'upgrade', path: './dist/generators/upgrade/index.js' },
+  { name: 'plugins', path: './dist/generators/plugins/index.js' },
+  { name: 'kubernetes', path: './dist/generators/kubernetes/index.js' },
+  { name: 'docker', path: './dist/generators/docker/index.js' }
+];
+
+// Enregistrer chaque générateur avec un namespace spécifique
+for (const generator of availableGenerators) {
+  try {
+    const generatorPath = path.join(__dirname, generator.path);
+    env.register(generatorPath, { namespace: `sfs:${generator.name}` });
+    if (process.env.SFS_DEBUG) {
+      console.log(`Générateur enregistré: sfs:${generator.name} -> ${generatorPath}`);
+    }
+  } catch (error) {
+    console.warn(`Avertissement: Impossible d'enregistrer le générateur ${generator.name}: ${error.message}`);
+  }
+}
 
 // Affichage de l'aide si demandé
 if (args.includes('--help') || args.includes('-h')) {
@@ -64,12 +95,13 @@ ${chalk.yellow('Générateurs disponibles:')}
   generate, g: Génération rapide de code (entités, DTOs, CRUD, API)
   serve, s : Démarre un serveur de développement
   test, t  : Exécute différents types de tests
-  build, b : Compile l'application pour la production
   deploy   : Options de déploiement (serveurs, cloud, k8s)
   migrate  : Gestion des migrations de base de données
   doctor   : Outil de diagnostic pour votre projet
   upgrade  : Mise à niveau du projet
   plugins  : Gestion des extensions
+  kubernetes: Gestion des déploiements Kubernetes
+  docker   : Gestion des conteneurs Docker
 
 ${chalk.yellow('Raccourcis communs:')}
   sfs g e   : équivalent à "sfs generate entity"

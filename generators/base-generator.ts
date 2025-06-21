@@ -35,8 +35,27 @@ export class BaseGenerator extends Generator {
     ...DEFAULT_CONFIG,
     authType: 'JWT' // Ajout de la propriété authType requise
   };
-  // Nous n'avons pas besoin de redéclarer 'options' car elle est déjà définie dans la classe de base
-  // La propriété options réelle sera du type de Yeoman, mais nous utiliserons notre interface pour le typage
+  // Indicateur de mode test
+  isTestMode: boolean = false;
+
+  constructor(args: string | string[], options: any) {
+    super(args, options);
+
+    // Vérifier si nous sommes en environnement de test
+    this.isTestMode = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+
+    // En mode test, augmenter la limite d'écouteurs d'événements pour éviter les avertissements
+    if (this.isTestMode) {
+      // Accéder au module events pour augmenter la limite maximale d'écouteurs
+      try {
+        const events = require('events');
+        events.EventEmitter.defaultMaxListeners = 25;
+        this.log(chalk.yellow("[TEST MODE] Increased event listeners limit to 25"));
+      } catch (error) {
+        this.log(chalk.red("Failed to increase event listeners limit"));
+      }
+    }
+  }
 
   // Constants exportées pour tous les générateurs
   readonly DATABASE_OPTIONS = DATABASE_OPTIONS;

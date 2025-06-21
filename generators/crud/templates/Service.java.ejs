@@ -1,0 +1,59 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.<%= entityName %>;
+<% if (includeCreate || includeUpdate) { %>
+<% if (operations.includes('create') || operations.includes('update')) { %>
+import <%= dtoPackageName %>.<%= entityName %>DTO;
+<% } %>
+<% } %>
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service d'accès aux données pour l'entité <%= entityName %>
+ */
+public interface <%= entityName %>Service {
+<% if (includeCreate) { %>
+    /**
+     * Enregistre une nouvelle entité <%= entityName %>
+     * @param <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% if (includeCreate) { %>DTO<% } %> les données à enregistrer
+     * @return l'entité enregistrée
+     */
+    <%= entityName %> save(<% if (includeCreate) { %><%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO<% } else { %><%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% } %>);
+<% } %>
+
+<% if (includeRead) { %>
+    /**
+     * Récupère toutes les entités <%= entityName %>
+     * @return liste des entités
+     */
+    List<<%= entityName %>> findAll();
+
+    /**
+     * Récupère une entité <%= entityName %> par son identifiant
+     * @param id l'identifiant de l'entité
+     * @return l'entité si trouvée, empty sinon
+     */
+    Optional<<%= entityName %>> findById(Long id);
+<% } %>
+
+<% if (includeUpdate) { %>
+    /**
+     * Met à jour une entité <%= entityName %>
+     * @param id identifiant de l'entité à mettre à jour
+     * @param <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% if (includeCreate) { %>DTO<% } %> les nouvelles données
+     * @return l'entité mise à jour, ou null si l'entité n'existe pas
+     */
+    <%= entityName %> update(Long id, <% if (includeCreate) { %><%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO<% } else { %><%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% } %>);
+<% } %>
+
+<% if (includeDelete) { %>
+    /**
+     * Supprime une entité <%= entityName %> par son identifiant
+     * @param id l'identifiant de l'entité à supprimer
+     * @return true si supprimée, false sinon
+     */
+    boolean delete(Long id);
+<% } %>
+}

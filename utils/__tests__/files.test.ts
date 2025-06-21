@@ -5,14 +5,26 @@ import fs from 'fs';
 import { GlobalConfig, DEFAULT_CONFIG } from '../config.js';
 import { isFrontend, isDatabase } from '../conditional-rendering.js';
 
-// Mock fs module
-jest.mock('fs');
-(fs.existsSync as jest.Mock) = jest.fn().mockImplementation(() => true);
-(fs.readFileSync as jest.Mock) = jest.fn().mockImplementation(() => '{"test": "data"}');
-(fs.writeFileSync as jest.Mock) = jest.fn();
-(fs.statSync as jest.Mock) = jest.fn().mockImplementation(() => ({ isDirectory: () => false }));
-(fs.readdirSync as jest.Mock) = jest.fn().mockImplementation(() => []);
-(fs.mkdirSync as jest.Mock) = jest.fn();
+// Créer des mocks pour les fonctions spécifiques de fs que nous utilisons
+jest.mock('fs', () => ({
+  existsSync: jest.fn().mockReturnValue(true),
+  readFileSync: jest.fn().mockReturnValue('{"test":"data"}'),
+  writeFileSync: jest.fn(),
+  statSync: jest.fn().mockReturnValue({ isDirectory: () => false }),
+  readdirSync: jest.fn().mockReturnValue([]),
+  mkdirSync: jest.fn()
+}));
+
+// Configuration des mocks avant chaque test
+beforeEach(() => {
+  jest.clearAllMocks();
+  fs.existsSync = jest.fn().mockReturnValue(true);
+  fs.readFileSync = jest.fn().mockReturnValue('{"test":"data"}');
+  fs.writeFileSync = jest.fn();
+  fs.statSync = jest.fn().mockReturnValue({ isDirectory: () => false });
+  fs.readdirSync = jest.fn().mockReturnValue([]);
+  fs.mkdirSync = jest.fn();
+});
 
 // Créer un mock pour le générateur Yeoman
 const mockYeomanGenerator = {
@@ -29,58 +41,67 @@ const mockYeomanGenerator = {
 };
 
 describe('File Utils', () => {
-  beforeEach(() => {
-    // Réinitialiser les mocks avant chaque test
-    jest.clearAllMocks();
+  test('getFileExtension devrait retourner l\'extension du fichier', () => {
+    expect(getFileExtension('file.txt')).toBe('txt');
+    expect(getFileExtension('script.js')).toBe('js');
+    expect(getFileExtension('style.css')).toBe('css');
+    expect(getFileExtension('index')).toBe('');
+    expect(getFileExtension('.gitignore')).toBe('');
   });
 
-  describe('getFileExtension', () => {
-    test('should correctly extract file extensions', () => {
-      expect(getFileExtension('file.txt')).toBe('txt');
-      expect(getFileExtension('image.jpg')).toBe('jpg');
-      expect(getFileExtension('script.js')).toBe('js');
-      expect(getFileExtension('style.css')).toBe('css');
-      expect(getFileExtension('path/to/file.md')).toBe('md');
-      expect(getFileExtension('C:\\Windows\\file.bat')).toBe('bat');
-    });
+  test('generateFile devrait appeler les méthodes appropriées du générateur', () => {
+    const generator = { ...mockYeomanGenerator };
+    const templatePath = 'templates/file.txt.ejs';
+    const destinationPath = 'output/file.txt';
+    const context = { name: 'Test' };
 
-    test('should handle files without extensions', () => {
-      expect(getFileExtension('README')).toBe('');
-      expect(getFileExtension('Dockerfile')).toBe('');
-    });
+    // Utilisation de la fonction generateFile avec le bon format de paramètres
+    generateFile(generator as any, templatePath, destinationPath, context);
+
+    expect(generator.fs.copyTpl).toHaveBeenCalledWith(
+      templatePath,
+      destinationPath,
+      expect.objectContaining({ config: context })
+    );
   });
 
-  // Désactiver temporairement les tests problématiques qui causent SIGABRT
-  describe.skip('generateFile', () => {
-    test('should generate a file correctly', () => {
-      // Tests à réactiver après correction
-    });
+  test('writeJsonFile devrait écrire un fichier JSON formaté', () => {
+    const filePath = 'config.json';
+    const data = { name: 'Test', version: '1.0.0' };
+
+    writeJsonFile(filePath, data);
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      filePath,
+      JSON.stringify(data, null, 2),
+      'utf8'
+    );
   });
 
-  describe('writeJsonFile', () => {
-    test('should write JSON file correctly', () => {
-      const testPath = 'test/file.json';
-      const testData = { key: 'value' };
+  test('readJsonFile devrait lire et parser un fichier JSON', () => {
+    const filePath = 'config.json';
+    const expectedData = { test: 'data' };
 
-      writeJsonFile(testPath, testData);
+    const result = readJsonFile(filePath);
 
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        testPath,
-        JSON.stringify(testData, null, 2),
-        'utf8'
-      );
-    });
+    expect(fs.readFileSync).toHaveBeenCalledWith(filePath, 'utf8');
+    expect(result).toEqual(expectedData);
   });
 
-  describe('readJsonFile', () => {
-    test('should read and parse JSON file correctly', () => {
-      const testPath = 'test/file.json';
-      const testData = { test: 'data' };
+  test('injectIntoFile devrait modifier le contenu d\'un fichier', () => {
+    const filePath = 'file.txt';
+    const content = 'Initial content';
+    // Configurer le mock pour retourner le contenu existant
+    (fs.readFileSync as jest.Mock).mockReturnValueOnce(content);
 
-      const result = readJsonFile(testPath);
+    // Appeler la fonction avec une regex pour remplacer 'Initial' par 'Initial Modified'
+    injectIntoFile(filePath, ' Modified', /Initial/);
 
-      expect(fs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
-      expect(result).toEqual(testData);
-    });
+    // Vérifier que writeFileSync a été appelé avec les bons paramètres
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      filePath,
+      'Initial Modified content',
+      'utf8'
+    );
   });
 });

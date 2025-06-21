@@ -66,6 +66,7 @@ export const DEFAULT_CONFIG = {
   frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
   database: DATABASE_OPTIONS.POSTGRESQL,
   includeAuth: true,
+  authType: 'JWT',
   additionalFeatures: [
     ADDITIONAL_FEATURES.OPENAPI,
     ADDITIONAL_FEATURES.DOCKER,
@@ -189,6 +190,14 @@ export function resetGlobalConfig(): void {
  * @returns Configuration validée (avec valeurs par défaut pour les propriétés manquantes)
  */
 export function validateConfig(config: Partial<GlobalConfig>): GlobalConfig {
+  // Obtenir toutes les valeurs valides pour les fonctionnalités additionnelles
+  const validAdditionalFeatures = Object.values(ADDITIONAL_FEATURES);
+
+  // Filtrer les fonctionnalités invalides si elles existent
+  const filteredAdditionalFeatures = config.additionalFeatures
+    ? config.additionalFeatures.filter(feature => validAdditionalFeatures.includes(feature))
+    : [...DEFAULT_CONFIG.additionalFeatures]; // Utiliser les valeurs par défaut si aucune n'est fournie
+
   // Valeurs par défaut pour les propriétés manquantes
   return {
     ...DEFAULT_CONFIG,
@@ -204,6 +213,8 @@ export function validateConfig(config: Partial<GlobalConfig>): GlobalConfig {
       ? config.database!
       : DEFAULT_CONFIG.database,
     authType: config.authType || 'JWT', // Assure que authType est toujours défini
+    // Remplacer le tableau de fonctionnalités additionnelles par la version filtrée
+    additionalFeatures: filteredAdditionalFeatures,
     // Autres validations si nécessaire
   };
 }

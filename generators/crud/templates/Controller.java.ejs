@@ -1,0 +1,123 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.<%= entityName %>;
+<% if (useDtos) { %>
+import <%= dtoPackageName %>.<%= entityName %>DTO;
+<% } %>
+import <%= servicePackageName %>.<%= entityName %>Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+<% if (includeCreate || includeUpdate) { %>
+import javax.validation.Valid;
+<% } %>
+import java.util.Optional;
+
+/**
+ * REST Controller pour gérer les opérations CRUD de l'entité <%= entityName %>
+ */
+@RestController
+@RequestMapping("/api/<%= lowercaseEntityName %>s")
+public class <%= entityName %>Controller {
+
+    private final <%= entityName %>Service <%= lowercaseEntityName %>Service;
+
+    @Autowired
+    public <%= entityName %>Controller(<%= entityName %>Service <%= lowercaseEntityName %>Service) {
+        this.<%= lowercaseEntityName %>Service = <%= lowercaseEntityName %>Service;
+    }
+
+<% if (includeCreate) { %>
+    /**
+     * Crée une nouvelle entité <%= entityName %>
+     * @param <%= lowercaseEntityName %> l'entité à créer
+     * @return l'entité créée
+     */
+    @PostMapping
+    public ResponseEntity<?> create<%= entityName %>(<% if (useDtos) { %>@Valid @RequestBody <%= entityName %>DTO <%= lowercaseEntityName %>DTO<% } else { %>@Valid @RequestBody <%= entityName %> <%= lowercaseEntityName %><% } %>) {
+        try {
+            <% if (useDtos) { %>
+            <%= entityName %> created = <%= lowercaseEntityName %>Service.save(<%= lowercaseEntityName %>DTO);
+            <% } else { %>
+            <%= entityName %> created = <%= lowercaseEntityName %>Service.save(<%= lowercaseEntityName %>);
+            <% } %>
+            return new ResponseEntity<>(created, HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+<% } %>
+
+<% if (includeRead) { %>
+    /**
+     * Récupère toutes les entités <%= entityName %>
+     * @return liste des entit��s
+     */
+    @GetMapping
+    public ResponseEntity<List<<%= entityName %>>> getAll<%= entityName %>s() {
+        List<<%= entityName %>> <%= lowercaseEntityName %>s = <%= lowercaseEntityName %>Service.findAll();
+        return new ResponseEntity<>(<%= lowercaseEntityName %>s, HttpStatus.OK);
+    }
+
+    /**
+     * Récupère une entité <%= entityName %> par son identifiant
+     * @param id identifiant de l'entité
+     * @return l'entité trouvée ou 404
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> get<%= entityName %>ById(@PathVariable Long id) {
+        Optional<<%= entityName %>> <%= lowercaseEntityName %> = <%= lowercaseEntityName %>Service.findById(id);
+        if (<%= lowercaseEntityName %>.isPresent()) {
+            return new ResponseEntity<>(<%= lowercaseEntityName %>.get(), HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Entity not found", HttpStatus.NOT_FOUND);
+        }
+    }
+<% } %>
+
+<% if (includeUpdate) { %>
+    /**
+     * Met à jour une entité <%= entityName %> existante
+     * @param id identifiant de l'entité à mettre à jour
+     * @param <%= lowercaseEntityName %> nouvelles données
+     * @return l'entité mise à jour ou 404
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update<%= entityName %>(@PathVariable Long id, <% if (useDtos) { %>@Valid @RequestBody <%= entityName %>DTO <%= lowercaseEntityName %>DTO<% } else { %>@Valid @RequestBody <%= entityName %> <%= lowercaseEntityName %><% } %>) {
+        try {
+            <% if (useDtos) { %>
+            <%= entityName %> updated = <%= lowercaseEntityName %>Service.update(id, <%= lowercaseEntityName %>DTO);
+            <% } else { %>
+            <%= entityName %> updated = <%= lowercaseEntityName %>Service.update(id, <%= lowercaseEntityName %>);
+            <% } %>
+            if (updated != null) {
+                return new ResponseEntity<>(updated, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("Entity not found", HttpStatus.NOT_FOUND);
+            }
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+    }
+<% } %>
+
+<% if (includeDelete) { %>
+    /**
+     * Supprime une entité <%= entityName %>
+     * @param id identifiant de l'entité à supprimer
+     * @return 204 No Content ou 404
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete<%= entityName %>(@PathVariable Long id) {
+        boolean deleted = <%= lowercaseEntityName %>Service.delete(id);
+        if (deleted) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            return new ResponseEntity<>("Entity not found", HttpStatus.NOT_FOUND);
+        }
+    }
+<% } %>
+}

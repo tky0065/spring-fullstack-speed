@@ -1,0 +1,92 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.<%= entityName %>;
+<% if (includeCreate || includeUpdate) { %>
+import <%= dtoPackageName %>.<%= entityName %>DTO;
+<% } %>
+import <%= repositoryPackageName %>.<%= entityName %>Repository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Implémentation du service pour l'entité <%= entityName %>
+ */
+@Service
+@Transactional
+public class <%= entityName %>ServiceImpl implements <%= entityName %>Service {
+
+    private final <%= entityName %>Repository <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository;
+
+    @Autowired
+    public <%= entityName %>ServiceImpl(<%= entityName %>Repository <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository) {
+        this.<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository;
+    }
+
+<% if (includeCreate) { %>
+    @Override
+    public <%= entityName %> save(<% if (includeCreate) { %><%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO<% } else { %><%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% } %>) {
+        // Convertir le DTO en entité
+        <%= entityName %> entity = new <%= entityName %>();
+        <% if (includeCreate) { %>
+        // TODO: Implémenter la conversion du DTO vers l'entité
+        // Exemple: entity.setSomeField(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO.getSomeField());
+        <% } else { %>
+        // Utilisez entity = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %> si vous n'utilisez pas de DTO
+        <% } %>
+
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.save(entity);
+    }
+<% } %>
+
+<% if (includeRead) { %>
+    @Override
+    @Transactional(readOnly = true)
+    public List<<%= entityName %>> findAll() {
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<<%= entityName %>> findById(Long id) {
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.findById(id);
+    }
+<% } %>
+
+<% if (includeUpdate) { %>
+    @Override
+    public <%= entityName %> update(Long id, <% if (includeCreate) { %><%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO<% } else { %><%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %><% } %>) {
+        Optional<<%= entityName %>> existingEntity = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.findById(id);
+        if (existingEntity.isPresent()) {
+            <%= entityName %> entity = existingEntity.get();
+
+            <% if (includeCreate) { %>
+            // TODO: Implémenter la mise à jour des champs depuis le DTO
+            // Exemple: entity.setSomeField(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO.getSomeField());
+            <% } else { %>
+            // Si vous n'utilisez pas de DTO, copiez les propriétés non nulles
+            // Exemple: if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getSomeField() != null) entity.setSomeField(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getSomeField());
+            <% } %>
+
+            return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.save(entity);
+        } else {
+            return null; // Entité non trouvée
+        }
+    }
+<% } %>
+
+<% if (includeDelete) { %>
+    @Override
+    public boolean delete(Long id) {
+        if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.existsById(id)) {
+            <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.deleteById(id);
+            return true;
+        } else {
+            return false;
+        }
+    }
+<% } %>
+}

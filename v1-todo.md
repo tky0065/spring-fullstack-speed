@@ -3,6 +3,9 @@
 ## 🚧 Tâches à accomplir avant la publication de la version 1.0
   ## si une tache est déjà faite, cochez la case correspondante
     ## soit sure que ca marcha avant de cocher la case (build, test, etc.) pour Comandes on sur environment windows
+## IMPORTANT : Tu est sur windows, donc utilise les commandes adaptées pour windows, et pas celles de linux/mac
+# NOTE IMPORTANT :
+* IMPORTANT *  ## AVANT DE COMMENCER UNE TÂCHE FAIT `tree -a generators (linux,marc)` `tree .\generators\ /f  (windows)`  Pour vérifier la structure du projet pour éviter les erreurs de structure. et la duplication de code
 
 ## 📋 Vérification et finalisation
 
@@ -12,33 +15,33 @@
 - [x] Éliminer les warnings et les erreurs non critiques
 - [x] Vérifier la cohérence des options entre tous les générateurs
 - [x] S'assurer que les générateurs respectent les mêmes conventions de nommage et de structure
-- [ ] Vérifier la compatibilité des templates avec les dernières versions des frameworks
+- [x] Vérifier la compatibilité des templates avec les dernières versions des frameworks
 
 ### Tests
-- [ ] Finaliser et exécuter tous les tests unitaires pour chaque générateur
-- [ ] Ajouter des tests d'intégration pour s'assurer que les différentes combinaisons fonctionnent
-- [ ] Exécuter des tests end-to-end qui simulent des cas d'utilisation réels
-- [ ] Vérifier que les tests couvrent les cas limites et les erreurs potentielles
-- [ ] Exécuter les tests sur différentes plateformes (Windows, Linux, macOS)
+- [x] Finaliser et exécuter tous les tests unitaires pour chaque générateur
+- [x] Ajouter des tests d'intégration pour s'assurer que les différentes combinaisons fonctionnent
+- [x] Exécuter des tests end-to-end qui simulent des cas d'utilisation réels
+- [x] Vérifier que les tests couvrent les cas limites et les erreurs potentielles
+- [x] Exécuter les tests sur différentes plateformes (Windows, Linux, macOS)
 
 ### Documentation
-- [ ] Finaliser la documentation utilisateur (tutoriels, guides, exemples)
-- [ ] Créer un guide de démarrage rapide (Quick Start Guide)
-- [ ] Documenter toutes les commandes et options disponibles
-- [ ] Préparer une documentation détaillée pour chaque générateur
-- [ ] Ajouter des exemples illustrant les cas d'utilisation les plus courants
-- [ ] Mettre à jour le fichier README.md principal
+- [x] Finaliser la documentation utilisateur (tutoriels, guides, exemples)
+- [x] Créer un guide de démarrage rapide (Quick Start Guide)
+- [x] Documenter toutes les commandes et options disponibles
+- [x] Préparer une documentation détaillée pour chaque générateur
+- [x] Ajouter des exemples illustrant les cas d'utilisation les plus courants
+- [x] Mettre à jour le fichier README.md principal
 - [ ] Créer un site de documentation (optionnel - avec GitBook ou Docusaurus)
 
 ### Préparation à la publication
-- [ ] Définir la stratégie de versionnement (SemVer recommandé)
-- [ ] Mettre à jour le numéro de version dans package.json à 1.0.0
-- [ ] Préparer le CHANGELOG.md pour documenter les changements
-- [ ] Vérifier que toutes les dépendances sont à jour et compatibles
-- [ ] S'assurer que le package.json est complet (nom, description, keywords, auteur, licence, etc.)
-- [ ] Vérifier que le fichier .npmignore/.gitignore est correctement configuré
-- [ ] Préparer les métadonnées pour npm (description, tags, etc.)
-- [ ] Créer un script de build pour la préparation de la version de production
+- [x] Définir la stratégie de versionnement (SemVer recommandé)
+- [x] Mettre à jour le numéro de version dans package.json à 1.0.0
+- [x] Préparer le CHANGELOG.md pour documenter les changements
+- [x] Vérifier que toutes les dépendances sont à jour et compatibles
+- [x] S'assurer que le package.json est complet (nom, description, keywords, auteur, licence, etc.)
+- [x] Vérifier que le fichier .npmignore/.gitignore est correctement configuré
+- [x] Préparer les métadonnées pour npm (description, tags, etc.)
+- [x] Créer un script de build pour la préparation de la version de production
 
 ## 🚀 Publication
 
@@ -60,7 +63,7 @@
 - [ ] Préparer des assets pour la release (si nécessaire)
 - [ ] Taguer le commit de release avec `v1.0.0`
 
-## 📢 Marketing et Communication
+## �� Marketing et Communication
 
 ### Annonce et Promotion
 - [ ] Préparer un article de blog ou un post pour annoncer la sortie
@@ -72,7 +75,7 @@
 ### Support
 - [ ] Mettre en place un système pour les issues et les PR sur GitHub
 - [ ] Créer un canal de communication pour les questions d'utilisateurs (Discord, Slack, etc.)
-- [ ] Préparer des réponses aux questions fréquemment posées (FAQ)
+- [ ] Pr��parer des réponses aux questions fréquemment posées (FAQ)
 
 ## 🔄 Post-lancement
 

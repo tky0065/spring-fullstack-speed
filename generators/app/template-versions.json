@@ -1,17 +1,16 @@
 {
   "v1.0.0": {
     "version": "v1.0.0",
-    "springBootCompatibility": ["2.7.0", "3.0.0", "3.1.0", "3.2.0"],
+    "springBootCompatibility": ["2.7.0", "3.0.0", "3.1.0", "3.2.0", "3.3.0"],
     "javaCompatibility": ["11", "17", "21"],
     "frontendCompatibility": {
-      "React avec openapi": ["18.0.0"],
-      "Vue.js avec openapi": ["3.0.0"],
-      "Angular standalone": ["16.0.0", "17.0.0"],
+      "React avec openapi": ["18.0.0", "19.0.0"],
+      "Vue.js avec openapi": ["3.0.0", "4.0.0"],
+      "Angular standalone": ["18.0.0", "19.0.0", "20.0.0"],
       "Thymeleaf": ["3.0.0"],
       "JTE": ["3.0.0"]
     },
-    "releaseDate": "2023-06-19",
-    "changelog": ["Version initiale du système de templates"]
+    "releaseDate": "2025-06-20",
+    "changelog": ["Version initiale du système de templates", "Ajout de la compatibilité avec les dernières versions des frameworks"]
   }
 }
-

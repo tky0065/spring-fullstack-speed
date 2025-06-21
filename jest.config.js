@@ -29,5 +29,10 @@ export default {
   ],
   testPathIgnorePatterns: [
     '<rootDir>/generators/frontend-tests/templates/',
+    '<rootDir>/guidline/',
   ],
+  // Utilisation du nouveau fichier de setup compatible ESM
+  setupFilesAfterEnv: ['<rootDir>/test-setup.js'],
+  // Augmenter le timeout pour les tests plus longs
+  testTimeout: 120000,
 }

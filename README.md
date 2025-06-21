@@ -4,19 +4,32 @@
 
 SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapidement des applications web fullstack modernes avec Spring Boot comme backend et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE). Inspiré par JHipster, ce projet vise à simplifier et accélérer le développement d'applications Java enterprise en automatisant la génération de code boilerplate et l'intégration des technologies modernes.
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-ISC-green.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)
+![Java](https://img.shields.io/badge/java-%3E%3D17-orange.svg)
+
 ## 📋 Table des matières
 
 - [Installation](#installation)
+- [Démarrage Rapide](#démarrage-rapide)
 - [Utilisation](#utilisation)
   - [Générer une application](#générer-une-nouvelle-application)
   - [Générer une entité](#générer-une-nouvelle-entité)
   - [Générer des DTOs](#générer-des-dtos)
   - [Générer des opérations CRUD](#générer-des-opérations-crud)
   - [Générer un module](#générer-un-module-fonctionnel)
+  - [Recherche et Indexation](#recherche-et-indexation)
+  - [Notifications](#notifications)
+  - [Conteneurisation](#conteneurisation)
+  - [Déploiement](#déploiement)
+  - [CI/CD](#cicd)
+- [Documentation](#documentation)
 - [Technologies supportées](#technologies-supportées)
 - [Fonctionnalités](#fonctionnalités)
 - [Architecture](#architecture)
 - [Développement](#développement)
+- [Tests](#tests)
 - [Contribuer](#contribuer)
 - [Licence](#licence)
 
@@ -30,124 +43,263 @@ npm install -g @enokdev/spring-fullstack-speed
 npx @enokdev/spring-fullstack-speed
 ```
 
-## 🛠️ Utilisation
+### Prérequis
+
+- **Node.js** : v20.0.0 ou supérieure
+- **NPM** : v10.0.0 ou supérieure
+- **Java** : JDK 17 ou supérieure
+- **Maven** ou **Gradle** : pour la compilation des projets Spring Boot
+
+## ⚡ Démarrage Rapide
+
+Pour générer rapidement une application complète avec une interface utilisateur React et une base de données PostgreSQL :
+
+```bash
+# Installation globale si ce n'est pas déjà fait
+npm install -g @enokdev/spring-fullstack-speed
+
+# Création d'un nouveau projet
+sfs app --name=my-awesome-app --package=com.example.myapp --db=postgresql --frontend=react
+
+# Génération d'une entité
+cd my-awesome-app
+sfs entity --name=Product --fields=name:string,description:string,price:double
+
+# Ajout des DTOs et opérations CRUD
+sfs dtos --entity=Product
+sfs crud --entity=Product --frontend=true
+
+# Lancement de l'application
+./mvnw spring-boot:run
+```
+
+Voir notre [Guide de démarrage rapide](docs/quick-start.md) pour plus d'options et d'explications.
+
+## 🧰 Utilisation
 
 ### Générer une nouvelle application
 
 ```bash
-# Génère une nouvelle application avec les options interactives
-sfs
-
-# Ou avec le nom explicite du générateur
+# Mode interactif
 sfs app
+
+# Mode avec options
+sfs app --name=my-app --package=com.example --db=mysql --frontend=react --build=maven
 ```
 
-Vous serez guidé à travers plusieurs questions pour configurer votre application :
-- Nom de l'application
-- Nom du package Java
-- Outil de build (Maven ou Gradle)
-- Framework frontend
-- Base de données
-- Options d'authentification
-- Fonctionnalités supplémentaires
+Options disponibles :
+- `--name` : Nom de l'application
+- `--package` : Package Java de base
+- `--db` : Base de données (h2, mysql, postgresql, mongodb)
+- `--build` : Outil de build (maven, gradle)
+- `--frontend` : Framework frontend (none, react, vue, angular, thymeleaf, jte)
+- `--auth` : Type d'authentification (none, jwt, oauth2, basic)
+- `--cache` : Solution de cache (none, redis, ehcache)
+- `--messaging` : Solution de messagerie (none, kafka, rabbitmq)
 
 ### Générer une nouvelle entité
 
 ```bash
-# Génère une nouvelle entité avec les options interactives
-sfs entity
-
-# Ou avec le nom de l'entité
-sfs entity --entity-name User --package-name com.example.domain
+sfs entity --name=Product --fields=name:string,price:double,description:string
 ```
+
+Options pour les champs :
+- Types : string, integer, long, float, double, boolean, date, time, datetime, enum, blob, uuid
+- Validations : [required], [min=x], [max=y], [pattern=regex], [email], etc.
 
 ### Générer des DTOs
 
 ```bash
-# Génère des DTOs pour une entité existante
-sfs dtos --entity-name Product
+sfs dtos --entity=Product --mapping=mapstruct
 ```
+
+Options :
+- `--entity` : Nom de l'entité
+- `--types` : Types de DTOs (basic, create, update, view, all)
+- `--mapping` : Outil de mapping (manual, mapstruct, modelmapper)
 
 ### Générer des opérations CRUD
 
 ```bash
-# Génère des opérations CRUD pour une entité existante
-sfs crud --entity-name User
+sfs crud --entity=Product --pagination=true --sorting=true --frontend=true
 ```
+
+Options :
+- `--entity` : Nom de l'entité
+- `--pagination` : Activer la pagination
+- `--sorting` : Activer le tri
+- `--frontend` : Générer des composants frontend
 
 ### Générer un module fonctionnel
 
 ```bash
-# Génère un nouveau module fonctionnel
-sfs module --module-name Payment
+sfs module --name=Inventory --entities=Product,Category,Supplier
 ```
 
-## 🔧 Technologies supportées
+Options :
+- `--name` : Nom du module
+- `--entities` : Liste d'entités à inclure
+- `--package` : Package spécifique pour le module
+
+### Recherche et Indexation
+
+```bash
+sfs search --entity=Article --engine=elasticsearch --fields=title,content,tags
+```
+
+Options :
+- `--entity` : Entité à indexer
+- `--engine` : Moteur de recherche (database, elasticsearch, solr)
+- `--fields` : Champs à indexer
+
+### Notifications
+
+```bash
+sfs notification --type=email --entity=User
+```
+
+Options :
+- `--type` : Type de notification (email, sms, push, websocket, all)
+- `--entity` : Entité liée aux notifications
+- `--templates` : Générer des templates (true, false)
+
+### Conteneurisation
+
+```bash
+sfs container --type=compose --services=db,redis,elasticsearch
+```
+
+Options :
+- `--type` : Type de configuration (simple, multi-stage, compose)
+- `--services` : Services supplémentaires à inclure
+
+### Déploiement
+
+```bash
+sfs deploy --platform=aws --type=advanced
+```
+
+Options :
+- `--platform` : Plateforme de déploiement (heroku, aws, azure, gcp)
+- `--type` : Type de configuration (basic, advanced)
+
+### CI/CD
+
+```bash
+sfs cicd --platform=github --stages=build,test,deploy
+```
+
+Options :
+- `--platform` : Plateforme CI/CD (github, gitlab, jenkins, azure)
+- `--stages` : Étapes à inclure
+
+## 📚 Documentation
+
+- [Guide de démarrage rapide](docs/quick-start.md)
+- [Documentation des générateurs](docs/generators-documentation.md)
+- [Guide des cas d'utilisation](docs/use-cases.md)
+- [Documentation des entités](docs/entities.md)
+- [Documentation des DTOs](docs/dtos.md)
+- [Liste des commandes](docs/commands.md)
+
+## 🛠 Technologies supportées
 
 ### Backend
-- **Spring Boot** : dernières versions supportées
-- **Spring Security** : JWT, OAuth2
+- **Spring Boot** : 3.x
 - **Bases de données** : MySQL, PostgreSQL, MongoDB, H2
-- **ORM** : JPA/Hibernate, Spring Data JPA
-- **Tests** : JUnit 5, Mockito, TestContainers
+- **JPA/Hibernate** pour la persistance
+- **Spring Security** pour l'authentification et l'autorisation
+- **Spring Data JPA/MongoDB** pour l'accès aux données
+- **MapStruct/ModelMapper** pour la conversion DTO
+- **Redis/EhCache** pour la mise en cache
+- **Kafka/RabbitMQ** pour la messagerie
+- **Elasticsearch** pour la recherche avancée
+- **Liquibase/Flyway** pour les migrations de base de données
 
 ### Frontend
-- **React avec Inertia.js** : pour une expérience SPA sans API
-- **Vue.js avec Inertia.js** : alternative à React
-- **Angular** : en mode standalone
-- **Templates traditionnels** : Thymeleaf, JTE
+- **React** avec hooks et context API
+- **Vue.js** avec composition API
+- **Angular** avec composants et services
+- **Thymeleaf** pour le rendu côté serveur
+- **JTE** pour les templates haute performance
+- **TailwindCSS/Bootstrap** pour le styling
+- **Jest/Testing Library/Vitest** pour les tests frontend
 
-### DevOps & Tooling
-- **Docker** : conteneurisation de l'application
-- **CI/CD** : configurations pour GitHub Actions, GitLab CI
-- **Documentation API** : OpenAPI/Swagger
+### DevOps
+- **Docker** pour la conteneurisation
+- **Kubernetes** pour l'orchestration
+- **GitHub Actions/GitLab CI** pour CI/CD
+- **AWS/Azure/GCP/Heroku** pour le déploiement
 
 ## ✨ Fonctionnalités
 
-- ✅ Génération complète d'une application Spring Boot
-- ✅ Intégration Inertia.js pour frontend React/Vue
-- ✅ Authentification et autorisation pré-configurées
-- ✅ Génération CRUD automatique
-- ✅ Support des DTOs avec mappers
-- ✅ Modules fonctionnels pré-configurés
-- ✅ Documentation API avec OpenAPI
-- ✅ Tests unitaires et d'intégration
-- ✅ Configuration Docker
+- Génération complète d'applications prêtes à l'emploi
+- Création d'entités avec validations et relations
+- Génération automatique d'API RESTful
+- Authentification JWT et OAuth2
+- Interfaces utilisateur cohérentes et réactives
+- Pagination et tri côté serveur
+- Recherche full-text avec Elasticsearch
+- Mises en cache pour les performances
+- Tests unitaires et d'intégration
+- Documentation Swagger/OpenAPI
+- Support multi-langues
+- Conteneurisation Docker
+- Scripts de déploiement
+- Configuration CI/CD
 
-## 🏗️ Architecture
+## 🏗 Architecture
+
+SFS génère des applications suivant une architecture en couches classique:
 
 ```
-Application générée
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   ├── config/        # Configuration Spring Boot
-│   │   │   ├── controller/    # Contrôleurs REST et Inertia
-│   │   │   ├── dto/           # DTOs pour la couche API
-│   │   │   ├── entity/        # Entités JPA
-│   │   │   ├── mapper/        # Mappers entité-DTO
-│   │   │   ├── repository/    # Repositories Spring Data
-│   │   │   ├── security/      # Configuration sécurité
-│   │   │   └── service/       # Services métier
-│   │   └── resources/
-│   │       ├── application.yml # Configuration application
-│   │       ├── static/         # Assets statiques
-│   │       └── templates/      # Templates Thymeleaf/JTE (si utilisés)
-│   └── test/                  # Tests unitaires et d'intégration
-├── frontend/                  # Code frontend (React/Vue)
-│   ├── src/
-│   │   ├── components/        # Composants React/Vue
-│   │   ├── pages/             # Pages Inertia
-│   │   └── styles/            # CSS/SCSS
-│   └── package.json
-├── Dockerfile                 # Configuration Docker
-├── docker-compose.yml         # Services Docker (DB, etc.)
-└── pom.xml/build.gradle       # Configuration Maven/Gradle
++----------------+
+|   Frontend     |
+| React/Vue/etc. |
++--------+-------+
+         |
+  REST/GraphQL API
+         |
++--------v-------+
+|  Controllers   |
++----------------+
+|   Services     |
++----------------+
+| Repositories   |
++----------------+
+|   Entities     |
++----------------+
+|   Database     |
++----------------+
 ```
 
-## 👨‍💻 Développement
+## 🧪 Tests
 
-Pour contribuer au développement de SFS, suivez ces étapes :
+Le projet comprend plusieurs niveaux de tests:
+
+```bash
+# Tests unitaires
+npm test
+
+# Tests d'intégration
+npm run test:integration
+
+# Tests end-to-end
+npm run test:e2e
+
+# Tests des cas limites
+npm run test:edge-cases
+
+# Tests de compatibilité multi-plateforme
+npm run test:platform-compatibility
+
+# Tous les tests
+npm run test:all
+```
+
+## 💻 Développement
+
+Pour contribuer au développement de Spring-Fullstack-Speed:
 
 ```bash
 # Cloner le dépôt
@@ -157,31 +309,17 @@ cd spring-fullstack-speed
 # Installer les dépendances
 npm install
 
-# Lier globalement pour les tests
+# Lier le package pour les tests locaux
 npm link
 
-# Exécuter les tests
-npm test
+# Lancer en mode développement
+npm run dev
 ```
 
-### Scripts disponibles
+## 👥 Contribuer
 
-- `npm run build` : Compile le code TypeScript
-- `npm run dev` : Compile en mode watch
-- `npm test` : Lance tous les tests
-- `npm run lint` : Vérifie le style du code
-- `npm run format` : Formate le code
-
-## 🤝 Contribuer
-
-Les contributions sont les bienvenues ! N'hésitez pas à :
-
-1. Fork le projet
-2. Créer une branche pour votre fonctionnalité (`git checkout -b feature/amazing-feature`)
-3. Commit vos changements (`git commit -m 'feat: add amazing feature'`)
-4. Push sur la branche (`git push origin feature/amazing-feature`)
-5. Ouvrir une Pull Request
+Les contributions sont les bienvenues! Consultez notre [guide de contribution](CONTRIBUTING.md) pour plus d'informations.
 
 ## 📄 Licence
 
-Ce projet est sous licence ISC. Voir le fichier `LICENSE` pour plus d'informations.
+Ce projet est sous licence ISC. Voir le fichier [LICENSE](LICENSE) pour plus de détails.

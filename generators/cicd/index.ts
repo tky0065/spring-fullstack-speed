@@ -182,8 +182,11 @@ export default class CicdGenerator extends BaseGenerator {
 
   // Méthodes privées
   private _generateGitHubActions() {
-    // Créer le répertoire .github/workflows s'il n'existe pas
-    this.fs.mkdirp('.github/workflows');
+    // Créer le répertoire .github/workflows s'il n'existe pas en ajoutant un fichier .gitkeep
+    this.fs.write(
+      this.destinationPath('.github/workflows/.gitkeep'),
+      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
+    );
 
     // Pipeline principal
     this.fs.copyTpl(

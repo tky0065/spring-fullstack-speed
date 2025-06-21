@@ -1,0 +1,108 @@
+version: '3.8'
+
+# docker-compose de base qui peut être étendu par les fichiers dev et prod
+services:
+  # Service d'application Spring Boot
+  backend:
+    container_name: ${appName}-backend
+    build:
+      context: .
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - JAVA_OPTS=${JAVA_OPTS:-}
+    restart: unless-stopped
+    networks:
+      - app-network
+
+<% if (databaseType !== 'h2' && databaseType !== 'none') { %>
+  # Service de base de données
+  <% if (databaseType === 'mysql') { %>
+  mysql:
+    container_name: ${appName}-mysql
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${appName}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - app-network
+  <% } else if (databaseType === 'postgres') { %>
+  postgres:
+    container_name: ${appName}-postgres
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${appName}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - app-network
+  <% } else if (databaseType === 'mongodb') { %>
+  mongodb:
+    container_name: ${appName}-mongodb
+    image: mongo:4.4
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD}
+      - MONGO_INITDB_DATABASE=${appName}
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+    networks:
+      - app-network
+  <% } %>
+<% } %>
+
+<% if (includeFrontend) { %>
+  # Service frontend
+  frontend:
+    container_name: ${appName}-frontend
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    networks:
+      - app-network
+<% } %>
+
+<% if (includeNginx) { %>
+  # Serveur Nginx pour le reverse proxy
+  nginx:
+    container_name: ${appName}-nginx
+    image: nginx:alpine
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/logs:/var/log/nginx
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${APP_SSL_PORT:-443}:443"
+    depends_on:
+      - backend
+<% if (includeFrontend) { %>
+      - frontend
+<% } %>
+    restart: unless-stopped
+    networks:
+      - app-network
+<% } %>
+
+networks:
+  app-network:
+    driver: bridge
+
+<% if (databaseType !== 'h2' && databaseType !== 'none') { %>
+volumes:
+  <% if (databaseType === 'mysql') { %>
+  mysql-data:
+  <% } else if (databaseType === 'postgres') { %>
+  postgres-data:
+  <% } else if (databaseType === 'mongodb') { %>
+  mongodb-data:
+  <% } %>
+<% } %>

@@ -55,6 +55,7 @@ export default class DtosGenerator extends BaseGenerator {
     // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
     const opts = this.options as any;
 
+    // Simplification du prompt pour ne demander que le nom de l'entité
     const prompts: any = [
       {
         type: "input",
@@ -72,67 +73,87 @@ export default class DtosGenerator extends BaseGenerator {
         },
       },
       {
-        type: "input",
-        name: "packageName",
-        message: chalk.cyan("Dans quel package voulez-vous générer les DTOs?"),
-        default: (answers: any) => {
-          if (opts["package-name"]) return opts["package-name"];
-
-          // Essayer de déduire le package à partir de l'emplacement de l'entité
-          const entityName = answers.entityName || opts["entity-name"] || "";
-          if (entityName) {
-            const foundEntityPath = this.findEntityFile(entityName);
-            if (foundEntityPath) {
-              const packagePath = this.extractPackageName(foundEntityPath);
-              if (packagePath) {
-                this.entityPackageName = packagePath;
-                return packagePath.replace('.domain', '.dto');
-              }
-            }
-          }
-          return "com.example.dto";
-        },
-        validate: (input: string) => {
-          if (!input || input.trim() === "") {
-            return "Le nom du package est obligatoire.";
-          }
-          if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/.test(input)) {
-            return "Format de package invalide (ex: com.example.dto)";
-          }
-          return true;
-        },
-      },
-      {
         type: "list",
         name: "mapperFramework",
         message: chalk.cyan("Quel framework de mapping souhaitez-vous utiliser?"),
         default: opts["mapper-framework"] || "mapstruct",
         choices: [
           { name: "MapStruct - Génération automatique de mappers à la compilation", value: "mapstruct" },
-          { name: "ModelMapper - Mapping bas�� sur la réflexion à l'exécution", value: "modelmapper" },
+          { name: "ModelMapper - Mapping basé sur la réflexion à l'exécution", value: "modelmapper" },
           { name: "Manuel - Écrire le code de mapping manuellement", value: "manual" }
         ]
       }
     ];
 
-    this.answers = await this.prompt(prompts);
-
-    // Si l'entité a été trouvée, essayer d'extraire ses champs
-    if (this.entityPackageName) {
-      this.entityFields = await this.extractEntityFields(this.answers.entityName);
-    }
-
-    // Si pas de champs trouvés automatiquement, demander à l'utilisateur
-    if (this.entityFields.length === 0) {
-      this.log(INFO_COLOR("Impossible d'extraire automatiquement les champs de l'entité."));
-      await this.askForEntityFields();
+    // Obtenir les réponses de l'utilisateur
+    const answers = await this.prompt(prompts);
+    
+    // Rechercher l'entité et extraire son package
+    const entityName = answers.entityName;
+    const entityFile = this.findEntityFile(entityName);
+    
+    if (!entityFile) {
+      this.log(ERROR_COLOR(`❌ L'entité ${entityName}.java n'a pas été trouvée. Impossible de générer le DTO.`));
+      // On pourrait arrêter ici avec process.exit(), mais mieux vaut laisser l'utilisateur décider
+      return;
     } else {
-      this.log(SUCCESS_COLOR(`✅ ${this.entityFields.length} champs trouvés dans l'entité ${this.answers.entityName}`));
+      // Extraire le package de l'entité
+      const entityPackage = this.extractPackageName(entityFile);
+      if (entityPackage) {
+        this.entityPackageName = entityPackage;
+        
+        // Définir automatiquement le package dto en se basant sur le package de l'entité
+        // Remplacer .entity, .domain ou .model par .dto, ou ajouter .dto si aucun de ces segments n'existe
+        let dtoPackage = entityPackage;
+        if (dtoPackage.includes(".entity")) {
+          dtoPackage = dtoPackage.replace(".entity", ".dto");
+        } else if (dtoPackage.includes(".domain")) {
+          dtoPackage = dtoPackage.replace(".domain", ".dto");
+        } else if (dtoPackage.includes(".model")) {
+          dtoPackage = dtoPackage.replace(".model", ".dto");
+        } else {
+          dtoPackage = `${dtoPackage}.dto`;
+        }
+        
+        // Stocker le package dto dans les réponses
+        answers.packageName = dtoPackage;
+        
+        this.log(SUCCESS_COLOR(`✅ DTO sera généré dans le package: ${dtoPackage}`));
+        
+        // Extraire automatiquement les champs de l'entité
+        this.log(INFO_COLOR("🔍 Extraction automatique des champs de l'entité..."));
+        this.entityFields = await this.extractEntityFields(entityName);
+        
+        if (this.entityFields.length > 0) {
+          this.log(SUCCESS_COLOR(`✅ ${this.entityFields.length} champs extraits avec succès!`));
+          
+          // Afficher les champs détectés
+          this.log("");
+          this.log(STEP_PREFIX + chalk.bold("CHAMPS DÉTECTÉS AUTOMATIQUEMENT"));
+          this.log(SECTION_DIVIDER);
+          
+          this.entityFields.forEach((field, index) => {
+            this.log(`${index + 1}. ${chalk.green(field.name)} : ${chalk.cyan(field.type)} ${field.required ? chalk.yellow('(requis)') : ''}`);
+          });
+        } else {
+          this.log(ERROR_COLOR("❌ Aucun champ n'a pu être extrait automatiquement."));
+          // Terminons ici car nous ne voulons plus demander les champs manuellement
+          return;
+        }
+      } else {
+        this.log(ERROR_COLOR(`❌ Impossible d'extraire le package de l'entité.`));
+        // Définir un package par défaut
+        answers.packageName = this.findBasePackageName() + ".dto";
+        // Ne demandons plus les champs manuellement
+        return;
+      }
     }
+    
+    this.answers = answers;
   }
 
   /**
-   * Recherche le fichier d'entité dans le projet
+   * Recherche le fichier d'entité dans le projet de manière plus efficace et robuste
    */
   findEntityFile(entityName: string): string | null {
     try {
@@ -140,31 +161,172 @@ export default class DtosGenerator extends BaseGenerator {
       const srcDir = path.join(rootDir, 'src/main/java');
 
       if (!fs.existsSync(srcDir)) {
+        this.log(ERROR_COLOR("❌ Dossier src/main/java non trouvé"));
         return null;
       }
 
-      // Recherche récursive du fichier d'entité
-      const findFile = (dir: string, fileName: string): string | null => {
-        const items = fs.readdirSync(dir);
+      this.log(INFO_COLOR(`🔍 Recherche de l'entité ${entityName} dans ${srcDir}`));
 
+      // Stratégie 1: Rechercher dans les dossiers entity ou domain (approche rapide)
+      const commonEntityDirs = ['entity', 'domain', 'model', 'entities', 'models'];
+      let entityFile: string | null = null;
+
+
+      // Afficher le répertoire de travail actuel pour faciliter le debug
+      this.log(INFO_COLOR(`📂 Répertoire de travail actuel: ${rootDir}`));
+
+      // Vérifier si le fichier existe directement dans le répertoire de travail
+      const cwdEntityPath = path.join(rootDir, `${entityName}.java`);
+      if (fs.existsSync(cwdEntityPath)) {
+        this.log(SUCCESS_COLOR(`✅ Entité trouvée dans le répertoire de travail: ${cwdEntityPath}`));
+        return cwdEntityPath;
+      }
+
+      // Vérifier si le répertoire cible existe dans test-folder-for-cleanup
+      let testFolder = path.join(rootDir, 'test-folder-for-cleanup');
+      if (fs.existsSync(testFolder)) {
+        this.log(INFO_COLOR(`📂 Vérification dans le répertoire de test: ${testFolder}`));
+
+        // Vérifier dans les sous-répertoires courants du projet généré
+        testFolder = path.join(testFolder, 'src/main/java');
+        if (fs.existsSync(testFolder)) {
+          const entityPath = this.searchEntityInDirectory(testFolder, entityName);
+          if (entityPath) return entityPath;
+        }
+      }
+
+      // Recherche récursive mais ciblée
+      const findEntityInDir = (dir: string): string | null => {
+        if (!fs.existsSync(dir)) return null;
+
+        const items = fs.readdirSync(dir);
         for (const item of items) {
           const fullPath = path.join(dir, item);
-          const stats = fs.statSync(fullPath);
+          try {
+            const stats = fs.statSync(fullPath);
 
-          if (stats.isDirectory()) {
-            const found = findFile(fullPath, fileName);
-            if (found) return found;
-          } else if (item === `${fileName}.java`) {
-            return fullPath;
+            // Si c'est un dossier dont le nom correspond aux dossiers typiques pour les entités
+            if (stats.isDirectory()) {
+              if (commonEntityDirs.includes(item.toLowerCase())) {
+                const targetFile = path.join(fullPath, `${entityName}.java`);
+                // Vérification insensible à la casse
+                const files = fs.readdirSync(fullPath);
+                for (const file of files) {
+                  if (file.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+                    const entityFilePath = path.join(fullPath, file);
+                    this.log(SUCCESS_COLOR(`✅ Entité trouvée: ${entityFilePath}`));
+                    return entityFilePath;
+                  }
+                }
+              }
+              // Continuer la recherche en profondeur
+              const found = findEntityInDir(fullPath);
+              if (found) return found;
+            }
+            // Vérifier directement si le fichier correspond à l'entité
+            else if (item.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+              this.log(SUCCESS_COLOR(`✅ Entité trouvée: ${fullPath}`));
+              return fullPath;
+            }
+          } catch (err) {
+            // Gérer les erreurs potentielles (permissions, etc.)
+            this.log(ERROR_COLOR(`⚠️ Erreur lors de l'accès à ${fullPath}: ${err}`));
+            continue;
+          }
+        }
+        return null;
+      };
+
+      entityFile = findEntityInDir(srcDir);
+
+      // Stratégie 2 (fallback): Recherche complète si la recherche ciblée a échoué
+      if (!entityFile) {
+        this.log(INFO_COLOR("⚠️ Entité non trouvée dans les dossiers courants, recherche générale..."));
+
+        const findFileCompleteScan = (dir: string, fileName: string): string | null => {
+          try {
+            const items = fs.readdirSync(dir);
+
+            for (const item of items) {
+              const fullPath = path.join(dir, item);
+              try {
+                const stats = fs.statSync(fullPath);
+
+                if (stats.isDirectory()) {
+                  const found = findFileCompleteScan(fullPath, fileName);
+                  if (found) return found;
+                }
+                // Recherche insensible à la casse
+                else if (item.toLowerCase() === `${fileName.toLowerCase()}.java`) {
+                  this.log(SUCCESS_COLOR(`✅ Entité trouvée (recherche complète): ${fullPath}`));
+                  return fullPath;
+                }
+              } catch (err) {
+                // Gérer les erreurs potentielles (permissions, etc.)
+
+              }
+            }
+          } catch (err) {
+            this.log(ERROR_COLOR(`⚠️ Erreur lors de l'accès au répertoire ${dir}: ${err}`));
+          }
+          return null;
+        };
+
+        entityFile = findFileCompleteScan(srcDir, entityName);
+
+        // Si toujours pas trouvé, remonter d'un niveau et chercher dans tout le répertoire du projet
+        if (!entityFile) {
+          this.log(INFO_COLOR("⚠️ Recherche étendue dans tout le répertoire du projet..."));
+          entityFile = findFileCompleteScan(rootDir, entityName);
+        }
+      }
+
+      if (!entityFile) {
+        this.log(ERROR_COLOR(`❌ Impossible de trouver l'entité ${entityName}.java`));
+      }
+
+      return entityFile;
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de la recherche de l'entité: ${error}`));
+      return null;
+    }
+  }
+
+  /**
+   * Recherche une entité dans un répertoire spécifique
+   */
+  searchEntityInDirectory(dir: string, entityName: string): string | null {
+    try {
+      if (!fs.existsSync(dir)) return null;
+
+      const searchRecursive = (currentDir: string): string | null => {
+        const items = fs.readdirSync(currentDir);
+
+        for (const item of items) {
+          const fullPath = path.join(currentDir, item);
+          try {
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isDirectory()) {
+              // Recherche récursive
+              const result = searchRecursive(fullPath);
+              if (result) return result;
+            } else if (item.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+              this.log(SUCCESS_COLOR(`✅ Entité trouvée dans le répertoire spécifique: ${fullPath}`));
+              return fullPath;
+            }
+          } catch (err) {
+            // Ignorer les erreurs
+            continue;
           }
         }
 
         return null;
       };
 
-      return findFile(srcDir, entityName);
+      return searchRecursive(dir);
     } catch (error) {
-      this.log(ERROR_COLOR(`Erreur lors de la recherche de l'entité: ${error}`));
+      this.log(ERROR_COLOR(`❌ Erreur lors de la recherche de l'entité: ${error}`));
       return null;
     }
   }
@@ -172,8 +334,14 @@ export default class DtosGenerator extends BaseGenerator {
   /**
    * Extrait le nom de package à partir du fichier d'entité
    */
-  extractPackageName(filePath: string): string | null {
+  extractPackageName(filePath: string | null): string | null {
     try {
+      // Vérification que filePath est bien une chaîne de caractères
+      if (!filePath) {
+        this.log(ERROR_COLOR(`Impossible de trouver le fichier d'entité.`));
+        return null;
+      }
+
       const content = fs.readFileSync(filePath, 'utf8');
       const packageMatch = content.match(/package\s+([^;]+);/);
 
@@ -189,7 +357,51 @@ export default class DtosGenerator extends BaseGenerator {
   }
 
   /**
-   * Extrait les champs à partir du fichier d'entité
+   * Trouve et extrait le package de base du projet
+   */
+  findBasePackageName(): string {
+    try {
+      // Rechercher le package dans l'application principale
+      const mainAppFiles = fs.readdirSync("src/main/java");
+      if (mainAppFiles && mainAppFiles.length > 0) {
+        // Parcourir récursivement pour trouver un fichier Java contenant "package"
+        const findPackageInDir = (dir: string): string | null => {
+          const files = fs.readdirSync(dir);
+
+          for (const file of files) {
+            const fullPath = path.join(dir, file);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isDirectory()) {
+              const result = findPackageInDir(fullPath);
+              if (result) return result;
+            }
+            else if (file.endsWith('.java')) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                const packageMatch = content.match(/package\s+([^;]+);/);
+                if (packageMatch && packageMatch.length > 1) {
+                  return packageMatch[1].trim();
+                }
+              } catch (e) {
+                // Ignorer les erreurs de lecture de fichier
+              }
+            }
+          }
+          return null;
+        };
+
+        return findPackageInDir('src/main/java') || 'com.example';
+      }
+    } catch (error) {
+      this.log(ERROR_COLOR(`Erreur lors de la recherche du package de base: ${error}`));
+    }
+
+    return 'com.example';
+  }
+
+  /**
+   * Extrait les champs à partir du fichier d'entité de façon plus robuste
    */
   async extractEntityFields(entityName: string): Promise<any[]> {
     try {
@@ -197,123 +409,209 @@ export default class DtosGenerator extends BaseGenerator {
       if (!entityFile) return [];
 
       const content = fs.readFileSync(entityFile, 'utf8');
-      const fields: any[] = [];
+      // Définir explicitement le type du tableau
+      const fields: Array<{
+        name: string;
+        type: string;
+        required: boolean;
+        unique: boolean;
+        minLength: number | null;
+        maxLength: number | null;
+        min: number | null;
+        max: number | null;
+        enumValues?: string[] | null;
+      }> = [];
 
-      // Pattern pour correspondre aux champs (très simplifié)
-      const fieldPattern = /private\s+(\S+)\s+(\S+);/g;
-      let match;
+      // 1. Analyser le contenu Java pour trouver les champs
+      
+      // Détecter les imports pour les types spéciaux
+      const imports: { [key: string]: string } = {};
+      const importPattern = /import\s+([^;]+);/g;
+      let importMatch;
+      while ((importMatch = importPattern.exec(content)) !== null) {
+        const importStatement = importMatch[1].trim();
+        const lastDot = importStatement.lastIndexOf('.');
+        if (lastDot !== -1) {
+          const typeName = importStatement.substring(lastDot + 1);
+          imports[typeName] = importStatement;
+        }
+      }
+      
+      // Pattern amélioré pour correspondre aux champs avec annotations
+      // Cette regex essaie de capturer les blocs d'annotations avant la déclaration du champ
+      const fieldBlockPattern = /(?:\/\/.*\n|\/\*[\s\S]*?\*\/|\s*@[^(].*\n)*\s*private\s+([^\s<>]+)(?:<[^>]+>)?\s+(\w+)(?:\s*=\s*[^;]+)?;/g;
+      let fieldMatch;
 
-      while ((match = fieldPattern.exec(content)) !== null) {
-        const type = match[1];
-        const name = match[2];
+      while ((fieldMatch = fieldBlockPattern.exec(content)) !== null) {
+        const fieldBlock = fieldMatch[0]; // Le bloc entier contenant annotations + déclaration
+        const type = fieldMatch[1];  // Le type du champ
+        const name = fieldMatch[2];  // Le nom du champ
+        
+        // Ignorer les champs spécifiques
+        if (name === 'id' || 
+            name === 'serialVersionUID' || 
+            name.includes("createdBy") || 
+            name.includes("createdDate") ||
+            name.includes("lastModifiedBy") || 
+            name.includes("lastModifiedDate")) {
+          continue;
+        }
+        
+        // Analyser les annotations pour déterminer les validations
+        const notNullPresent = /@NotNull|@NotEmpty|@NotBlank/.test(fieldBlock);
+        const sizePattern = /@Size\s*\((?:[^)]*?min\s*=\s*(\d+))?(?:[^)]*?max\s*=\s*(\d+))?\)/;
+        const sizeMatch = fieldBlock.match(sizePattern);
+        const minLength = sizeMatch && sizeMatch[1] ? parseInt(sizeMatch[1]) : null;
+        const maxLength = sizeMatch && sizeMatch[2] ? parseInt(sizeMatch[2]) : null;
+        
+        // Rechercher les annotations @Min et @Max
+        const minMatch = fieldBlock.match(/@Min\s*\(\s*value\s*=\s*(\d+)\s*\)/);
+        const maxMatch = fieldBlock.match(/@Max\s*\(\s*value\s*=\s*(\d+)\s*\)/);
+        const min = minMatch ? parseInt(minMatch[1]) : null;
+        const max = maxMatch ? parseInt(maxMatch[1]) : null;
+        
+        // Détecter les annotations d'unicité
+        const uniquePresent = /@Column\s*\((?:[^)]*?unique\s*=\s*true)?\)/.test(fieldBlock);
 
-        // Ignorer le champ id qui sera géré séparément
-        if (name !== 'id' && !name.includes("createdBy") && !name.includes("createdDate") &&
-            !name.includes("lastModifiedBy") && !name.includes("lastModifiedDate")) {
-
-          // Essayer de déduire des informations sur les validations
-          const required = content.includes(`@NotNull\\s+${name}`) || content.includes(`@NotBlank\\s+${name}`);
-          const minLength = (content.match(new RegExp(`@Size\\(min\\s*=\\s*(\\d+).*?\\).*?${name}`)) || [])[1];
-          const maxLength = (content.match(new RegExp(`@Size\\(.*?max\\s*=\\s*(\\d+).*?\\).*?${name}`)) || [])[1];
-
-          fields.push({
-            name,
-            type,
-            required,
-            minLength: minLength ? parseInt(minLength) : null,
-            maxLength: maxLength ? parseInt(maxLength) : null,
-            min: null,
-            max: null
-          });
+        // Détecter si c'est un champ de type Enum
+        let enumValues: string[] | null = null;
+        if (type === "Enum" || (imports[type] && imports[type].includes("enum"))) {
+            // Essayer de trouver le fichier de l'énumération
+            const enumFile = this.findEnumFile(type, imports[type]);
+            if (enumFile) {
+                // S'assurer que le résultat est bien un tableau de chaînes ou null
+                const extractedValues = this.extractEnumValues(enumFile);
+                enumValues = Array.isArray(extractedValues) ? extractedValues : null;
+            }
+        }
+        
+        fields.push({
+          name,
+          type,
+          required: notNullPresent,
+          unique: uniquePresent,
+          minLength,
+          maxLength,
+          min,
+          max,
+          enumValues
+        });
+      }
+      
+      // Si aucun champ n'a été trouvé avec la méthode précise, essayer une approche plus simple
+      if (fields.length === 0) {
+        this.log(INFO_COLOR("⚠️ Analyse détaillée infructueuse, utilisation de la méthode simple..."));
+        
+        const simpleFieldPattern = /private\s+([^\s<>]+)(?:<[^>]+>)?\s+(\w+);/g;
+        let simpleMatch;
+        while ((simpleMatch = simpleFieldPattern.exec(content)) !== null) {
+          const type = simpleMatch[1];
+          const name = simpleMatch[2];
+          
+          if (name !== 'id' && name !== 'serialVersionUID' && 
+              !name.includes("createdBy") && !name.includes("createdDate") &&
+              !name.includes("lastModifiedBy") && !name.includes("lastModifiedDate")) {
+            
+            fields.push({
+              name,
+              type,
+              required: false,
+              unique: false, // Ajout de la propriété unique manquante
+              minLength: null,
+              maxLength: null,
+              min: null,
+              max: null,
+              enumValues: null // Explicitation de la valeur null pour enumValues
+            });
+          }
         }
       }
 
       return fields;
     } catch (error) {
-      this.log(ERROR_COLOR(`Erreur lors de l'extraction des champs: ${error}`));
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'extraction des champs: ${error}`));
       return [];
     }
   }
-
+  
   /**
-   * Demande à l'utilisateur de définir les champs de l'entité
+   * Recherche le fichier d'une énumération Java
    */
-  async askForEntityFields() {
-    this.entityFields = [];
-
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("DÉFINITION DES CHAMPS DE L'ENTITÉ"));
-    this.log(SECTION_DIVIDER);
-    this.log(HELP_COLOR("Veuillez définir les champs que vous voulez inclure dans le DTO"));
-
-    let addMore = true;
-
-    while (addMore) {
-      const field = await this.prompt([
-        {
-          type: "input",
-          name: "name",
-          message: chalk.cyan("Nom du champ:"),
-          validate: (input: string) => {
-            if (!input) return "Le nom du champ est requis";
-            if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(input)) {
-              return "Le nom du champ doit commencer par une lettre et ne contenir que des lettres, chiffres et underscores";
-            }
-            if (["id", "class", "abstract", "interface", "enum"].includes(input.toLowerCase())) {
-              return `'${input}' est un mot réservé Java`;
-            }
-            return true;
-          }
-        },
-        {
-          type: "input",
-          name: "type",
-          message: chalk.cyan("Type de données (String, Integer, LocalDate...):"),
-          default: "String",
-          validate: (input: string) => {
-            if (!input) return "Le type de données est requis";
-            return true;
-          }
-        },
-        {
-          type: "confirm",
-          name: "required",
-          message: chalk.cyan("Ce champ est-il requis?"),
-          default: true
+  findEnumFile(enumName: string, importStatement?: string): string | null {
+    try {
+      // Si on a l'importation complète, on peut trouver directement le fichier
+      if (importStatement) {
+        const packagePath = importStatement.replace(/\./g, path.sep);
+        const rootDir = process.cwd();
+        const srcDir = path.join(rootDir, 'src/main/java');
+        const enumFile = path.join(srcDir, `${packagePath}.java`);
+        
+        if (fs.existsSync(enumFile)) {
+          return enumFile;
         }
-      ]);
-
-      this.entityFields.push(field);
-      this.log(SUCCESS_COLOR(`Champ '${field.name}' ajouté`));
-
-      const { addMoreFields } = await this.prompt({
-        type: "confirm",
-        name: "addMoreFields",
-        message: chalk.cyan("Ajouter un autre champ?"),
-        default: true
-      });
-
-      addMore = addMoreFields;
+      }
+      
+      // Sinon, faire une recherche similaire à findEntityFile
+      return this.findEntityFile(enumName);
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de la recherche de l'enum: ${error}`));
+      return null;
     }
-
-    // Afficher un résumé des champs
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("RÉSUMÉ DES CHAMPS"));
-    this.log(SECTION_DIVIDER);
-
-    this.entityFields.forEach((field, index) => {
-      this.log(`${index + 1}. ${chalk.green(field.name)} : ${chalk.cyan(field.type)} ${field.required ? chalk.yellow('(requis)') : ''}`);
-    });
   }
-
-  hasDateFields(): boolean {
-    return this.entityFields.some(field =>
-      ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant', 'Date'].includes(field.type)
-    );
+  
+  /**
+   * Extrait les valeurs d'une énumération Java
+   */
+  extractEnumValues(enumFile: string): string[] | null {
+    try {
+      const content = fs.readFileSync(enumFile, 'utf8');
+      
+      // Rechercher le bloc enum { ... }
+      const enumBlockMatch = content.match(/enum\s+\w+\s*{([^}]*)}/);
+      if (enumBlockMatch && enumBlockMatch[1]) {
+        // Extraire les valeurs de l'énumération
+        return enumBlockMatch[1]
+          .split(',')
+          .map(v => v.trim())
+          .filter(v => v && !v.includes('(') && !v.startsWith('//')); // Filtrer les commentaires et constructeurs
+      }
+      
+      return null;
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'extraction des valeurs d'enum: ${error}`));
+      return null;
+    }
   }
-
-  hasBigDecimalFields(): boolean {
-    return this.entityFields.some(field => field.type === 'BigDecimal');
+  
+  /**
+   * Crée un répertoire s'il n'existe pas déjà
+   */
+  createDirectory(dir: string): void {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        this.log(INFO_COLOR(`📁 Création du répertoire: ${dir}`));
+      }
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de la création du répertoire: ${error}`));
+    }
+  }
+  
+  /**
+   * Rend un template EJS et écrit le résultat dans un fichier
+   */
+  async renderEjsTemplate(
+    templatePath: string,
+    outputPath: string,
+    context: Record<string, any> = this.templateContext
+  ): Promise<void> {
+    try {
+      // Utiliser la méthode de la classe parente
+      await super.renderEjsTemplate(templatePath, outputPath, context);
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors du rendu du template: ${error}`));
+      throw error;
+    }
   }
 
   writing() {
@@ -341,11 +639,20 @@ export default class DtosGenerator extends BaseGenerator {
       useMapstruct: mapperFramework === 'mapstruct'
     };
 
+    // Déterminer si le package inclut déjà "dto"
+    let finalPackageName = packageName;
+    if (!finalPackageName.endsWith(".dto")) {
+      finalPackageName = `${finalPackageName}.dto`;
+    }
+
     // Créer les dossiers nécessaires
     const srcMainJavaDir = path.join(process.cwd(), 'src/main/java');
-    const packagePath = packageName.replace(/\./g, '/');
+    const packagePath = finalPackageName.replace(/\./g, '/');
     const dtoDir = path.join(srcMainJavaDir, packagePath);
     this.createDirectory(dtoDir);
+
+    // Mettre à jour le nom du package dans les données du template
+    templateData.packageName = finalPackageName;
 
     // Générer le fichier DTO
     const dtoPath = path.join(dtoDir, `${entityName}DTO.java`);
@@ -354,11 +661,26 @@ export default class DtosGenerator extends BaseGenerator {
 
     // Si ModelMapper est utilisé, générer le code de configuration
     if (mapperFramework === 'modelmapper') {
-      this._generateModelMapperConfig(entityName, packageName, templateData);
+      this._generateModelMapperConfig(entityName, finalPackageName, templateData);
     }
 
     // Afficher des informations sur les dépendances à ajouter
     this._showDependencyInfo(mapperFramework);
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type Date/Time
+   */
+  hasDateFields(): boolean {
+    const dateTypes = ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant', 'Date'];
+    return this.entityFields.some(field => dateTypes.includes(field.type));
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type BigDecimal
+   */
+  hasBigDecimalFields(): boolean {
+    return this.entityFields.some(field => field.type === 'BigDecimal');
   }
 
   /**
@@ -443,7 +765,7 @@ export default class DtosGenerator extends BaseGenerator {
 </build>
 `);
     } else if (mapperFramework === 'modelmapper') {
-      this.log(INFO_COLOR("Pour utiliser ModelMapper, ajoutez cette dépendance à votre pom.xml:"));
+      this.log(INFO_COLOR("Pour utiliser ModelMapper, ajoutez cette d��pendance à votre pom.xml:"));
       this.log(`
 <dependency>
     <groupId>org.modelmapper</groupId>

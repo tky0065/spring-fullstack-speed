@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # Service de base de données
+  db:
+    image: <%= database === 'PostgreSQL' ? 'postgres:15-alpine' : database === 'MySQL' ? 'mysql:8' : database === 'MariaDB' ? 'mariadb:10.11' : 'mongo:6-jammy' %>
+<% if (database === 'PostgreSQL') { %>
+    environment:
+      - POSTGRES_DB=<%= appName %>
+      - POSTGRES_USER=${DB_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-securepassword}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+<% } else if (database === 'MySQL' || database === 'MariaDB') { %>
+    environment:
+      - MYSQL_DATABASE=<%= appName %>
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-securepassword}
+      - MYSQL_USER=${DB_USERNAME:-user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-securepassword}
+    volumes:
+      - mysql_data:/var/lib/mysql
+<% } else if (database === 'MongoDB') { %>
+    environment:
+      - MONGO_INITDB_DATABASE=<%= appName %>
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USERNAME:-mongodb}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD:-securepassword}
+    volumes:
+      - mongodb_data:/data/db
+<% } %>
+    restart: always
+    networks:
+      - app-network
+
+  # Service backend Spring Boot
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+<% if (database === 'PostgreSQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/<%= appName %>
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-postgres}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-securepassword}
+<% } else if (database === 'MySQL') { %>
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/<%= appName %>?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-securepassword}
+<% } else if (database === 'MariaDB') { %>
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://db:3306/<%= appName %>
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-securepassword}
+<% } else if (database === 'MongoDB') { %>
+      - SPRING_DATA_MONGODB_URI=mongodb://${DB_USERNAME:-mongodb}:${DB_PASSWORD:-securepassword}@db:27017/<%= appName %>
+<% } %>
+      - SERVER_PORT=8080
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    restart: always
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  # Service frontend Vue.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${APP_SSL_PORT:-443}:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+<% if (database === 'PostgreSQL') { %>
+  postgres_data:
+<% } else if (database === 'MySQL' || database === 'MariaDB') { %>
+  mysql_data:
+<% } else if (database === 'MongoDB') { %>
+  mongodb_data:
+<% } %>

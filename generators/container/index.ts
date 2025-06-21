@@ -238,8 +238,11 @@ export default class ContainerizationGenerator extends BaseGenerator {
   }
 
   private _generateDockerScripts() {
-    // Créer le dossier docker si nécessaire
-    this.fs.mkdirp('docker');
+    // Créer le dossier docker si nécessaire en ajoutant un fichier .gitkeep
+    this.fs.write(
+      this.destinationPath('docker/.gitkeep'),
+      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
+    );
 
     // Script de build
     this.fs.copyTpl(
@@ -281,8 +284,11 @@ export default class ContainerizationGenerator extends BaseGenerator {
   }
 
   private _generateDockerSecrets() {
-    // Créer le dossier docker/secrets si nécessaire
-    this.fs.mkdirp('docker/secrets');
+    // Créer le dossier docker/secrets si nécessaire en ajoutant un fichier .gitkeep
+    this.fs.write(
+      this.destinationPath('docker/secrets/.gitkeep'),
+      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
+    );
 
     // Fichier exemple pour les secrets Docker
     this.fs.copyTpl(
@@ -318,7 +324,11 @@ export default class ContainerizationGenerator extends BaseGenerator {
   }
 
   private _generateDockerDocs() {
-    this.fs.mkdirp('docs/docker');
+    // Créer le dossier docs/docker si nécessaire en ajoutant un fichier .gitkeep
+    this.fs.write(
+      this.destinationPath('docs/docker/.gitkeep'),
+      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
+    );
 
     // Documentation Docker principale
     this.fs.copyTpl(

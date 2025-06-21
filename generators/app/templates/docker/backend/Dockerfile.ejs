@@ -1,0 +1,44 @@
+FROM eclipse-temurin:<%= javaVersion %>-jdk-alpine as build
+
+WORKDIR /workspace/app
+
+# Copie des fichiers Maven
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+# Correction des permissions pour mvnw
+RUN chmod +x ./mvnw
+
+# Téléchargement des dépendances
+RUN ./mvnw dependency:go-offline -B
+
+# Copie du code source
+COPY src src
+
+# Construction du projet
+RUN ./mvnw package -DskipTests
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+
+# Étape d'exécution avec JRE uniquement
+FROM eclipse-temurin:<%= javaVersion %>-jre-alpine
+
+# Variables d'environnement
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV JAVA_OPTS=""
+
+# Ajout d'un utilisateur non-root
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+# Copie des fichiers d'application depuis l'étape de build
+ARG DEPENDENCY=/workspace/app/target/dependency
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+
+# Port exposé
+EXPOSE 8080
+
+# Point d'entrée
+ENTRYPOINT ["java","-cp","app:app/lib/*","<%= packageName %>.<%= appName.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') %>Application"]

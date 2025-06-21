@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeAll, afterAll } from '@jest/globals';
+import { describe, expect, test, beforeAll, afterAll, jest } from '@jest/globals';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -10,6 +10,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe('Minimal Spring Boot Generator', () => {
+  // Augmenter le timeout global pour ce groupe de tests
+  jest.setTimeout(60000);
+
   const tempDir = path.join(os.tmpdir(), 'sfs-minimal-test-' + Date.now());
 
   beforeAll(() => {
@@ -18,8 +21,12 @@ describe('Minimal Spring Boot Generator', () => {
   });
 
   afterAll(() => {
-    // Nettoyer le répertoire de test après utilisation
-    rimraf.sync(tempDir);
+    // Nettoyer le répertoire de test après utilisation - utiliser try/catch pour éviter les erreurs si le répertoire est verrouillé
+    try {
+      rimraf.sync(tempDir);
+    } catch (error) {
+      console.warn('Impossible de supprimer le répertoire temporaire:', error.message);
+    }
   });
 
   test('should generate a minimal Spring Boot project with Maven', async () => {

@@ -1,0 +1,28 @@
+# Dockerfile de développement pour le backend Spring Boot
+FROM eclipse-temurin:<%= javaVersion %>-jdk-alpine
+
+WORKDIR /app
+
+# Installer les outils de développement nécessaires
+RUN apk add --no-cache curl vim bash
+
+# Variables d'environnement
+ENV SPRING_PROFILES_ACTIVE=dev
+ENV JAVA_OPTS="-Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=8000,suspend=n"
+
+# Exposer les ports pour l'application et le débogage
+EXPOSE 8080
+EXPOSE 8000
+
+# Installer Maven si on n'utilise pas le wrapper
+RUN apk add --no-cache maven
+
+# Script de démarrage qui attend la disponibilité de la base de données si applicable
+COPY docker/dev/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Monter le volume du code source lors de l'exécution
+VOLUME ["/app"]
+
+# Point d'entrée pour le démarrage de l'application avec rechargement automatique
+ENTRYPOINT ["/entrypoint.sh"]

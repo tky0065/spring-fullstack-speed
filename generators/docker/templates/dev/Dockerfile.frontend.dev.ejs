@@ -1,0 +1,21 @@
+# Dockerfile de développement pour le frontend
+FROM node:<%= nodeVersion %>-alpine
+
+WORKDIR /app
+
+# Installer les outils de développement nécessaires
+RUN apk add --no-cache curl vim bash git
+
+# Exposer le port de développement
+EXPOSE 3000
+
+# Créer un utilisateur non-root pour plus de sécurité
+RUN addgroup -S nodeuser && adduser -S -G nodeuser nodeuser
+RUN chown -R nodeuser:nodeuser /app
+USER nodeuser
+
+# Monter le volume du code source lors de l'exécution
+VOLUME ["/app"]
+
+# Le point d'entrée pour le serveur de développement
+CMD ["sh", "-c", "npm install && npm run dev"]

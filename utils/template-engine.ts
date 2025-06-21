@@ -110,13 +110,19 @@ export function buildTemplateContext(
     capitalize: (str: string) => str.charAt(0).toUpperCase() + str.slice(1),
     lower: (str: string) => str.toLowerCase(),
     upper: (str: string) => str.toUpperCase(),
-    camelCase: (str: string) => str.replace(/-([a-z])/g, g => g[1].toUpperCase()),
+    camelCase: (str: string) => str.replace(/[-_]([a-z])/g, g => g[1].toUpperCase()),
     pascalCase: (str: string) => {
-      const camelCase = str.replace(/-([a-z])/g, g => g[1].toUpperCase());
+      const camelCase = str.replace(/[-_]([a-z])/g, g => g[1].toUpperCase());
       return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
     },
     kebabCase: (str: string) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase(),
-    snakeCase: (str: string) => str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase()
+    snakeCase: (str: string) => str.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase(),
+    escapeHtml: (str: string) => str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
   };
 }
 
