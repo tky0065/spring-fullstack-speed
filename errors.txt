@@ -1,0 +1,326 @@
+ il ya des erreurs dans la génération du projet. Veuillez vérifier les messages d'erreur ci-dessous pour plus de détails.
+
+ sfs
+Initialisation du générateur SFS (Spring-Fullstack-Speed)...
+
+     _-----_     ╭──────────────────────────╮
+    |       |    │     Bienvenue dans le    │
+    |--(o)--|    │        générateur        │
+   `---------´   │  Spring-Fullstack-Speed! │
+    ( _´U`_ )    ╰──────────────────────────╯
+    /___A___\   /
+     |  ~  |
+   __'.___.'__
+ ´   `  |° ´ Y `
+
+────────────────────────────────────────────
+🚀 SPRING FULLSTACK SPEED GENERATOR
+Générez rapidement des applications fullstack Java modernes
+────────────────────────────────────────────
+? Comment souhaitez-vous commencer? Mode interactif - Configuration guidée étape par étape
+
+────────────────────────────────────────────
+➤  ÉTAPE 1/4: CONFIGURATION DE BASE DU PROJET
+────────────────────────────────────────────
+
+? Nom de l'application: todo
+? Nom du package Java: com.dev.todo
+? Outil de build: Maven
+? Version de Java: 21
+? Version de Spring Boot: 3.1.0
+
+────────────────────────────────────────────
+➤  ÉTAPE 2/4: SÉLECTION DU FRAMEWORK FRONTEND
+────────────────────────────────────────────
+
+? Framework frontend: Vue.js
+
+────────────────────────────────────────────
+➤  ÉTAPE 3/4: CONFIGURATION DE L'API ET DE LA BASE DE DONNÉES
+────────────────────────────────────────────
+
+? Base de données: H2
+? Ajouter l'authentification? Yes
+────────────────────────────────────────────
+🔐 CONFIGURATION DE L'AUTHENTIFICATION
+────────────────────────────────────────────
+? Sélectionnez le type d'authentification: JWT - Authentification avec JSON Web Tokens
+
+────────────────────────────────────────────
+➤  ÉTAPE 4/4: SÉLECTION DES FONCTIONNALITÉS SUPPLÉMENTAIRES
+────────────────────────────────────────────
+
+────────────────────────────────────────────
+🧩 SÉLECTION DES FONCTIONNALITÉS
+────────────────────────────────────────────
+? Sélectionnez les fonctionnalités à ajouter: OpenAPI/Swagger, Docker, Kubernetes
+
+────────────────────────────────────────────
+ RÉSUMÉ DE LA CONFIGURATION
+────────────────────────────────────────────
+Nom de l'application: todo
+Package Java: com.dev.todo
+Outil de build: Maven
+Framework frontend: Vue.js
+Base de données: H2
+Authentification: JWT
+Fonctionnalités supplémentaires: openapi, docker, kubernetes
+────────────────────────────────────────────
+? Confirmer cette configuration? Yes
+Configuration en cours...
+Génération du projet en cours...
+Génération de la structure du projet...
+Génération des fichiers de build (MAVEN)...
+❌ Erreur lors de la génération des fichiers MAVEN: AssertionError [ERR_ASSERTION]: Trying to copy from a source that does not exist: C:\Users\HP zBooK\AppData\Roaming\npm\node__modules\@enokdev\spring-fullstack-speed\dist\generators\app\templates\mvnw
+⚠️ Tentative de récupération...
+Génération du README...
+Génération de l'application principale...
+📁 Création du répertoire: src/main/java/com/dev/todo
+❌ Erreur lors de la génération du fichier TodoApplication.java
+Génération des fichiers de configuration...
+Création des répertoires de base...
+📂 Création des répertoires Java...
+📁 Création du répertoire: src/main/java/com/dev/todo/controller
+📁 Création du répertoire: src/main/java/com/dev/todo/service
+📁 Création du répertoire: src/main/java/com/dev/todo/repository
+📁 Création du répertoire: src/main/java/com/dev/todo/entity
+📁 Création du répertoire: src/main/java/com/dev/todo/config
+📁 Création du répertoire: src/main/java/com/dev/todo/dto
+📁 Création du répertoire: src/main/java/com/dev/todo/exception
+📁 Création du répertoire: src/main/java/com/dev/todo/util
+📂 Création des répertoires de test...
+📁 Création du répertoire: src/test/java/com/dev/todo/controller
+📁 Création du répertoire: src/test/java/com/dev/todo/service
+📁 Création du répertoire: src/test/java/com/dev/todo/repository
+��� Création des répertoires de ressources...
+📁 Création du répertoire: src/main/resources/static
+📁 Création du répertoire: src/main/resources/static/css
+📁 Création du répertoire: src/main/resources/static/js
+📁 Création du répertoire: src/main/resources/static/img
+📁 Création du répertoire: src/main/resources/templates
+📁 Création du répertoire: src/test/resources
+✅ Structure des répertoires créée avec succès.
+Génération des fichiers Docker...
+✅ Configuration Docker ajoutée avec succès!
+Génération du frontend (Vue.js)...
+Génération de l'authentification (JWT)...
+📁 Création du répertoire: src/main/java/com/dev/todo/security
+📁 Création du répertoire: src/main/java/com/dev/todo/security/config
+📁 Création du répertoire: src/main/java/com/dev/todo/security/controller
+📁 Création du répertoire: src/main/java/com/dev/todo/security/service
+📁 Création du répertoire: src/main/java/com/dev/todo/security/model
+📁 Création du répertoire: src/main/java/com/dev/todo/security/repository
+📁 Création du répertoire: src/main/java/com/dev/todo/security/dto
+❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/User.java
+❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/Role.java
+❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/ERole.java
+❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/config/WebSecurityConfig.java
+❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/service/JwtUtils.java
+Génération de la documentation OpenAPI...
+✅ Configuration OpenAPI/Swagger ajoutée avec succès!
+✅ Génération du projet terminée avec succès!
+   create .gitignore
+   create pom.xml
+   create README.md
+   create src\main\java\com\dev\todo\TodoApplication.java
+   create src\main\resources\application.properties
+   create src\main\resources\application-dev.properties
+   create src\main\resources\application-prod.properties
+   create src\main\java\com\dev\todo\controller\.gitkeep
+   create src\main\java\com\dev\todo\service\.gitkeep
+   create src\main\java\com\dev\todo\repository\.gitkeep
+   create src\main\java\com\dev\todo\entity\.gitkeep
+   create src\main\java\com\dev\todo\config\.gitkeep
+   create src\main\java\com\dev\todo\dto\.gitkeep
+   create src\main\java\com\dev\todo\exception\.gitkeep
+   create src\main\java\com\dev\todo\util\.gitkeep
+   create src\test\java\com\dev\todo\controller\.gitkeep
+   create src\test\java\com\dev\todo\service\.gitkeep
+   create src\test\java\com\dev\todo\repository\.gitkeep
+   create src\main\resources\static\.gitkeep
+   create src\main\resources\static\css\.gitkeep
+   create src\main\resources\static\js\.gitkeep
+   create src\main\resources\static\img\.gitkeep
+   create src\main\resources\templates\.gitkeep
+   create src\test\resources\.gitkeep
+   create docker\.gitkeep
+   create docker\dev\.gitkeep
+   create nginx\.gitkeep
+   create nginx\conf\.gitkeep
+   create nginx\certs\.gitkeep
+   create nginx\logs\.gitkeep
+   create Dockerfile
+   create frontend\Dockerfile
+   create frontend\nginx.conf
+   create docker\dev\Dockerfile.backend.dev
+   create docker\dev\Dockerfile.frontend.dev
+   create docker-compose.dev.yml
+   create docker-compose.prod.yml
+   create docker-compose.yml
+   create nginx\conf\default.conf
+   create .env
+   create src\main\java\com\dev\todo\security\.gitkeep
+   create src\main\java\com\dev\todo\security\config\.gitkeep
+   create src\main\java\com\dev\todo\security\controller\.gitkeep
+   create src\main\java\com\dev\todo\security\service\.gitkeep
+   create src\main\java\com\dev\todo\security\model\.gitkeep
+   create src\main\java\com\dev\todo\security\repository\.gitkeep
+   create src\main\java\com\dev\todo\security\dto\.gitkeep
+   create src\main\java\com\dev\todo\security\model\User.java
+   create src\main\java\com\dev\todo\security\model\Role.java
+   create src\main\java\com\dev\todo\security\model\ERole.java
+   create src\main\java\com\dev\todo\security\dto\LoginRequest.java
+   create src\main\java\com\dev\todo\security\dto\SignupRequest.java
+   create src\main\java\com\dev\todo\security\dto\JwtResponse.java
+   create src\main\java\com\dev\todo\security\dto\MessageResponse.java
+   create src\main\java\com\dev\todo\security\config\WebSecurityConfig.java
+   create src\main\java\com\dev\todo\security\config\JwtAuthEntryPoint.java
+   create src\main\java\com\dev\todo\security\service\JwtUtils.java
+   create src\main\java\com\dev\todo\security\service\UserDetailsServiceImpl.java
+   create src\main\java\com\dev\todo\security\service\UserDetailsImpl.java
+   create src\main\java\com\dev\todo\security\repository\UserRepository.java
+   create src\main\java\com\dev\todo\security\repository\RoleRepository.java
+   create src\main\java\com\dev\todo\security\controller\AuthController.java
+   create src\main\java\com\dev\todo\security\controller\TestController.java
+   create src\main\java\com\dev\todo\config\OpenApiConfig.java
+   create src\main\java\com\dev\todo\config\SwaggerUIConfig.java
+   create src\main\java\com\dev\todo\controller\ExampleApiController.java
+Installation des dépendances...
+npm error code ETARGET
+npm error notarget No matching version found for @types/yosay@^2.0.4.
+npm error notarget In most cases you or one of your dependencies are requesting
+npm error notarget a package version that doesn't exist.
+npm error A complete log of this run can be found in: C:\Users\HP zBooK\AppData\Local\npm-cache\_logs\2025-06-21T16_53_14_429Z-debug-0.log
+npm warn using --force Recommended protections disabled.
+npm error code ETARGET
+npm error notarget No matching version found for @types/yosay@^2.0.4.
+npm error notarget In most cases you or one of your dependencies are requesting
+npm error notarget a package version that doesn't exist.
+npm error A complete log of this run can be found in: C:\Users\HP zBooK\AppData\Local\npm-cache\_logs\2025-06-21T16_53_25_993Z-debug-0.log
+Détail de l'erreur : Error: L'installation a échoué avec toutes les méthodes
+    at AppGenerator.install (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/dist/generators/app/index.js:240:35)
+    at AppGenerator.executeTask (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:258:26)
+    at env.queueTask.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:232:56)
+    at runLoop.add.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-environment/dist/environment-base.js:395:23)
+    at Immediate._onImmediate (C:\Users\HP zBooK\AppData\Roaming\npm\node_modules\@enokdev\spring-fullstack-speed\node_modules\grouped-queue\lib\subqueue.js:48:34)
+    at process.processImmediate (node:internal/timers:483:21)
+'mvnw.cmd' n’est pas reconnu en tant que commande interne
+ou externe, un programme exécutable ou un fichier de commandes.
+'mvnw.cmd' n’est pas reconnu en tant que commande interne
+ou externe, un programme exécutable ou un fichier de commandes.
+Détail de l'erreur : Error: Command failed with exit code 1: mvnw.cmd dependency:resolve
+    at makeError (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/execa/lib/error.js:60:11)
+    at execaSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/execa/index.js:201:17)
+    at AppGenerator.spawnSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/spawn-command.js:31:16)
+    at AppGenerator.spawnCommandSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/spawn-command.js:22:25)
+    at AppGenerator.install (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/dist/generators/app/index.js:265:30)
+    at AppGenerator.executeTask (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:258:26)
+    at env.queueTask.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:232:56)
+    at runLoop.add.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-environment/dist/environment-base.js:395:23)
+    at Immediate._onImmediate (C:\Users\HP zBooK\AppData\Roaming\npm\node_modules\@enokdev\spring-fullstack-speed\node_modules\grouped-queue\lib\subqueue.js:48:34)
+    at process.processImmediate (node:internal/timers:483:21) {
+  shortMessage: 'Command failed with exit code 1: mvnw.cmd dependency:resolve',
+  command: 'mvnw.cmd dependency:resolve',
+  escapedCommand: 'mvnw.cmd "dependency:resolve"',
+  exitCode: 1,
+  signal: undefined,
+  signalDescription: undefined,
+  stdout: undefined,
+  stderr: undefined,
+  cwd: 'C:\\Users\\HP zBooK\\Documents\\dev\\spring-fullstack-speed\\test-folder-for-cleanup',
+  failed: true,
+  timedOut: false,
+  isCanceled: false,
+  killed: false
+}
+Installation des dépendances frontend...
+Exécution de npm install dans le dossier frontend...
+Installation avec --legacy-peer-deps pour éviter les conflits de dépendances...
+⚠️ L'installation avec --legacy-peer-deps a échoué, tentative avec --force...
+⚠️ L'installation automatique des dépendances frontend a échoué.
+Vous pouvez les installer manuellement plus tard avec l'une des commandes suivantes :
+  cd frontend && npm install
+  cd frontend && npm install --legacy-peer-deps
+  cd frontend && npm install --force
+Compilation du projet backend...
+⚠️ Tentative de résolution des dépendances sans compilation...
+⚠️ La compilation automatique du backend a échoué.
+Vous pouvez le compiler manuellement plus tard.
+  ./mvnw clean compile
+
+No change to package.json was detected. No package manager install will be executed.
+
+🎉 Félicitations! Votre projet Spring-Fullstack a été généré avec succès!
+
+Voici quelques commandes utiles pour démarrer:
+  ./mvnw spring-boot:run - Démarrer l'application backend
+  cd frontend && npm run dev - Démarrer le serveur de développement frontend
+  docker-compose up - Démarrer l'application avec Docker
+
+Consultez le README.md pour plus d'informations.
+
+Merci d'utiliser Spring-Fullstack-Speed! 🚀
+🔍 Vérification de l'intégrité du projet généré...
+🔍 Vérification des versions des outils requis...
+📦 Installation des dépendances frontend...
+✅ Node.js v20.17.0 détecté.
+✅ npm 10.8.2 détecté.
+✅ Java 21.0 détecté.
+✅ Maven 3.8.6 détecté.
+✅ Docker version 28.1.1, build 4eba377 détecté.
+
+📋 RÉSUMÉ DE LA GÉNÉRATION DU PROJET
+══════════════════════════════════════════���═
+⚠️ Le projet a été généré mais certains problèmes ont été détectés:
+
+Fichiers manquants:
+  - mvnw
+  - mvnw.cmd
+  - src/main/java/undefined/TodoApplication.java
+  - frontend/package.json
+  - frontend/vite.config.ts
+  - frontend/src/App.vue
+  - frontend/src/main.ts
+  - src/main/java/undefined/security/config/WebSecurityConfig.java
+  - src/main/java/undefined/security/model/User.java
+  - src/main/java/undefined/security/model/Role.java
+  - src/main/java/undefined/security/service/JwtUtils.java
+
+Avertissements:
+  - Le fichier package.json n'a pas été trouvé. Les dépendances frontend ne peuvent pas être installées.
+
+Vous pouvez tenter de résoudre ces problèmes avant de continuer.
+
+🚀 POUR DÉMARRER VOTRE APPLICATION
+════════════════════════════════════════════
+
+Backend (Spring Boot):
+  cd C:\Users\HP zBooK\Documents\dev\spring-fullstack-speed\test-folder-for-cleanup
+  ./mvnw spring-boot:run
+
+Frontend (Vue.js):
+  cd C:\Users\HP zBooK\Documents\dev\spring-fullstack-speed\test-folder-for-cleanup\frontend
+  npm install    # Si ce n'est pas déjà fait
+  npm run dev
+
+Docker:
+  docker-compose up -d
+
+🌐 URL D'ACCÈS:
+══════════════════════════════════════��═════
+  Backend: http://localhost:8080
+  Frontend: http://localhost:3000
+  Swagger/API: http://localhost:8080/swagger-ui.html
+
+📚 DOCUMENTATION ET AIDE:
+════════════════════════════════════════════
+  Documentation: README.md
+  Aide supplémentaire: https://github.com/votre-organisation/spring-fullstack-speed/wiki
+
+════════════════════════════════════════════
+
+Bon développement avec Spring-Fullstack-Speed! 🚀
+
+## la commade sfs e ne fonctionne pas ca affiche le message: sfs e
+                                                             ────────────────────────────────────────────
+                                                             🧩 GÉNÉRATEUR D'ENTITÉS SPRING FULLSTACK

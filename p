@@ -5,8 +5,13 @@ si tu modifie les fichiers assure toi de la coerrence des types et la repercutio
 
 
 
+j'ai tester la lib il ya des erreurs que je mise dans errors.txt tous les command que j'ai fait avec les logs , et le projet genere est dans test-folder-for-cleanup, creer un fichier todo que l'on vas suivre pour ressoudre tous ces erreurs
 
 
+
+Corrige les erreurs dans le fichier errors.txt  suivant le fichier TODO-CORRECTION.md, pour commencer tu dois faire un tree .\generators\ /f pour voir les fichier qui existe avant de commencer et une fois la task terminée, marque-la comme terminée dans le fichier TODO-CORRECTION.md.
+
+ quant j'ai tester la lib il me genere uniquement des la structure des dossier sans les fichier c'est ca on corrigais avec les tasks de TODO-CORRECTION.md et le resulter de test est dans le dossier test-folder-for-cleanup on devais commenecer ## 5. Configuration Kubernetes et tu doit d'abord fair tree .\generators\ /f pour voir les fichier qui existe avant de commencer
 
 
 base toi sur les dossier guidline et on continue nos tasks mais avance de commence des nouvels task execute les tests qui sont deja la si ca ne passe pas corrige les erreurs dans les implementation ou dans les tests pour les tests tu deja dans bonn e dossier tu na pas besoin de faire cd

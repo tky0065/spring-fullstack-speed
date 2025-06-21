@@ -94,6 +94,9 @@ spring-boot-*.pid
 
 p
 guidline
+errors.txt
+test-folder-for-cleanup
+
 
 
 .tmp-test-generation/

@@ -73,3 +73,6 @@ v1-todo.md
 !utils/**/*.js
 !generators/**/*.ejs
 !generators/**/templates/**
+guidline
+p
+errors.txt
