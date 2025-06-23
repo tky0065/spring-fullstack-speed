@@ -214,8 +214,6 @@ export class EntityGenerator extends BaseGenerator {
       packageName: basePackage,
     };
 
-    this.log(INFO_COLOR(`[DEBUG] prompting() - basePackage initialisé à: '${basePackage}'`));
-
     // Ne procéder aux questions que si le mode interactif est activé (par défaut)
     if (opts.interactive !== false) {
       // Questions pour l'entité
@@ -434,22 +432,18 @@ export class EntityGenerator extends BaseGenerator {
    * Utilitaire robuste pour obtenir le package complet sans risque d'erreur
    */
   getSubPackage(base: string | undefined, sub: string | undefined): string {
-    this.log(INFO_COLOR(`[DEBUG getSubPackage] Appelé avec base='${base}', sub='${sub}'`));
-
     // Validation et correction du paramètre base
     let baseValue = base || '';
     if (!base || base === 'undefined') {
-      // Récupération des alternatives
       baseValue = this.answers?.packageName ||
              this.options.package ||
              (this.projectConfig?.packageName ? this.projectConfig.packageName : 'com.example.fullstack');
-      this.log(INFO_COLOR(`[CORRECTION] base package défini à '${baseValue}'`));
     }
 
     // Validation et correction du paramètre sub
     let subValue = sub || 'entity';
     if (!sub || sub === 'undefined') {
-      this.log(INFO_COLOR(`[CORRECTION] sous-package défini à '${subValue}'`));
+      // rien
     }
 
     // Nettoyage final (maintenant sûr car baseValue et subValue ne peuvent pas être undefined)
@@ -458,8 +452,6 @@ export class EntityGenerator extends BaseGenerator {
 
     // Construction du résultat
     const result = baseValue.endsWith(`.${subValue}`) ? baseValue : `${baseValue}.${subValue}`;
-    this.log(INFO_COLOR(`[DEBUG getSubPackage] Retourne: '${result}'`));
-
     return result;
   }
 
@@ -469,15 +461,12 @@ export class EntityGenerator extends BaseGenerator {
 
       // S'assurer que les champs sont bien définis
       if (!this.entityFields || this.entityFields.length === 0) {
-        this.log(INFO_COLOR("[DEBUG] writing() - Appel de askForFields() car aucun champ défini"));
         await this.askForFields();
       }
 
       // Récupérer et sécuriser les informations importantes
       const entityName = this.answers.entityName || 'Example';
       const packageName = this.answers.packageName || 'com.example.fullstack';
-
-      this.log(INFO_COLOR(`[DEBUG] Utilisation du package: '${packageName}'`));
 
       // Définir directement les packages sans utiliser getSubPackage
       const entityPackage = `${packageName}.entity`;
@@ -500,9 +489,6 @@ export class EntityGenerator extends BaseGenerator {
       const serviceDir = path.join(basePath, servicePath);
       const controllerDir = path.join(basePath, controllerPath);
       const dtoDir = path.join(basePath, dtoPath);
-
-      this.log(INFO_COLOR(`[DEBUG] Répertoires générés:`));
-      this.log(INFO_COLOR(`  - entityDir: ${entityDir}`));
 
       // Création des répertoires de manière sécurisée
       this._createDirectorySafely(entityDir);
@@ -528,20 +514,6 @@ export class EntityGenerator extends BaseGenerator {
       const controllerTemplate = path.join(templatesDir, 'Controller.java.ejs');
       const dtoTemplate = path.join(templatesDir, 'EntityDTO.java.ejs');
 
-      this.log(INFO_COLOR(`[DEBUG] Templates - chemins calculés:`));
-      this.log(INFO_COLOR(`  - templatesDir: ${templatesDir}`));
-      this.log(INFO_COLOR(`  - entityTemplate: ${entityTemplate}`));
-
-      // Vérifier que les templates existent
-      if (!fs.existsSync(entityTemplate)) {
-        this.log(ERROR_COLOR(`[ERREUR] Template entité non trouvé: ${entityTemplate}`));
-        const alternativePath = path.join(path.dirname(templatesDir), 'templates/Entity.java.ejs');
-        this.log(INFO_COLOR(`[DEBUG] Tentative avec chemin alternatif: ${alternativePath}`));
-        if (fs.existsSync(alternativePath)) {
-          this.log(INFO_COLOR(`[INFO] Template trouvé à l'emplacement alternatif`));
-        }
-      }
-
       // Préparer les données pour les templates
       const templateData = {
         entityName,
@@ -555,9 +527,7 @@ export class EntityGenerator extends BaseGenerator {
       // Fonction sécurisée pour générer les fichiers
       const generateFile = (sourcePath, targetPath, data) => {
         try {
-          this.log(INFO_COLOR(`[DEBUG] Génération de fichier: ${targetPath}`));
           if (!fs.existsSync(sourcePath)) {
-            this.log(ERROR_COLOR(`[ERREUR] Le template n'existe pas: ${sourcePath}`));
             return false;
           }
 
@@ -567,12 +537,22 @@ export class EntityGenerator extends BaseGenerator {
             fs.mkdirSync(targetDir, { recursive: true });
           }
 
+          // S'assurer que toutes les variables requises par les templates existent
+          const safeData = {
+            ...data,
+            imports: data.imports || [],
+            validators: data.validators || [],
+            annotations: data.annotations || [],
+            constructorItems: data.constructorItems || [],
+            gettersSetters: data.gettersSetters || []
+          };
+
           // Utiliser fs.copyFileSync pour copier physiquement le template vers un fichier temporaire
           const tempFile = path.join(targetDir, `temp_${Date.now()}.ejs`);
           fs.copyFileSync(sourcePath, tempFile);
 
           // Puis utiliser this.fs.copyTpl qui est plus fiable pour le rendu
-          this.fs.copyTpl(tempFile, targetPath, data);
+          this.fs.copyTpl(tempFile, targetPath, safeData);
 
           // Supprimer le fichier temporaire
           if (fs.existsSync(tempFile)) {
@@ -581,7 +561,6 @@ export class EntityGenerator extends BaseGenerator {
 
           return true;
         } catch (error) {
-          this.log(ERROR_COLOR(`[ERREUR] Échec de génération de ${targetPath}: ${error}`));
           return false;
         }
       };
@@ -736,7 +715,7 @@ export class EntityGenerator extends BaseGenerator {
   resolveTemplatePath(relPath: string): string | null {
     // Assurons-nous que le chemin n'est jamais undefined
     if (!relPath) {
-      this.log(ERROR_COLOR(`[ERREUR] Chemin de template invalide: ${relPath}`));
+     // this.log(ERROR_COLOR(`[ERREUR] Chemin de template invalide: ${relPath}`));
       return null;
     }
 
@@ -773,11 +752,11 @@ export class EntityGenerator extends BaseGenerator {
    * Cette méthode a été neutralisée pour éviter les erreurs avec templatePath undefined
    */
   renderTemplate(templatePath: string, destPath: string, data: any): void {
-    this.log(INFO_COLOR(`[DEBUG] renderTemplate ignoré - nous utilisons la méthode générative directe à la place`));
+    //this.log(INFO_COLOR(`[DEBUG] renderTemplate ignoré - nous utilisons la méthode générative directe à la place`));
 
     // Ne rien faire si les paramètres sont invalides - ceci évite l'erreur fatale
     if (!templatePath || !destPath) {
-      this.log(INFO_COLOR(`[INFO] Appel à renderTemplate ignoré (paramètres invalides) - utiliser writing() à la place`));
+    //  this.log(INFO_COLOR(`[INFO] Appel à renderTemplate ignoré (paramètres invalides) - utiliser writing() à la place`));
       // Ne pas lancer d'erreur pour éviter le plantage complet du générateur
       return;
     }
@@ -812,12 +791,23 @@ export class EntityGenerator extends BaseGenerator {
         fs.mkdirSync(targetDir, { recursive: true });
       }
 
+      // S'assurer que toutes les variables requises par les templates existent
+      const safeData = {
+        ...data,
+        // Initialiser les variables manquantes pour éviter les erreurs ReferenceError
+        imports: data.imports || [],
+        validators: data.validators || [],
+        annotations: data.annotations || [],
+        constructorItems: data.constructorItems || [],
+        gettersSetters: data.gettersSetters || []
+      };
+
       // Utiliser fs.copyFileSync pour copier physiquement le template vers un fichier temporaire
       const tempFile = path.join(targetDir, `temp_${Date.now()}.ejs`);
       fs.copyFileSync(sourcePath, tempFile);
 
       // Puis utiliser this.fs.copyTpl qui est plus fiable pour le rendu
-      this.fs.copyTpl(tempFile, targetPath, data);
+      this.fs.copyTpl(tempFile, targetPath, safeData);
 
       // Supprimer le fichier temporaire
       if (fs.existsSync(tempFile)) {

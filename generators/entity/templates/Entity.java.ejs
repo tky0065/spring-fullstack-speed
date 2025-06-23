@@ -7,13 +7,12 @@ import <%= importStatement %>;
 <% } -%>
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-<% if (hasDateFields) { -%>
+<% if (dateTimeImport) { -%>
 import java.time.*;
 <% } -%>
-<% if (hasBigDecimalFields) { -%>
+<% if (bigDecimalImport) { -%>
 import java.math.BigDecimal;
 <% } -%>
-import java.util.Objects;
 <% if (auditable) { -%>
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -21,16 +20,19 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 <% } -%>
+import java.io.Serializable;
 
 /**
- * <%= entityName %> entity
+ * <%= entityName %> Entity
  */
 @Entity
-@Table(name = "<%= tableName %>")
+@Table(name = "<%= entityName.toLowerCase() %>s")
 <% if (auditable) { -%>
 @EntityListeners(AuditingEntityListener.class)
 <% } -%>
-public class <%= entityName %> {
+public class <%= entityName %> implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,26 +40,27 @@ public class <%= entityName %> {
 
 <% fields.forEach(function(field) { -%>
     <% if (field.unique) { -%>
-    @Column(name = "<%= field.columnName %>", nullable = <%= !field.required %>, unique = true)
+    @Column(name = "<%= field.name %>", nullable = <%= !field.required %>, unique = true)
     <% } else { -%>
-    @Column(name = "<%= field.columnName %>", nullable = <%= !field.required %>)
+    @Column(name = "<%= field.name %>", nullable = <%= !field.required %>)
     <% } -%>
     <% if (field.required) { -%>
     @NotNull
     <% } -%>
-    <% if (field.type === "String" && field.minLength) { -%>
-    @Size(min = <%= field.minLength %><% if (field.maxLength) { %>, max = <%= field.maxLength %><% } %>)
-    <% } else if (field.type === "String" && field.maxLength) { -%>
+    <% if (field.type === "String") { -%>
+    <% if (field.minLength != null) { -%>
+    @Size(min = <%= field.minLength %><% if (field.maxLength != null) { %>, max = <%= field.maxLength %><% } %>)
+    <% } else if (field.maxLength != null) { -%>
     @Size(max = <%= field.maxLength %>)
     <% } -%>
-    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type) && field.min !== null) { -%>
+    <% } -%>
+    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type)) { -%>
+    <% if (field.min != null) { -%>
     @Min(value = <%= field.min %>)
     <% } -%>
-    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type) && field.max !== null) { -%>
+    <% if (field.max != null) { -%>
     @Max(value = <%= field.max %>)
     <% } -%>
-    <% if (field.type === "Enum") { -%>
-    @Enumerated(EnumType.STRING)
     <% } -%>
     private <%= field.type %> <%= field.name %>;
 <% }); -%>
@@ -98,8 +101,8 @@ public class <%= entityName %> {
     public void set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= field.type %> <%= field.name %>) {
         this.<%= field.name %> = <%= field.name %>;
     }
-
 <% }); -%>
+
 <% if (auditable) { -%>
     public String getCreatedBy() {
         return createdBy;
@@ -136,30 +139,33 @@ public class <%= entityName %> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        <%= entityName %> that = (<%= entityName %>) o;
-        return Objects.equals(id, that.id);
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof <%= entityName %>)) {
+            return false;
+        }
+        return id != null && id.equals(((<%= entityName %>) o).id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return getClass().hashCode();
     }
 
     @Override
     public String toString() {
         return "<%= entityName %>{" +
-                "id=" + id +
+            "id=" + getId() +
 <% fields.forEach(function(field, index) { -%>
-                ", <%= field.name %>=" + <%= field.name %> +
+            ", <%= field.name %>=" + get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() +
 <% }); -%>
 <% if (auditable) { -%>
-                ", createdBy='" + createdBy + '\'' +
-                ", createdDate=" + createdDate +
-                ", lastModifiedBy='" + lastModifiedBy + '\'' +
-                ", lastModifiedDate=" + lastModifiedDate +
+            ", createdBy='" + getCreatedBy() + "'" +
+            ", createdDate='" + getCreatedDate() + "'" +
+            ", lastModifiedBy='" + getLastModifiedBy() + "'" +
+            ", lastModifiedDate='" + getLastModifiedDate() + "'" +
 <% } -%>
-                '}';
+            "}";
     }
 }

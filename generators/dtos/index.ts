@@ -2,7 +2,7 @@ import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
 import path from "path";
 import fs from "fs";
-import { DtoGeneratorOptions } from "../types.js";
+
 
 // Styles visuels constants
 const STEP_PREFIX = chalk.bold.blue("➤ ");
@@ -90,6 +90,12 @@ export default class DtosGenerator extends BaseGenerator {
     
     // Rechercher l'entité et extraire son package
     const entityName = answers.entityName;
+
+    if (!entityName) {
+      this.log(ERROR_COLOR(`❌ Le nom d'entité est obligatoire pour générer un DTO.`));
+      return;
+    }
+
     const entityFile = this.findEntityFile(entityName);
     
     if (!entityFile) {
@@ -157,11 +163,16 @@ export default class DtosGenerator extends BaseGenerator {
    */
   findEntityFile(entityName: string): string | null {
     try {
+      if (!entityName) {
+        // Ne rien faire si pas d'entité, éviter le log parasite
+        return null;
+      }
+
       const rootDir = process.cwd();
       const srcDir = path.join(rootDir, 'src/main/java');
 
       if (!fs.existsSync(srcDir)) {
-        this.log(ERROR_COLOR("❌ Dossier src/main/java non trouvé"));
+        this.log(ERROR_COLOR(`❌ Dossier src/main/java non trouvé`));
         return null;
       }
 
@@ -170,7 +181,6 @@ export default class DtosGenerator extends BaseGenerator {
       // Stratégie 1: Rechercher dans les dossiers entity ou domain (approche rapide)
       const commonEntityDirs = ['entity', 'domain', 'model', 'entities', 'models'];
       let entityFile: string | null = null;
-
 
       // Afficher le répertoire de travail actuel pour faciliter le debug
       this.log(INFO_COLOR(`📂 Répertoire de travail actuel: ${rootDir}`));
@@ -196,8 +206,8 @@ export default class DtosGenerator extends BaseGenerator {
       }
 
       // Recherche récursive mais ciblée
-      const findEntityInDir = (dir: string): string | null => {
-        if (!fs.existsSync(dir)) return null;
+      const findEntityInDir = (dir: string, name: string): string | null => {
+        if (!fs.existsSync(dir) || !name) return null;
 
         const items = fs.readdirSync(dir);
         for (const item of items) {
@@ -208,11 +218,11 @@ export default class DtosGenerator extends BaseGenerator {
             // Si c'est un dossier dont le nom correspond aux dossiers typiques pour les entités
             if (stats.isDirectory()) {
               if (commonEntityDirs.includes(item.toLowerCase())) {
-                const targetFile = path.join(fullPath, `${entityName}.java`);
+                const targetFile = path.join(fullPath, `${name}.java`);
                 // Vérification insensible à la casse
                 const files = fs.readdirSync(fullPath);
                 for (const file of files) {
-                  if (file.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+                  if (file.toLowerCase() === `${name.toLowerCase()}.java`) {
                     const entityFilePath = path.join(fullPath, file);
                     this.log(SUCCESS_COLOR(`✅ Entité trouvée: ${entityFilePath}`));
                     return entityFilePath;
@@ -220,11 +230,11 @@ export default class DtosGenerator extends BaseGenerator {
                 }
               }
               // Continuer la recherche en profondeur
-              const found = findEntityInDir(fullPath);
+              const found = findEntityInDir(fullPath, name);
               if (found) return found;
             }
             // Vérifier directement si le fichier correspond à l'entité
-            else if (item.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+            else if (stats.isFile() && item.toLowerCase() === `${name.toLowerCase()}.java`) {
               this.log(SUCCESS_COLOR(`✅ Entité trouvée: ${fullPath}`));
               return fullPath;
             }
@@ -237,13 +247,15 @@ export default class DtosGenerator extends BaseGenerator {
         return null;
       };
 
-      entityFile = findEntityInDir(srcDir);
+      entityFile = findEntityInDir(srcDir, entityName);
 
       // Stratégie 2 (fallback): Recherche complète si la recherche ciblée a échoué
       if (!entityFile) {
         this.log(INFO_COLOR("⚠️ Entité non trouvée dans les dossiers courants, recherche générale..."));
 
         const findFileCompleteScan = (dir: string, fileName: string): string | null => {
+          if (!dir || !fileName) return null;
+
           try {
             const items = fs.readdirSync(dir);
 
@@ -257,13 +269,13 @@ export default class DtosGenerator extends BaseGenerator {
                   if (found) return found;
                 }
                 // Recherche insensible à la casse
-                else if (item.toLowerCase() === `${fileName.toLowerCase()}.java`) {
+                else if (stats.isFile() && item.toLowerCase() === `${fileName.toLowerCase()}.java`) {
                   this.log(SUCCESS_COLOR(`✅ Entité trouvée (recherche complète): ${fullPath}`));
                   return fullPath;
                 }
               } catch (err) {
                 // Gérer les erreurs potentielles (permissions, etc.)
-
+                continue;
               }
             }
           } catch (err) {
@@ -297,9 +309,11 @@ export default class DtosGenerator extends BaseGenerator {
    */
   searchEntityInDirectory(dir: string, entityName: string): string | null {
     try {
-      if (!fs.existsSync(dir)) return null;
+      if (!fs.existsSync(dir) || !entityName) return null;
 
-      const searchRecursive = (currentDir: string): string | null => {
+      const searchRecursive = (currentDir: string, name: string): string | null => {
+        if (!currentDir || !name) return null;
+
         const items = fs.readdirSync(currentDir);
 
         for (const item of items) {
@@ -309,9 +323,9 @@ export default class DtosGenerator extends BaseGenerator {
 
             if (stats.isDirectory()) {
               // Recherche récursive
-              const result = searchRecursive(fullPath);
+              const result = searchRecursive(fullPath, name);
               if (result) return result;
-            } else if (item.toLowerCase() === `${entityName.toLowerCase()}.java`) {
+            } else if (stats.isFile() && item.toLowerCase() === `${name.toLowerCase()}.java`) {
               this.log(SUCCESS_COLOR(`✅ Entité trouvée dans le répertoire spécifique: ${fullPath}`));
               return fullPath;
             }
@@ -324,7 +338,7 @@ export default class DtosGenerator extends BaseGenerator {
         return null;
       };
 
-      return searchRecursive(dir);
+      return searchRecursive(dir, entityName);
     } catch (error) {
       this.log(ERROR_COLOR(`❌ Erreur lors de la recherche de l'entité: ${error}`));
       return null;
@@ -338,7 +352,7 @@ export default class DtosGenerator extends BaseGenerator {
     try {
       // Vérification que filePath est bien une chaîne de caractères
       if (!filePath) {
-        this.log(ERROR_COLOR(`Impossible de trouver le fichier d'entité.`));
+      //  this.log(ERROR_COLOR(`Impossible de trouver le fichier d'entité.`));
         return null;
       }
 
@@ -362,36 +376,40 @@ export default class DtosGenerator extends BaseGenerator {
   findBasePackageName(): string {
     try {
       // Rechercher le package dans l'application principale
-      const mainAppFiles = fs.readdirSync("src/main/java");
-      if (mainAppFiles && mainAppFiles.length > 0) {
+      const mainAppDir = path.join(process.cwd(), "src/main/java");
+      if (fs.existsSync(mainAppDir)) {
         // Parcourir récursivement pour trouver un fichier Java contenant "package"
         const findPackageInDir = (dir: string): string | null => {
-          const files = fs.readdirSync(dir);
+          try {
+            const files = fs.readdirSync(dir);
 
-          for (const file of files) {
-            const fullPath = path.join(dir, file);
-            const stats = fs.statSync(fullPath);
+            for (const file of files) {
+              const fullPath = path.join(dir, file);
+              const stats = fs.statSync(fullPath);
 
-            if (stats.isDirectory()) {
-              const result = findPackageInDir(fullPath);
-              if (result) return result;
-            }
-            else if (file.endsWith('.java')) {
-              try {
-                const content = fs.readFileSync(fullPath, 'utf8');
-                const packageMatch = content.match(/package\s+([^;]+);/);
-                if (packageMatch && packageMatch.length > 1) {
-                  return packageMatch[1].trim();
+              if (stats.isDirectory()) {
+                const result = findPackageInDir(fullPath);
+                if (result) return result;
+              }
+              else if (file.endsWith('.java')) {
+                try {
+                  const content = fs.readFileSync(fullPath, 'utf8');
+                  const packageMatch = content.match(/package\s+([^;]+);/);
+                  if (packageMatch && packageMatch.length > 1) {
+                    return packageMatch[1].trim();
+                  }
+                } catch (e) {
+                  // Ignorer les erreurs de lecture de fichier
                 }
-              } catch (e) {
-                // Ignorer les erreurs de lecture de fichier
               }
             }
+          } catch (error) {
+            // Ignorer les erreurs d'accès aux répertoires
           }
           return null;
         };
 
-        return findPackageInDir('src/main/java') || 'com.example';
+        return findPackageInDir(mainAppDir) || 'com.example';
       }
     } catch (error) {
       this.log(ERROR_COLOR(`Erreur lors de la recherche du package de base: ${error}`));
@@ -405,6 +423,11 @@ export default class DtosGenerator extends BaseGenerator {
    */
   async extractEntityFields(entityName: string): Promise<any[]> {
     try {
+      if (!entityName) {
+        // Ne rien faire si pas d'entité, éviter le log parasite
+        return [];
+      }
+
       const entityFile = this.findEntityFile(entityName);
       if (!entityFile) return [];
 
@@ -539,6 +562,11 @@ export default class DtosGenerator extends BaseGenerator {
    */
   findEnumFile(enumName: string, importStatement?: string): string | null {
     try {
+      if (!enumName) {
+        // Ne rien faire si pas d'énum, éviter le log parasite
+        return null;
+      }
+
       // Si on a l'importation complète, on peut trouver directement le fichier
       if (importStatement) {
         const packagePath = importStatement.replace(/\./g, path.sep);
@@ -562,8 +590,13 @@ export default class DtosGenerator extends BaseGenerator {
   /**
    * Extrait les valeurs d'une énumération Java
    */
-  extractEnumValues(enumFile: string): string[] | null {
+  extractEnumValues(enumFile: string | null): string[] | null {
     try {
+      if (!enumFile) {
+        // Ne rien faire si pas de fichier enum, éviter le log parasite
+        return null;
+      }
+
       const content = fs.readFileSync(enumFile, 'utf8');
       
       // Rechercher le bloc enum { ... }
@@ -588,6 +621,11 @@ export default class DtosGenerator extends BaseGenerator {
    */
   createDirectory(dir: string): void {
     try {
+      if (!dir) {
+        // Ne rien faire si pas de chemin, éviter le log parasite
+        return;
+      }
+
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
         this.log(INFO_COLOR(`📁 Création du répertoire: ${dir}`));
@@ -595,92 +633,6 @@ export default class DtosGenerator extends BaseGenerator {
     } catch (error) {
       this.log(ERROR_COLOR(`❌ Erreur lors de la création du répertoire: ${error}`));
     }
-  }
-  
-  /**
-   * Rend un template EJS et écrit le résultat dans un fichier
-   */
-  async renderEjsTemplate(
-    templatePath: string,
-    outputPath: string,
-    context: Record<string, any> = this.templateContext
-  ): Promise<void> {
-    try {
-      // Utiliser la méthode de la classe parente
-      await super.renderEjsTemplate(templatePath, outputPath, context);
-    } catch (error) {
-      this.log(ERROR_COLOR(`❌ Erreur lors du rendu du template: ${error}`));
-      throw error;
-    }
-  }
-
-  writing() {
-    const { entityName, packageName, mapperFramework } = this.answers;
-
-    // Vérifier si des champs ont été définis
-    if (this.entityFields.length === 0) {
-      this.log(ERROR_COLOR("Aucun champ défini pour le DTO. Génération annulée."));
-      return;
-    }
-
-    this.log("");
-    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES FICHIERS"));
-    this.log(SECTION_DIVIDER);
-
-    // Préparer les données pour les templates
-    const templateData = {
-      entityName: entityName,
-      packageName: packageName,
-      entityPackageName: this.entityPackageName || "com.example.domain",
-      fields: this.entityFields,
-      hasDateFields: this.hasDateFields(),
-      hasBigDecimalFields: this.hasBigDecimalFields(),
-      imports: this._generateImports(),
-      useMapstruct: mapperFramework === 'mapstruct'
-    };
-
-    // Déterminer si le package inclut déjà "dto"
-    let finalPackageName = packageName;
-    if (!finalPackageName.endsWith(".dto")) {
-      finalPackageName = `${finalPackageName}.dto`;
-    }
-
-    // Créer les dossiers nécessaires
-    const srcMainJavaDir = path.join(process.cwd(), 'src/main/java');
-    const packagePath = finalPackageName.replace(/\./g, '/');
-    const dtoDir = path.join(srcMainJavaDir, packagePath);
-    this.createDirectory(dtoDir);
-
-    // Mettre à jour le nom du package dans les données du template
-    templateData.packageName = finalPackageName;
-
-    // Générer le fichier DTO
-    const dtoPath = path.join(dtoDir, `${entityName}DTO.java`);
-    this.renderEjsTemplate('EntityDTO.java.ejs', dtoPath, templateData);
-    this.log(SUCCESS_COLOR(`✅ DTO ${entityName}DTO.java généré avec succès`));
-
-    // Si ModelMapper est utilisé, générer le code de configuration
-    if (mapperFramework === 'modelmapper') {
-      this._generateModelMapperConfig(entityName, finalPackageName, templateData);
-    }
-
-    // Afficher des informations sur les dépendances à ajouter
-    this._showDependencyInfo(mapperFramework);
-  }
-
-  /**
-   * Vérifie si l'entité contient des champs de type Date/Time
-   */
-  hasDateFields(): boolean {
-    const dateTypes = ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant', 'Date'];
-    return this.entityFields.some(field => dateTypes.includes(field.type));
-  }
-
-  /**
-   * Vérifie si l'entité contient des champs de type BigDecimal
-   */
-  hasBigDecimalFields(): boolean {
-    return this.entityFields.some(field => field.type === 'BigDecimal');
   }
 
   /**
@@ -717,6 +669,92 @@ export default class DtosGenerator extends BaseGenerator {
     }
 
     return imports;
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type Date/Time
+   */
+  hasDateFields(): boolean {
+    const dateTypes = ['LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'Instant', 'Date'];
+    return this.entityFields.some(field => dateTypes.includes(field.type));
+  }
+
+  /**
+   * Vérifie si l'entité contient des champs de type BigDecimal
+   */
+  hasBigDecimalFields(): boolean {
+    return this.entityFields.some(field => field.type === 'BigDecimal');
+  }
+
+  writing() {
+    // Vérifier que nous avons des réponses valides
+    if (!this.answers || !this.answers.entityName) {
+      this.log(ERROR_COLOR("❌ Configuration incomplète. Génération annulée."));
+      return;
+    }
+
+    const { entityName, packageName, mapperFramework } = this.answers;
+
+    // Vérifier si des champs ont été définis
+    if (!this.entityFields || this.entityFields.length === 0) {
+      this.log(ERROR_COLOR("❌ Aucun champ défini pour le DTO. Génération annulée."));
+      return;
+    }
+
+    this.log("");
+    this.log(STEP_PREFIX + chalk.bold("GÉNÉRATION DES FICHIERS"));
+    this.log(SECTION_DIVIDER);
+
+    try {
+      // Préparer les données pour les templates
+      const templateData = {
+        entityName: entityName,
+        packageName: packageName,
+        entityPackageName: this.entityPackageName || "com.example.domain",
+        fields: this.entityFields,
+        hasDateFields: this.hasDateFields(),
+        hasBigDecimalFields: this.hasBigDecimalFields(),
+        imports: this._generateImports(),
+        useMapstruct: mapperFramework === 'mapstruct'
+      };
+
+      // Déterminer si le package inclut déjà "dto"
+      let finalPackageName = packageName;
+      if (!finalPackageName.endsWith(".dto")) {
+        finalPackageName = `${finalPackageName}.dto`;
+      }
+
+      // Créer les dossiers nécessaires
+      const srcMainJavaDir = path.join(process.cwd(), 'src/main/java');
+      const packagePath = finalPackageName.replace(/\./g, '/');
+      const dtoDir = path.join(srcMainJavaDir, packagePath);
+      this.createDirectory(dtoDir);
+
+      // Mettre à jour le nom du package dans les données du template
+      templateData.packageName = finalPackageName;
+
+      // Générer le fichier DTO
+      const dtoPath = path.join(dtoDir, `${entityName}DTO.java`);
+
+      // Utiliser le template depuis le bon répertoire
+      this.fs.copyTpl(
+        this.templatePath('EntityDTO.java.ejs'),
+        this.destinationPath(dtoPath),
+        templateData
+      );
+
+      this.log(SUCCESS_COLOR(`✅ DTO ${entityName}DTO.java généré avec succès`));
+
+      // Si ModelMapper est utilisé, générer le code de configuration
+      if (mapperFramework === 'modelmapper') {
+        this._generateModelMapperConfig(entityName, finalPackageName, templateData);
+      }
+
+      // Afficher des informations sur les dépendances à ajouter
+      this._showDependencyInfo(mapperFramework);
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de la génération des fichiers: ${error}`));
+    }
   }
 
   /**
@@ -765,7 +803,7 @@ export default class DtosGenerator extends BaseGenerator {
 </build>
 `);
     } else if (mapperFramework === 'modelmapper') {
-      this.log(INFO_COLOR("Pour utiliser ModelMapper, ajoutez cette d��pendance à votre pom.xml:"));
+      this.log(INFO_COLOR("Pour utiliser ModelMapper, ajoutez cette dépendance à votre pom.xml:"));
       this.log(`
 <dependency>
     <groupId>org.modelmapper</groupId>
@@ -779,7 +817,11 @@ export default class DtosGenerator extends BaseGenerator {
   end() {
     this.log("");
     this.log(SECTION_DIVIDER);
-    this.log(SUCCESS_COLOR(`✅ Génération des DTOs pour ${this.answers.entityName} terminée avec succès!`));
+    if (this.answers && this.answers.entityName) {
+      this.log(SUCCESS_COLOR(`✅ Génération des DTOs pour ${this.answers.entityName} terminée avec succès!`));
+    } else {
+      this.log(ERROR_COLOR("❌ La génération des DTOs n'a pas pu être complétée."));
+    }
     this.log(SECTION_DIVIDER);
   }
 }

@@ -5,58 +5,55 @@ package <%= packageName %>;
 import <%= importStatement %>;
 <% }); -%>
 <% } -%>
-<% if (hasDateFields) { -%>
+<% if (dateTimeImport) { -%>
 import java.time.*;
 <% } -%>
-<% if (hasBigDecimalFields) { -%>
+<% if (bigDecimalImport) { -%>
 import java.math.BigDecimal;
 <% } -%>
-import java.io.Serializable;
 import jakarta.validation.constraints.*;
-<% if (useMapstruct) { -%>
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
-<% } -%>
+import java.io.Serializable;
 
 /**
- * DTO for {@link <%= entityPackageName %>.<%= entityName %>}
+ * DTO pour l'entité <%= entityName %>.
  */
 public class <%= entityName %>DTO implements Serializable {
-    private Long id;
-<% fields.forEach(function(field) { -%>
 
+    private static final long serialVersionUID = 1L;
+
+    private Long id;
+
+<% fields.forEach(function(field) { -%>
     <% if (field.required) { -%>
     @NotNull
     <% } -%>
-    <% if (field.type === "String" && field.minLength) { -%>
-    @Size(min = <%= field.minLength %><% if (field.maxLength) { %>, max = <%= field.maxLength %><% } %>)
-    <% } else if (field.type === "String" && field.maxLength) { -%>
+    <% if (field.type === "String") { -%>
+    <% if (field.minLength != null) { -%>
+    @Size(min = <%= field.minLength %><% if (field.maxLength != null) { %>, max = <%= field.maxLength %><% } %>)
+    <% } else if (field.maxLength != null) { -%>
     @Size(max = <%= field.maxLength %>)
     <% } -%>
-    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type) && field.min !== null) { -%>
+    <% } -%>
+    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type)) { -%>
+    <% if (field.min != null) { -%>
     @Min(value = <%= field.min %>)
     <% } -%>
-    <% if (["Integer", "Long", "Float", "Double", "BigDecimal"].includes(field.type) && field.max !== null) { -%>
+    <% if (field.max != null) { -%>
     @Max(value = <%= field.max %>)
+    <% } -%>
     <% } -%>
     private <%= field.type %> <%= field.name %>;
 <% }); -%>
 
-    // Constructeur par défaut
-    public <%= entityName %>DTO() {
-        // Constructeur vide requis pour la sérialisation/désérialisation JSON
-    }
+<% if (auditable) { -%>
+    private String createdBy;
+    private Instant createdDate;
+    private String lastModifiedBy;
+    private Instant lastModifiedDate;
+<% } -%>
 
-    // Constructeur avec tous les champs
-    public <%= entityName %>DTO(Long id<% fields.forEach(function(field) { %>, <%= field.type %> <%= field.name %><% }); %>) {
-        this.id = id;
-<% fields.forEach(function(field) { -%>
-        this.<%= field.name %> = <%= field.name %>;
-<% }); -%>
-    }
+    // Getters and setters
 
-    // Getters et setters
     public Long getId() {
         return id;
     }
@@ -73,50 +70,76 @@ public class <%= entityName %>DTO implements Serializable {
     public void set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= field.type %> <%= field.name %>) {
         this.<%= field.name %> = <%= field.name %>;
     }
-
 <% }); -%>
+
+<% if (auditable) { -%>
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Instant getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(Instant createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public String getLastModifiedBy() {
+        return lastModifiedBy;
+    }
+
+    public void setLastModifiedBy(String lastModifiedBy) {
+        this.lastModifiedBy = lastModifiedBy;
+    }
+
+    public Instant getLastModifiedDate() {
+        return lastModifiedDate;
+    }
+
+    public void setLastModifiedDate(Instant lastModifiedDate) {
+        this.lastModifiedDate = lastModifiedDate;
+    }
+<% } -%>
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof <%= entityName %>DTO)) return false;
-        <%= entityName %>DTO that = (<%= entityName %>DTO) o;
-        return id != null && id.equals(that.id);
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof <%= entityName %>DTO)) {
+            return false;
+        }
+
+        <%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO = (<%= entityName %>DTO) o;
+        if (this.id == null) {
+            return false;
+        }
+        return this.id.equals(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO.id);
     }
 
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        return 31;
     }
 
     @Override
     public String toString() {
         return "<%= entityName %>DTO{" +
-                "id=" + id +
-<% fields.forEach(function(field, index) { -%>
-                ", <%= field.name %>=" + <%= field.name %> +
-<% }); -%>
-                '}';
-    }
-<% if (useMapstruct) { -%>
-
-    /**
-     * Mapper pour convertir entre l'entité <%= entityName %> et son DTO
-     */
-    @Mapper
-    public interface <%= entityName %>Mapper {
-        <%= entityName %>Mapper INSTANCE = Mappers.getMapper(<%= entityName %>Mapper.class);
-
-        @Mapping(target = "id", source = "id")
+            "id=" + getId() +
 <% fields.forEach(function(field) { -%>
-        @Mapping(target = "<%= field.name %>", source = "<%= field.name %>")
+            ", <%= field.name %>=" + get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() +
 <% }); -%>
-        <%= entityName %>DTO toDto(<%= entityPackageName %>.<%= entityName %> entity);
-
-        @Mapping(target = "id", source = "id")
-<% fields.forEach(function(field) { -%>
-        @Mapping(target = "<%= field.name %>", source = "<%= field.name %>")
-<% }); -%>
-        <%= entityPackageName %>.<%= entityName %> toEntity(<%= entityName %>DTO dto);
-    }
+<% if (auditable) { -%>
+            ", createdBy='" + getCreatedBy() + "'" +
+            ", createdDate='" + getCreatedDate() + "'" +
+            ", lastModifiedBy='" + getLastModifiedBy() + "'" +
+            ", lastModifiedDate='" + getLastModifiedDate() + "'" +
 <% } -%>
+            "}";
+    }
 }
