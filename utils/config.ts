@@ -17,8 +17,8 @@ export const DATABASE_OPTIONS = {
  * Options de frameworks frontend supportés
  */
 export const FRONTEND_OPTIONS = {
-  REACT_INERTIA: 'React avec Inertia.js',
-  VUE_INERTIA: 'Vue.js avec Inertia.js',
+  REACT: 'React ',
+  VUE: 'Vue.js ',
   ANGULAR: 'Angular',
   THYMELEAF: 'Thymeleaf',
   JTE: 'JTE',
@@ -63,7 +63,7 @@ export const DEFAULT_CONFIG = {
   appName: 'sfs-app',
   packageName: 'com.example.app',
   buildTool: BUILD_TOOL_OPTIONS.MAVEN,
-  frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
+  frontendFramework: FRONTEND_OPTIONS.VUE,
   database: DATABASE_OPTIONS.POSTGRESQL,
   includeAuth: true,
   authType: 'JWT',
@@ -73,8 +73,8 @@ export const DEFAULT_CONFIG = {
     ADDITIONAL_FEATURES.TESTS,
   ],
   serverPort: 8080,
-  javaVersion: '17',
-  springBootVersion: '3.2.0',
+  javaVersion: '21',
+  springBootVersion: '3.5.3',
   nodeVersion: '20.10.0',
   npmVersion: '10.2.3',
 };
@@ -150,7 +150,7 @@ export interface GlobalConfig {
  * Configuration par défaut pour la génération
  */
 const defaultGlobalConfig: GlobalConfig = {
-  frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
+  frontendFramework: FRONTEND_OPTIONS.VUE,
   database: DATABASE_OPTIONS.H2,
   buildTool: BUILD_TOOL_OPTIONS.MAVEN,
   includeAuth: true,

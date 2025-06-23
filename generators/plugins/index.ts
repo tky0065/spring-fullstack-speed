@@ -9,7 +9,6 @@ import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
 import { createSpinner, displaySectionTitle, displaySectionEnd } from "../../utils/cli-ui.js";
-import { withKeyboardInput, showNavigableMenu } from "../../utils/cli-navigation.js";
 import boxen from "boxen";
 
 // Interface pour les options du générateur

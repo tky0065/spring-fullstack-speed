@@ -1,0 +1,77 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.<%= entityName %>;
+import <%= repositoryPackageName %>.<%= entityName %>Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+/**
+ * Service Implementation for managing {@link <%= entityName %>}.
+ */
+@Service
+@Transactional
+public class <%= entityName %>ServiceImpl implements <%= entityName %>Service {
+
+    private final Logger log = LoggerFactory.getLogger(<%= entityName %>ServiceImpl.class);
+
+    private final <%= entityName %>Repository <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository;
+
+    public <%= entityName %>ServiceImpl(<%= entityName %>Repository <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository) {
+        this.<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository = <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository;
+    }
+
+    @Override
+    public <%= entityName %> save(<%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) {
+        log.debug("Request to save <%= entityName %> : {}", <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.save(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+    }
+
+    @Override
+    public <%= entityName %> update(<%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) {
+        log.debug("Request to update <%= entityName %> : {}", <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.save(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+    }
+
+    @Override
+    public Optional<<%= entityName %>> partialUpdate(<%= entityName %> <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>) {
+        log.debug("Request to partially update <%= entityName %> : {}", <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>);
+
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository
+            .findById(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.getId())
+            .map(existing<%= entityName %> -> {
+<% fields.forEach(function(field) { -%>
+                if (<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() != null) {
+                    existing<%= entityName %>.set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>.get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>());
+                }
+<% }); -%>
+                return existing<%= entityName %>;
+            })
+            .map(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository::save);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<<%= entityName %>> findAll(Pageable pageable) {
+        log.debug("Request to get all <%= entityName %>s");
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.findAll(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<<%= entityName %>> findOne(Long id) {
+        log.debug("Request to get <%= entityName %> : {}", id);
+        return <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.findById(id);
+    }
+
+    @Override
+    public void delete(Long id) {
+        log.debug("Request to delete <%= entityName %> : {}", id);
+        <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>Repository.deleteById(id);
+    }
+}

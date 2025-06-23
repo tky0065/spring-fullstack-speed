@@ -10,6 +10,8 @@ import { getPresets, displaySuccess, displayError } from "./questions.js";
 import Generator from "yeoman-generator";
 type PromptQuestion = Parameters<Generator["prompt"]>[0];
 
+
+
 // Styles visuels
 const MENU_TITLE = chalk.bold.blue;
 const MENU_SUBTITLE = chalk.cyan.italic;

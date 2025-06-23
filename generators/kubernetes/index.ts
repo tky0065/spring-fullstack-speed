@@ -89,7 +89,8 @@ export default class KubernetesGenerator extends BaseGenerator {
     this.log(STEP_PREFIX + chalk.bold("CONFIGURATION KUBERNETES"));
     this.log(SECTION_DIVIDER);
 
-    this.answers = await this.prompt([
+
+    this.answers = await this.prompt<{ [key: string]: any }>([
       {
         type: 'list',
         name: 'deploymentType',
@@ -105,8 +106,8 @@ export default class KubernetesGenerator extends BaseGenerator {
         type: 'input',
         name: 'namespace',
         message: chalk.cyan('Nom du namespace Kubernetes ?'),
-        default: (answers: any) => {
-          return appName;
+        default(this: any, answers: { appName?: string }) {
+          return answers.appName ?? 'spring-app';
         }
       },
       {

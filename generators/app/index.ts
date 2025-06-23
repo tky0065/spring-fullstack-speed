@@ -339,19 +339,19 @@ export default class AppGenerator extends BaseGenerator {
           const mvnCmd = process.platform === 'win32' ? 'mvnw.cmd' : './mvnw';
           try {
             // Tentative de compilation Maven avec plus de détails d'erreur
-            this.spawnCommandSync(mvnCmd, ["clean", "compile"], { stdio: "inherit" });
+            this.spawnSync(mvnCmd, ["clean", "compile"], { stdio: "inherit" });
           } catch (error) {
             this.log(chalk.yellow("⚠️ Tentative de résolution des dépendances sans compilation..."));
-            this.spawnCommandSync(mvnCmd, ["dependency:resolve"], { stdio: "inherit" });
+            this.spawnSync(mvnCmd, ["dependency:resolve"], { stdio: "inherit" });
             throw new Error("La compilation a échoué mais les dépendances ont été résolues");
           }
         } else {
           const gradleCmd = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
           try {
-            this.spawnCommandSync(gradleCmd, ["clean", "compileJava"], { stdio: "inherit" });
+            this.spawnSync(gradleCmd, ["clean", "compileJava"], { stdio: "inherit" });
           } catch (error) {
             this.log(chalk.yellow("⚠️ Tentative de résolution des dépendances sans compilation..."));
-            this.spawnCommandSync(gradleCmd, ["dependencies"], { stdio: "inherit" });
+            this.spawnSync(gradleCmd, ["dependencies"], { stdio: "inherit" });
             throw new Error("La compilation a échoué mais les dépendances ont été résolues");
           }
         }

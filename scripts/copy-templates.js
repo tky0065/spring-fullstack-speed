@@ -81,6 +81,8 @@ async function copyFiles(pattern, srcRoot, destRoot) {
 const patterns = [
   'generators/**/*.ejs',
   'generators/**/templates/**/*',
+  'generators/app/**/*',
+  'generators/**/*',
   'generators/**/*.json',
   'utils/**/*.json'
 ];

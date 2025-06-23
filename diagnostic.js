@@ -1,80 +1,61 @@
-/**
- * Script de diagnostic pour tester l'exécution des tests
- * Ce script vérifie si les tests sont exécutés correctement
- * et capture les éventuelles erreurs
- */
+// Script de diagnostic pour identifier les problèmes avec getSubPackage
+import path from 'path';
+import fs from 'fs';
 
-console.log('=== Démarrage du diagnostic des tests ===');
-console.log('Date et heure:', new Date().toLocaleString());
-console.log('Version Node.js:', process.version);
-console.log('Environnement:', process.env.NODE_ENV);
+// Chemins
+const distPath = path.join(process.cwd(), 'dist/generators/entity/index.js');
+const srcPath = path.join(process.cwd(), 'generators/entity/index.ts');
 
-// Définir l'environnement de test
-process.env.NODE_ENV = 'test';
-process.env.JEST_WORKER_ID = '1';
+console.log('---- DIAGNOSTIC DU GÉNÉRATEUR D\'ENTITÉS ----');
+console.log(`Chemin du fichier source: ${srcPath}`);
+console.log(`Chemin du fichier compilé: ${distPath}`);
 
-// Augmenter la limite d'écouteurs d'événements
-require('events').EventEmitter.defaultMaxListeners = 25;
+// Vérifier l'existence des fichiers
+console.log('\n---- VÉRIFICATION DES FICHIERS ----');
+console.log(`Fichier source existe: ${fs.existsSync(srcPath)}`);
+console.log(`Fichier compilé existe: ${fs.existsSync(distPath)}`);
 
-// Capturer les rejets non gérés
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('DIAGNOSTIC ERROR: Unhandled Rejection at:', promise);
-  console.error('Reason:', reason);
-});
+// Modification manuelle de la méthode writing() pour corriger le problème
+console.log('\n---- CORRECTION DIRECTE DU FICHIER COMPILÉ ----');
+try {
+  if (fs.existsSync(distPath)) {
+    let content = fs.readFileSync(distPath, 'utf8');
 
-// Importer Jest et exécuter un test spécifique
-const { runCLI } = require('jest');
+    // Chercher le code problématique dans la méthode writing()
+    // et remplacer par la version corrigée
+    const searchPattern = /\/\/ Correction : s'assurer que sub n'est jamais undefined/;
+    const fixedCode = `
+        // Correction : s'assurer que sub n'est jamais undefined
+        let entityPackage, repositoryPackage, servicePackage, controllerPackage, dtoPackage;
+        try {
+            entityPackage = this.getSubPackage(packageName, 'entity');
+            repositoryPackage = this.getSubPackage(packageName, 'repository');
+            servicePackage = this.getSubPackage(packageName, 'service');
+            controllerPackage = this.getSubPackage(packageName, 'controller');
+            dtoPackage = this.getSubPackage(packageName, 'dto');
+        } catch (e) {
+            this.displayError(\`[FATAL] Erreur lors de la génération des sous-packages : \${e}\`);
+            return;
+        }`;
 
-const jestConfig = {
-  _: ['generators/__tests__/app.test.ts'], // Seul le test app.test.ts sera exécuté
-  detectOpenHandles: true,
-  verbose: true,
-  forceExit: true,
-  runInBand: true, // Exécuter les tests de manière séquentielle
-  testTimeout: 120000,
-};
+    // Vérifier si le pattern existe
+    const hasPattern = searchPattern.test(content);
+    console.log(`Pattern trouvé dans le fichier compilé: ${hasPattern}`);
 
-console.log('Configuration de Jest:', JSON.stringify(jestConfig, null, 2));
-console.log('\nDémarrage des tests...\n');
+    if (hasPattern) {
+      // Appliquer la correction en remplaçant tout le bloc
+      content = content.replace(/\/\/ Correction : s'assurer que sub n'est jamais undefined[\s\S]*?\/\/ Sécurisation des chemins/m,
+        `${fixedCode}\n        // Sécurisation des chemins`);
 
-// Créer un mock d'inquirer pour les tests
-jest.mock('inquirer', () => ({
-  prompt: jest.fn().mockImplementation(() => Promise.resolve({
-    startOption: 'quickstart',
-    confirmed: true,
-    additionalFeatures: ['docker', 'swagger'],
-    buildTool: 'maven'
-  }))
-}));
-
-// Exécuter Jest avec notre configuration
-runCLI(jestConfig, [process.cwd()])
-  .then(({ results }) => {
-    console.log('\n=== Résultats des tests ===');
-    console.log('Tests exécutés:', results.numTotalTests);
-    console.log('Tests réussis:', results.numPassedTests);
-    console.log('Tests échoués:', results.numFailedTests);
-    console.log('Snapshots échoués:', results.snapshot.failure);
-
-    if (results.numFailedTests > 0) {
-      console.log('\nDétails des échecs:');
-      results.testResults.forEach(testResult => {
-        if (testResult.numFailingTests > 0) {
-          console.log(`\nFichier: ${testResult.testFilePath}`);
-          testResult.testResults.forEach(test => {
-            if (test.status === 'failed') {
-              console.log(`- ${test.fullName}: ${test.status}`);
-              console.log(`  Erreur: ${test.failureMessages.join('\n')}`);
-            }
-          });
-        }
-      });
+      // Écrire le fichier corrigé
+      fs.writeFileSync(distPath, content, 'utf8');
+      console.log('✅ Correction appliquée au fichier compilé');
+    } else {
+      console.log('❌ Impossible de trouver l\'emplacement exact pour appliquer la correction');
     }
+  }
+} catch (error) {
+  console.error(`Erreur lors de la correction: ${error}`);
+}
 
-    process.exit(results.success ? 0 : 1);
-  })
-  .catch(error => {
-    console.error('\n=== Erreur lors de l\'exécution des tests ===');
-    console.error(error);
-    process.exit(1);
-  });
+console.log('\nDiagnostic terminé. Essayez maintenant d\'exécuter "node cli.js e" à nouveau.');

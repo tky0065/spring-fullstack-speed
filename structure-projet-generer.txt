@@ -1,0 +1,70 @@
+.
+├── Dockerfile
+├── README.md
+├── build.gradle.kts
+├── docker
+│   └── dev
+│       ├── Dockerfile.backend.dev
+│       └── Dockerfile.frontend.dev
+├── docker-compose.dev.yml
+├── docker-compose.prod.yml
+├── docker-compose.yml
+├── frontend
+│   ├── Dockerfile
+│   └── nginx.conf
+├── gradlew
+├── gradlew.bat
+├── lombok.config
+├── nginx
+│   ├── certs
+│   ├── conf
+│   │   └── default.conf
+│   └── logs
+├── settings.gradle.kts
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   └── com
+│   │   │       └── example
+│   │   │           └── fullstack
+│   │   │               ├── SfsFullstackApplication.java
+│   │   │               ├── config
+│   │   │               │   ├── OpenApiConfig.java
+│   │   │               │   └── SwaggerUIConfig.java
+│   │   │               ├── controller
+│   │   │               │   └── ExampleApiController.java
+│   │   │               ├── dto
+│   │   │               ├── entity
+│   │   │               ├── exception
+│   │   │               ├── repository
+│   │   │               ├── security
+│   │   │               │   ├── config
+│   │   │               │   ├── controller
+│   │   │               │   ├── dto
+│   │   │               │   ├── model
+│   │   │               │   ├── repository
+│   │   │               │   └── service
+│   │   │               ├── service
+│   │   │               └── util
+│   │   └── resources
+│   │       ├── application-dev.properties
+│   │       ├── application-prod.properties
+│   │       ├── application.properties
+│   │       ├── static
+│   │       │   ├── css
+│   │       │   ├── img
+│   │       │   └── js
+│   │       └── templates
+│   └── test
+│       ├── java
+│       │   └── com
+│       │       └── example
+│       │           └── fullstack
+│       │               ├── controller
+│       │               ├── repository
+│       │               ├── security
+│       │               └── service
+│       └── resources
+└── structure-projet-generer.txt
+
+45 directories, 23 files

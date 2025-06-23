@@ -51,7 +51,7 @@ const testConfigurations = [
       ...DEFAULT_CONFIG,
       appName: 'react-pg-app',
       packageName: 'com.example.reactpg',
-      frontendFramework: FRONTEND_OPTIONS.REACT_INERTIA,
+      frontendFramework: FRONTEND_OPTIONS.REACT,
       database: DATABASE_OPTIONS.POSTGRESQL,
       buildTool: BUILD_TOOL_OPTIONS.MAVEN,
       authType: 'JWT' // Ajout de la propriété authType requise
@@ -63,7 +63,7 @@ const testConfigurations = [
       ...DEFAULT_CONFIG,
       appName: 'vue-mysql-app',
       packageName: 'com.example.vuemysql',
-      frontendFramework: FRONTEND_OPTIONS.VUE_INERTIA,
+      frontendFramework: FRONTEND_OPTIONS.VUE,
       database: DATABASE_OPTIONS.MYSQL,
       buildTool: BUILD_TOOL_OPTIONS.GRADLE,
       authType: 'JWT' // Ajout de la propriété authType requise
@@ -196,7 +196,7 @@ function generateApplicationTemplates(config: any, outputDir: string) {
   console.log('Génération des fichiers frontend...');
 
   // Générer les fichiers frontend selon le framework choisi
-  if (config.frontendFramework === FRONTEND_OPTIONS.REACT_INERTIA) {
+  if (config.frontendFramework === FRONTEND_OPTIONS.REACT) {
     const frontendDir = path.join(outputDir, 'src/main/frontend');
     ensureDirectoryExists(frontendDir);
 
@@ -242,7 +242,7 @@ function generateApplicationTemplates(config: any, outputDir: string) {
       config,
       { templateData: context }
     );
-  } else if (config.frontendFramework === FRONTEND_OPTIONS.VUE_INERTIA) {
+  } else if (config.frontendFramework === FRONTEND_OPTIONS.VUE) {
     const frontendDir = path.join(outputDir, 'src/main/frontend');
     ensureDirectoryExists(frontendDir);
 

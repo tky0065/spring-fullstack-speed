@@ -79,6 +79,10 @@ function checkFileGeneration(generator: any, filePath: string, errorMessage?: st
  * @param dirPath Chemin du répertoire à créer
  */
 function ensureDirectoryExists(generator: any, dirPath: string): void {
+  if (!dirPath || typeof dirPath !== 'string' || dirPath.trim() === '') {
+    generator.log && generator.log(chalk.red(`❌ [SECURITE] Chemin de répertoire invalide ou indéfini: '${dirPath}' (appel ignoré)`));
+    return;
+  }
   const fullPath = generator.destinationPath(dirPath);
   if (!fs.existsSync(fullPath)) {
     generator.log(chalk.yellow(`📁 Création du répertoire: ${dirPath}`));
@@ -995,6 +999,7 @@ export function generateReactFrontend(generator: any, templateData: TemplateData
   ];
 
   directories.forEach(dir => {
+    ensureDirectoryExists(generator, dir);
     generator.fs.write(
       generator.destinationPath(`${dir}/.gitkeep`),
       "# Ce fichier garantit que le répertoire sera inclus dans Git\n"

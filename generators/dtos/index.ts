@@ -52,7 +52,7 @@ export default class DtosGenerator extends BaseGenerator {
   }
 
   async prompting() {
-    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
+
     const opts = this.options as any;
 
     // Simplification du prompt pour ne demander que le nom de l'entité

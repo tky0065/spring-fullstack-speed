@@ -102,8 +102,8 @@ export class BaseGenerator extends Generator {
       // Ajouter des raccourcis pour les vérifications fréquentes
       isMaven: this.appConfig.buildTool === BUILD_TOOL_OPTIONS.MAVEN,
       isGradle: this.appConfig.buildTool === BUILD_TOOL_OPTIONS.GRADLE,
-      isReactInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.REACT_INERTIA,
-      isVueInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.VUE_INERTIA,
+      isReactInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.REACT,
+      isVueInertia: this.appConfig.frontendFramework === FRONTEND_OPTIONS.VUE,
       isAngular: this.appConfig.frontendFramework === FRONTEND_OPTIONS.ANGULAR,
       isThymeleaf: this.appConfig.frontendFramework === FRONTEND_OPTIONS.THYMELEAF,
       isJTE: this.appConfig.frontendFramework === FRONTEND_OPTIONS.JTE,
