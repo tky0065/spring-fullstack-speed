@@ -1,77 +1,75 @@
-package <%= packageName %>.controller;
+package <%= packageName %>.notification.controller;
 
-import <%= packageName %>.dto.PushNotificationDTO;
-import <%= packageName %>.service.PushNotificationService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import <%= packageName %>.notification.dto.PushNotificationDTO;
+import <%= packageName %>.notification.service.PushNotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
-import java.util.Map;
-
 /**
- * REST controller pour gérer les notifications push.
+ * Contrôleur REST pour la gestion des notifications push
  */
 @RestController
-@RequestMapping("/api/push-notification")
+@RequestMapping("/api/push-notifications")
 public class PushNotificationController {
 
-    private final Logger log = LoggerFactory.getLogger(PushNotificationController.class);
-    private final PushNotificationService pushNotificationService;
-
-    public PushNotificationController(PushNotificationService pushNotificationService) {
-        this.pushNotificationService = pushNotificationService;
-    }
+    @Autowired
+    private PushNotificationService pushNotificationService;
 
     /**
-     * {@code POST /api/push-notification/send} : Envoie une notification push à un appareil.
+     * Envoie une notification push à un appareil spécifique
      *
-     * @param notification les détails de la notification
-     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     * @param notification DTO contenant les informations de la notification
+     * @return ResponseEntity avec le statut de l'envoi
      */
     @PostMapping("/send")
-    public ResponseEntity<Map<String, Object>> sendNotification(@Valid @RequestBody PushNotificationDTO notification) {
-        log.debug("REST request to send push notification: {}", notification);
-        boolean result = pushNotificationService.sendNotification(notification);
-        return ResponseEntity.ok(Map.of("sent", result));
+    public ResponseEntity<Boolean> sendPushNotification(@RequestBody PushNotificationDTO notification) {
+        boolean sent = pushNotificationService.sendToDevice(notification);
+        return ResponseEntity.ok(sent);
     }
 
     /**
-     * {@code POST /api/push-notification/multicast} : Envoie une notification push à plusieurs appareils.
+     * Envoie une notification push à un sujet spécifique
      *
-     * @param notification les détails de la notification avec les tokens des appareils
-     * @return {@code 200 OK} avec les résultats détaillés
+     * @param notification DTO contenant les informations de la notification
+     * @param topic Le sujet cible
+     * @return ResponseEntity avec le statut de l'envoi
      */
-    @PostMapping("/multicast")
-    public ResponseEntity<Map<String, Object>> sendMulticastNotification(@Valid @RequestBody PushNotificationDTO notification) {
-        log.debug("REST request to send multicast push notification to {} devices", notification.getTokens().length);
-        Map<String, Object> result = pushNotificationService.sendMulticastNotification(notification);
-        return ResponseEntity.ok(result);
+    @PostMapping("/topic/{topic}")
+    public ResponseEntity<Boolean> sendToTopic(
+            @RequestBody PushNotificationDTO notification,
+            @PathVariable String topic) {
+        boolean sent = pushNotificationService.sendToTopic(notification, topic);
+        return ResponseEntity.ok(sent);
     }
 
     /**
-     * {@code POST /api/push-notification/topic} : Envoie une notification push à tous les abonnés d'un topic.
+     * Abonne un appareil à un sujet
      *
-     * @param notification les détails de la notification avec le topic
-     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     * @param token Le token de l'appareil
+     * @param topic Le sujet auquel s'abonner
+     * @return ResponseEntity avec le statut de l'abonnement
      */
-    @PostMapping("/topic")
-    public ResponseEntity<Map<String, Object>> sendTopicNotification(@Valid @RequestBody PushNotificationDTO notification) {
-        log.debug("REST request to send push notification to topic: {}", notification.getTopic());
-        boolean result = pushNotificationService.sendTopicNotification(notification);
-        return ResponseEntity.ok(Map.of("sent", result));
+    @PostMapping("/subscribe")
+    public ResponseEntity<Boolean> subscribe(
+            @RequestParam String token,
+            @RequestParam String topic) {
+        boolean subscribed = pushNotificationService.subscribeToTopic(token, topic);
+        return ResponseEntity.ok(subscribed);
     }
 
     /**
-     * {@code GET /api/push-notification/stats} : Récupère les statistiques d'envoi de notifications push.
+     * Désabonne un appareil d'un sujet
      *
-     * @return {@code 200 OK} avec les statistiques
+     * @param token Le token de l'appareil
+     * @param topic Le sujet duquel se désabonner
+     * @return ResponseEntity avec le statut du désabonnement
      */
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getPushNotificationStats() {
-        log.debug("REST request to get push notification statistics");
-        Map<String, Object> stats = pushNotificationService.getPushNotificationStats();
-        return ResponseEntity.ok(stats);
+    @PostMapping("/unsubscribe")
+    public ResponseEntity<Boolean> unsubscribe(
+            @RequestParam String token,
+            @RequestParam String topic) {
+        boolean unsubscribed = pushNotificationService.unsubscribeFromTopic(token, topic);
+        return ResponseEntity.ok(unsubscribed);
     }
 }

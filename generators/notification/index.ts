@@ -118,842 +118,495 @@ export default class NotificationGenerator extends BaseGenerator {
   }
 
   configuring() {
-    this.log('Configuration des fonctionnalités de notification...');
-    
-    // Ajouter les dépendances nécessaires au pom.xml ou build.gradle
-    if (this.fs.exists(this.destinationPath('pom.xml'))) {
-      this._addMavenDependencies();
-    } else if (this.fs.exists(this.destinationPath('build.gradle')) || 
-               this.fs.exists(this.destinationPath('build.gradle.kts'))) {
-      this._addGradleDependencies();
-    }
+    this.log('Configuration du système de notification...');
+
+    // Déterminer le package de base du projet
+    this.packageName = this.findPackageName() || 'com.example.app';
+    this.packageFolder = this.packageName.replace(/\./g, '/');
   }
 
-  writing() {
-    this.log('Génération des fichiers pour les fonctionnalités de notification...');
+  async writing() {
+    this.log('Génération des fichiers de notification...');
 
-    // Configuration de base pour les notifications
-    this._generateNotificationConfig();
-    
-    // Implémentation des notifications par email si sélectionnées
-    if (this.answers.notificationTypes.includes('email')) {
-      this._generateEmailImplementation();
+    const { notificationTypes, emailProvider, useTemplating, templateEngine } = this.answers;
+
+    // Création des répertoires
+    const mainJavaDir = 'src/main/java';
+    const packageDir = `${mainJavaDir}/${this.packageFolder}`;
+    const notificationDir = `${packageDir}/notification`;
+
+    this.fs.mkdirp(notificationDir);
+    this.fs.mkdirp(`${notificationDir}/controller`);
+    this.fs.mkdirp(`${notificationDir}/service`);
+    this.fs.mkdirp(`${notificationDir}/dto`);
+    this.fs.mkdirp(`${notificationDir}/config`);
+
+    // Configuration générale
+    this.fs.copyTpl(
+      this.templatePath('NotificationConfig.java.ejs'),
+      this.destinationPath(`${notificationDir}/config/NotificationConfig.java`),
+      { ...this.answers, packageName: this.packageName }
+    );
+
+    // Email
+    if (notificationTypes.includes('email')) {
+      this._generateEmailService();
     }
-    
-    // Implémentation des WebSockets si sélectionnés
-    if (this.answers.notificationTypes.includes('websocket')) {
-      this._generateWebSocketImplementation();
+
+    // WebSocket
+    if (notificationTypes.includes('websocket')) {
+      this._generateWebSocketService();
     }
-    
-    // Implémentation des notifications push si sélectionnées
-    if (this.answers.notificationTypes.includes('push')) {
-      this._generatePushNotificationImplementation();
+
+    // Push Notifications
+    if (notificationTypes.includes('push')) {
+      this._generatePushNotificationService();
     }
-    
-    // Implémentation des webhooks si sélectionnés
-    if (this.answers.notificationTypes.includes('webhooks')) {
-      this._generateWebhooksImplementation();
+
+    // Webhooks
+    if (notificationTypes.includes('webhooks')) {
+      this._generateWebhooksService();
     }
-    
-    // Générer les templates de notification si nécessaire
-    if (this.answers.useTemplating) {
-      this._generateNotificationTemplates();
+
+    // Templates pour emails si nécessaire
+    if (notificationTypes.includes('email') && useTemplating) {
+      this._generateEmailTemplates();
     }
-    
-    // Configurer les tests pour chaque type de notification
-    this._generateNotificationTests();
-    
-    // Générer la documentation pour les fonctionnalités de notification
-    this._generateNotificationDocumentation();
+
+    this.log('✅ Fichiers de notification générés avec succès!');
   }
 
   install() {
-    this.log('Installation terminée pour les fonctionnalités de notification');
+    this.log('Mise à jour des dépendances...');
+
+    const { notificationTypes, emailProvider, pushProviders } = this.answers;
+    const isMaven = this.fs.exists(this.destinationPath('pom.xml'));
+
+    if (isMaven) {
+      this._updateMavenDependencies();
+    } else {
+      this._updateGradleDependencies();
+    }
   }
 
   end() {
-    this.log('Intégration des fonctionnalités de notification terminée!');
-  }
+    this.log('🚀 Configuration du système de notification terminée!');
 
-  // Méthodes privées d'aide
-  private _addMavenDependencies() {
-    try {
-      const pomXml = this.fs.read(this.destinationPath('pom.xml'));
-      let dependencies = '';
+    const { notificationTypes } = this.answers;
 
-      // Dépendances pour email
-      if (this.answers.notificationTypes.includes('email')) {
-        dependencies += `
-        <!-- Email dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>`;
-        
-        if (this.answers.emailProvider === 'sendgrid') {
-          dependencies += `
-        <dependency>
-            <groupId>com.sendgrid</groupId>
-            <artifactId>sendgrid-java</artifactId>
-            <version>4.9.3</version>
-        </dependency>`;
-        } else if (this.answers.emailProvider === 'mailgun') {
-          dependencies += `
-        <dependency>
-            <groupId>com.mailgun</groupId>
-            <artifactId>mailgun-java</artifactId>
-            <version>1.0.7</version>
-        </dependency>`;
-        } else if (this.answers.emailProvider === 'ses') {
-          dependencies += `
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>ses</artifactId>
-        </dependency>`;
-        }
-      }
+    this.log('\nExemple d\'utilisation:');
 
-      // Dépendances pour WebSocket
-      if (this.answers.notificationTypes.includes('websocket')) {
-        dependencies += `
-        <!-- WebSocket dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>sockjs-client</artifactId>
-            <version>1.5.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.webjars</groupId>
-            <artifactId>stomp-websocket</artifactId>
-            <version>2.3.4</version>
-        </dependency>`;
-      }
+    if (notificationTypes.includes('email')) {
+      this.log(`
+// Exemple d'envoi d'email
+@Autowired
+private EmailService emailService;
 
-      // Dépendances pour les templates
-      if (this.answers.useTemplating) {
-        if (this.answers.templateEngine === 'thymeleaf') {
-          dependencies += `
-        <!-- Thymeleaf for email templates -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.thymeleaf.extras</groupId>
-            <artifactId>thymeleaf-extras-java8time</artifactId>
-        </dependency>`;
-        } else if (this.answers.templateEngine === 'freemarker') {
-          dependencies += `
-        <!-- FreeMarker for email templates -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-freemarker</artifactId>
-        </dependency>`;
-        } else if (this.answers.templateEngine === 'handlebars') {
-          dependencies += `
-        <!-- Handlebars for email templates -->
-        <dependency>
-            <groupId>com.github.jknack</groupId>
-            <artifactId>handlebars</artifactId>
-            <version>4.3.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.jknack</groupId>
-            <artifactId>handlebars-springmvc</artifactId>
-            <version>4.3.1</version>
-        </dependency>`;
-        }
-      }
-
-      // Dépendances pour FCM (Firebase Cloud Messaging)
-      if (this.answers.notificationTypes.includes('push') && this.answers.pushProviders?.includes('fcm')) {
-        dependencies += `
-        <!-- Firebase Cloud Messaging -->
-        <dependency>
-            <groupId>com.google.firebase</groupId>
-            <artifactId>firebase-admin</artifactId>
-            <version>9.2.0</version>
-        </dependency>`;
-      }
-
-      // Dépendances pour OneSignal
-      if (this.answers.notificationTypes.includes('push') && this.answers.pushProviders?.includes('onesignal')) {
-        dependencies += `
-        <!-- OneSignal -->
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20231013</version>
-        </dependency>`;
-      }
-      
-      if (dependencies) {
-        const updatedPom = pomXml.replace(
-          '</dependencies>',
-          `${dependencies}\n    </dependencies>`
-        );
-        this.fs.write(this.destinationPath('pom.xml'), updatedPom);
-      }
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier pom.xml');
-    }
-  }
-
-  private _addGradleDependencies() {
-    try {
-      const buildFile = this.fs.exists(this.destinationPath('build.gradle.kts')) 
-        ? this.destinationPath('build.gradle.kts')
-        : this.destinationPath('build.gradle');
-      
-      const buildContent = this.fs.read(buildFile);
-      let dependencies = '';
-
-      // Dépendances pour email
-      if (this.answers.notificationTypes.includes('email')) {
-        if (buildFile.endsWith('.kts')) {
-          dependencies += `
-    // Email
-    implementation("org.springframework.boot:spring-boot-starter-mail")`;
-          
-          if (this.answers.emailProvider === 'sendgrid') {
-            dependencies += `
-    implementation("com.sendgrid:sendgrid-java:4.9.3")`;
-          } else if (this.answers.emailProvider === 'mailgun') {
-            dependencies += `
-    implementation("com.mailgun:mailgun-java:1.0.7")`;
-          } else if (this.answers.emailProvider === 'ses') {
-            dependencies += `
-    implementation("software.amazon.awssdk:ses")`;
-          }
-        } else {
-          dependencies += `
-    // Email
-    implementation 'org.springframework.boot:spring-boot-starter-mail'`;
-          
-          if (this.answers.emailProvider === 'sendgrid') {
-            dependencies += `
-    implementation 'com.sendgrid:sendgrid-java:4.9.3'`;
-          } else if (this.answers.emailProvider === 'mailgun') {
-            dependencies += `
-    implementation 'com.mailgun:mailgun-java:1.0.7'`;
-          } else if (this.answers.emailProvider === 'ses') {
-            dependencies += `
-    implementation 'software.amazon.awssdk:ses'`;
-          }
-        }
-      }
-
-      // Dépendances pour WebSocket
-      if (this.answers.notificationTypes.includes('websocket')) {
-        if (buildFile.endsWith('.kts')) {
-          dependencies += `
-    // WebSocket
-    implementation("org.springframework.boot:spring-boot-starter-websocket")
-    implementation("org.webjars:sockjs-client:1.5.1")
-    implementation("org.webjars:stomp-websocket:2.3.4")`;
-        } else {
-          dependencies += `
-    // WebSocket
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.webjars:sockjs-client:1.5.1'
-    implementation 'org.webjars:stomp-websocket:2.3.4'`;
-        }
-      }
-
-      // Dépendances pour les templates
-      if (this.answers.useTemplating) {
-        if (this.answers.templateEngine === 'thymeleaf') {
-          if (buildFile.endsWith('.kts')) {
-            dependencies += `
-    // Thymeleaf for email templates
-    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
-    implementation("org.thymeleaf.extras:thymeleaf-extras-java8time")`;
-          } else {
-            dependencies += `
-    // Thymeleaf for email templates
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.thymeleaf.extras:thymeleaf-extras-java8time'`;
-          }
-        } else if (this.answers.templateEngine === 'freemarker') {
-          if (buildFile.endsWith('.kts')) {
-            dependencies += `
-    // FreeMarker for email templates
-    implementation("org.springframework.boot:spring-boot-starter-freemarker")`;
-          } else {
-            dependencies += `
-    // FreeMarker for email templates
-    implementation 'org.springframework.boot:spring-boot-starter-freemarker'`;
-          }
-        } else if (this.answers.templateEngine === 'handlebars') {
-          if (buildFile.endsWith('.kts')) {
-            dependencies += `
-    // Handlebars for email templates
-    implementation("com.github.jknack:handlebars:4.3.1")
-    implementation("com.github.jknack:handlebars-springmvc:4.3.1")`;
-          } else {
-            dependencies += `
-    // Handlebars for email templates
-    implementation 'com.github.jknack:handlebars:4.3.1'
-    implementation 'com.github.jknack:handlebars-springmvc:4.3.1'`;
-          }
-        }
-      }
-
-      // Dépendances pour FCM (Firebase Cloud Messaging)
-      if (this.answers.notificationTypes.includes('push') && this.answers.pushProviders?.includes('fcm')) {
-        if (buildFile.endsWith('.kts')) {
-          dependencies += `
-    // Firebase Cloud Messaging
-    implementation("com.google.firebase:firebase-admin:9.2.0")`;
-        } else {
-          dependencies += `
-    // Firebase Cloud Messaging
-    implementation 'com.google.firebase:firebase-admin:9.2.0'`;
-        }
-      }
-
-      // Dépendances pour OneSignal
-      if (this.answers.notificationTypes.includes('push') && this.answers.pushProviders?.includes('onesignal')) {
-        if (buildFile.endsWith('.kts')) {
-          dependencies += `
-    // OneSignal
-    implementation("org.json:json:20231013")`;
-        } else {
-          dependencies += `
-    // OneSignal
-    implementation 'org.json:json:20231013'`;
-        }
-      }
-      
-      if (dependencies) {
-        const updatedContent = buildContent.replace(
-          'dependencies {',
-          `dependencies {${dependencies}`
-        );
-        this.fs.write(buildFile, updatedContent);
-      }
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier build.gradle');
-    }
-  }
-
-  private _generateNotificationConfig() {
-    // Générer la configuration de base pour les notifications
-    this.fs.copyTpl(
-      this.templatePath('NotificationConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/config/NotificationConfig.java`),
-      {
-        packageName: this.packageName,
-        asyncNotifications: this.answers.asyncNotifications,
-        trackingEnabled: this.answers.trackingEnabled
-      }
+public void sendWelcomeEmail(User user) {
+    emailService.sendEmail(
+        user.getEmail(),
+        "Bienvenue",
+        "Bienvenue sur notre plateforme!",
+        true
     );
-    
-    // Ajouter les propriétés dans application.properties ou application.yml
-    const propertiesPath = this.fs.exists(this.destinationPath('src/main/resources/application.yml'))
-      ? this.destinationPath('src/main/resources/application.yml')
-      : this.destinationPath('src/main/resources/application.properties');
+}
+`);
+    }
 
-    if (propertiesPath.endsWith('.yml')) {
-      this._updateYamlProperties(propertiesPath);
-    } else {
-      this._updateProperties(propertiesPath);
+    if (notificationTypes.includes('websocket')) {
+      this.log(`
+// Exemple d'envoi de message WebSocket
+@Autowired
+private WebSocketService webSocketService;
+
+public void sendNotification(String userId, String message) {
+    webSocketService.sendToUser(userId, new WebSocketMessageDTO("notification", message));
+}
+`);
     }
   }
 
-  private _updateYamlProperties(propertiesPath: string) {
-    try {
-      const properties = this.fs.read(propertiesPath);
-      let notificationProps = `
-# Notification Configuration
-application:
-  notification:
-    enabled: true
-    tracking-enabled: ${this.answers.trackingEnabled}`;
+  // Méthodes privées
 
-      if (this.answers.notificationTypes.includes('email')) {
-        notificationProps += `
-spring:
-  mail:
-    host: ${this.answers.emailProvider === 'smtp' ? 'smtp.example.com' : 'localhost'}
-    port: 587
-    username: # votre-username
-    password: # votre-password
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-    default-encoding: UTF-8
-application:
-  mail:
-    from: ${this.answers.emailFrom}
-    base-url: http://localhost:8080`;
-        
-        if (this.answers.emailProvider === 'sendgrid') {
-          notificationProps += `
-    sendgrid:
-      api-key: # votre-api-key`;
-        } else if (this.answers.emailProvider === 'mailgun') {
-          notificationProps += `
-    mailgun:
-      api-key: # votre-api-key
-      domain: # votre-domain`;
-        } else if (this.answers.emailProvider === 'ses') {
-          notificationProps += `
-    aws:
-      ses:
-        access-key: # votre-access-key
-        secret-key: # votre-secret-key
-        region: eu-west-1`;
-        }
-      }
+  findPackageName(): string | null {
+    // Chercher dans Application.java ou un autre fichier Java principal
+    const files = this.fs.glob.sync('src/main/java/**/*Application.java');
 
-      if (this.answers.notificationTypes.includes('push')) {
-        notificationProps += `
-application:
-  push-notification:
-    enabled: true`;
-        
-        if (this.answers.pushProviders?.includes('fcm')) {
-          notificationProps += `
-    firebase:
-      service-account-file: firebase-service-account.json
-      database-url: https://your-app.firebaseio.com`;
-        }
-        
-        if (this.answers.pushProviders?.includes('onesignal')) {
-          notificationProps += `
-    onesignal:
-      app-id: # votre-app-id
-      api-key: # votre-api-key`;
-        }
-      }
-      
-      if (this.answers.notificationTypes.includes('websocket')) {
-        notificationProps += `
-spring:
-  websocket:
-    path: /ws
-    allowed-origins: "*"`;
-      }
-      
-      if (this.answers.notificationTypes.includes('webhooks')) {
-        notificationProps += `
-application:
-  webhooks:
-    enabled: true
-    endpoint: /api/webhooks
-    secret: # votre-secret-pour-la-signature`;
-      }
-      
-      this.fs.write(propertiesPath, properties + notificationProps);
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier application.yml');
+    if (files.length > 0) {
+      const content = this.fs.read(files[0]);
+      const match = content.match(/package\s+([\w.]+)/);
+      return match ? match[1] : null;
     }
+
+    return null;
   }
 
-  private _updateProperties(propertiesPath: string) {
-    try {
-      const properties = this.fs.read(propertiesPath);
-      let notificationProps = `
-# Notification Configuration
-application.notification.enabled=true
-application.notification.tracking-enabled=${this.answers.trackingEnabled}`;
+  _generateEmailService() {
+    const { emailProvider, emailFrom } = this.answers;
+    const notificationDir = `src/main/java/${this.packageFolder}/notification`;
 
-      if (this.answers.notificationTypes.includes('email')) {
-        notificationProps += `
-# Email Configuration
-spring.mail.host=${this.answers.emailProvider === 'smtp' ? 'smtp.example.com' : 'localhost'}
-spring.mail.port=587
-spring.mail.username=# votre-username
-spring.mail.password=# votre-password
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
-spring.mail.properties.mail.smtp.starttls.required=true
-spring.mail.default-encoding=UTF-8
-application.mail.from=${this.answers.emailFrom}
-application.mail.base-url=http://localhost:8080`;
-        
-        if (this.answers.emailProvider === 'sendgrid') {
-          notificationProps += `
-application.mail.sendgrid.api-key=# votre-api-key`;
-        } else if (this.answers.emailProvider === 'mailgun') {
-          notificationProps += `
-application.mail.mailgun.api-key=# votre-api-key
-application.mail.mailgun.domain=# votre-domain`;
-        } else if (this.answers.emailProvider === 'ses') {
-          notificationProps += `
-application.mail.aws.ses.access-key=# votre-access-key
-application.mail.aws.ses.secret-key=# votre-secret-key
-application.mail.aws.ses.region=eu-west-1`;
-        }
-      }
-
-      if (this.answers.notificationTypes.includes('push')) {
-        notificationProps += `
-# Push Notification Configuration
-application.push-notification.enabled=true`;
-        
-        if (this.answers.pushProviders?.includes('fcm')) {
-          notificationProps += `
-application.push-notification.firebase.service-account-file=firebase-service-account.json
-application.push-notification.firebase.database-url=https://your-app.firebaseio.com`;
-        }
-        
-        if (this.answers.pushProviders?.includes('onesignal')) {
-          notificationProps += `
-application.push-notification.onesignal.app-id=# votre-app-id
-application.push-notification.onesignal.api-key=# votre-api-key`;
-        }
-      }
-      
-      if (this.answers.notificationTypes.includes('websocket')) {
-        notificationProps += `
-# WebSocket Configuration
-spring.websocket.path=/ws
-spring.websocket.allowed-origins=*`;
-      }
-      
-      if (this.answers.notificationTypes.includes('webhooks')) {
-        notificationProps += `
-# Webhooks Configuration
-application.webhooks.enabled=true
-application.webhooks.endpoint=/api/webhooks
-application.webhooks.secret=# votre-secret-pour-la-signature`;
-      }
-      
-      this.fs.write(propertiesPath, properties + notificationProps);
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier application.properties');
-    }
-  }
-
-  private _generateEmailImplementation() {
-    // Entités et DTOs pour les emails
-    this.fs.copyTpl(
-      this.templatePath('EmailNotification.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/domain/EmailNotification.java`),
-      {
-        packageName: this.packageName,
-        trackingEnabled: this.answers.trackingEnabled
-      }
-    );
-    
+    // DTO pour les emails
     this.fs.copyTpl(
       this.templatePath('EmailDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/EmailDTO.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/dto/EmailDTO.java`),
+      { ...this.answers, packageName: this.packageName }
     );
     
-    // Service pour l'envoi d'emails
+    // Service d'email
     this.fs.copyTpl(
       this.templatePath('EmailService.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/service/EmailService.java`),
-      {
-        packageName: this.packageName,
-        emailProvider: this.answers.emailProvider,
-        useTemplating: this.answers.useTemplating,
-        templateEngine: this.answers.templateEngine,
-        asyncNotifications: this.answers.asyncNotifications,
-        trackingEnabled: this.answers.trackingEnabled
-      }
+      this.destinationPath(`${notificationDir}/service/EmailService.java`),
+      { ...this.answers, packageName: this.packageName }
     );
     
-    // Implémentation du service d'email selon le provider
-    if (this.answers.emailProvider === 'smtp') {
+    // Implémentation spécifique selon le provider
+    if (emailProvider === 'smtp') {
       this.fs.copyTpl(
         this.templatePath('SmtpEmailService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/SmtpEmailService.java`),
-        {
-          packageName: this.packageName,
-          useTemplating: this.answers.useTemplating,
-          templateEngine: this.answers.templateEngine,
-          asyncNotifications: this.answers.asyncNotifications
-        }
+        this.destinationPath(`${notificationDir}/service/SmtpEmailService.java`),
+        { ...this.answers, packageName: this.packageName }
       );
-    } else if (this.answers.emailProvider === 'sendgrid') {
+    } else {
+      // Pour les autres providers (SendGrid, Mailgun, etc.)
+      const providerClassName = emailProvider.charAt(0).toUpperCase() + emailProvider.slice(1);
       this.fs.copyTpl(
-        this.templatePath('SendgridEmailService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/SendgridEmailService.java`),
-        {
-          packageName: this.packageName,
-          useTemplating: this.answers.useTemplating,
-          templateEngine: this.answers.templateEngine,
-          asyncNotifications: this.answers.asyncNotifications
-        }
-      );
-    } else if (this.answers.emailProvider === 'mailgun') {
-      this.fs.copyTpl(
-        this.templatePath('MailgunEmailService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/MailgunEmailService.java`),
-        {
-          packageName: this.packageName,
-          useTemplating: this.answers.useTemplating,
-          templateEngine: this.answers.templateEngine,
-          asyncNotifications: this.answers.asyncNotifications
-        }
-      );
-    } else if (this.answers.emailProvider === 'ses') {
-      this.fs.copyTpl(
-        this.templatePath('AwsSesEmailService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/AwsSesEmailService.java`),
-        {
-          packageName: this.packageName,
-          useTemplating: this.answers.useTemplating,
-          templateEngine: this.answers.templateEngine,
-          asyncNotifications: this.answers.asyncNotifications
-        }
+        this.templatePath('SmtpEmailService.java.ejs'), // Utiliser le template SMTP comme base
+        this.destinationPath(`${notificationDir}/service/${providerClassName}EmailService.java`),
+        { ...this.answers, packageName: this.packageName, providerName: providerClassName }
       );
     }
 
     // Controller pour les emails
     this.fs.copyTpl(
       this.templatePath('EmailController.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/controller/EmailController.java`),
-      {
-        packageName: this.packageName,
-        trackingEnabled: this.answers.trackingEnabled
-      }
+      this.destinationPath(`${notificationDir}/controller/EmailController.java`),
+      { ...this.answers, packageName: this.packageName }
     );
-
-    // Repository pour les emails si tracking est activé
-    if (this.answers.trackingEnabled) {
-      this.fs.copyTpl(
-        this.templatePath('EmailNotificationRepository.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/repository/EmailNotificationRepository.java`),
-        {
-          packageName: this.packageName
-        }
-      );
-    }
   }
 
-  private _generateWebSocketImplementation() {
+  _generateWebSocketService() {
+    const notificationDir = `src/main/java/${this.packageFolder}/notification`;
+
     // Configuration WebSocket
     this.fs.copyTpl(
       this.templatePath('WebSocketConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/config/WebSocketConfig.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Controller pour les messages WebSocket
-    this.fs.copyTpl(
-      this.templatePath('WebSocketController.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/controller/WebSocketController.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/config/WebSocketConfig.java`),
+      { ...this.answers, packageName: this.packageName }
     );
 
     // DTO pour les messages WebSocket
     this.fs.copyTpl(
       this.templatePath('WebSocketMessageDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/WebSocketMessageDTO.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/dto/WebSocketMessageDTO.java`),
+      { ...this.answers, packageName: this.packageName }
     );
 
-    // Service pour WebSocket
+    // Service WebSocket
     this.fs.copyTpl(
       this.templatePath('WebSocketService.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/service/WebSocketService.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/service/WebSocketService.java`),
+      { ...this.answers, packageName: this.packageName }
+    );
+
+    // Controller WebSocket
+    this.fs.copyTpl(
+      this.templatePath('WebSocketController.java.ejs'),
+      this.destinationPath(`${notificationDir}/controller/WebSocketController.java`),
+      { ...this.answers, packageName: this.packageName }
     );
   }
 
-  private _generatePushNotificationImplementation() {
-    // Service pour les notifications push
-    this.fs.copyTpl(
-      this.templatePath('PushNotificationService.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/service/PushNotificationService.java`),
-      {
-        packageName: this.packageName
-      }
-    );
+  _generatePushNotificationService() {
+    const { pushProviders } = this.answers;
+    const notificationDir = `src/main/java/${this.packageFolder}/notification`;
 
     // DTO pour les notifications push
     this.fs.copyTpl(
       this.templatePath('PushNotificationDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/PushNotificationDTO.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/dto/PushNotificationDTO.java`),
+      { ...this.answers, packageName: this.packageName }
     );
+
+    // Service de notification push
+    this.fs.copyTpl(
+      this.templatePath('PushNotificationService.java.ejs'),
+      this.destinationPath(`${notificationDir}/service/PushNotificationService.java`),
+      { ...this.answers, packageName: this.packageName }
+    );
+
+    // Implémentation spécifique pour FCM
+    if (pushProviders && pushProviders.includes('fcm')) {
+      this.fs.copyTpl(
+        this.templatePath('FcmPushService.java.ejs'),
+        this.destinationPath(`${notificationDir}/service/FcmPushService.java`),
+        { ...this.answers, packageName: this.packageName }
+      );
+    }
 
     // Controller pour les notifications push
     this.fs.copyTpl(
       this.templatePath('PushNotificationController.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/controller/PushNotificationController.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Implémentations spécifiques selon les providers
-    if (this.answers.pushProviders?.includes('fcm')) {
-      this.fs.copyTpl(
-        this.templatePath('FcmPushService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/FcmPushService.java`),
-        {
-          packageName: this.packageName
-        }
-      );
-    }
-
-    if (this.answers.pushProviders?.includes('onesignal')) {
-      this.fs.copyTpl(
-        this.templatePath('OneSignalPushService.java.ejs'),
-        this.destinationPath(`src/main/java/${this.packageFolder}/service/impl/OneSignalPushService.java`),
-        {
-          packageName: this.packageName
-        }
-      );
-    }
-  }
-
-  private _generateWebhooksImplementation() {
-    // Service pour les webhooks
-    this.fs.copyTpl(
-      this.templatePath('WebhookService.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/service/WebhookService.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Controller pour les webhooks
-    this.fs.copyTpl(
-      this.templatePath('WebhookController.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/controller/WebhookController.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Entity pour les webhooks
-    this.fs.copyTpl(
-      this.templatePath('Webhook.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/domain/Webhook.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Repository pour les webhooks
-    this.fs.copyTpl(
-      this.templatePath('WebhookRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/repository/WebhookRepository.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // DTO pour les webhooks
-    this.fs.copyTpl(
-      this.templatePath('WebhookDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/WebhookDTO.java`),
-      {
-        packageName: this.packageName
-      }
+      this.destinationPath(`${notificationDir}/controller/PushNotificationController.java`),
+      { ...this.answers, packageName: this.packageName }
     );
   }
 
-  private _generateNotificationTemplates() {
-    // Créer les templates d'emails
-    if (this.answers.notificationTypes.includes('email')) {
-      const templateDir = this.answers.templateEngine === 'thymeleaf'
-        ? 'src/main/resources/templates/mail'
-        : this.answers.templateEngine === 'freemarker'
-          ? 'src/main/resources/templates/mail'
-          : 'src/main/resources/templates/mail';
+  _generateWebhooksService() {
+    // À implémenter ultérieurement si nécessaire
+  }
 
+  _generateEmailTemplates() {
+    const { templateEngine } = this.answers;
+    const resourcesDir = 'src/main/resources';
+    const templatesDir = `${resourcesDir}/templates`;
+
+    this.fs.mkdirp(`${templatesDir}/email`);
+
+    // Template d'activation de compte adapté au moteur de template choisi
+    if (templateEngine === 'thymeleaf') {
       this.fs.copyTpl(
         this.templatePath('activation-email.html.ejs'),
-        this.destinationPath(`${templateDir}/activation-email.html`),
+        this.destinationPath(`${templatesDir}/email/activation-email.html`),
         {
-          templateEngine: this.answers.templateEngine
+          ...this.answers,
+          nameVar: '${name}',
+          activationUrlVar: '${activationUrl}',
+          emailVar: '${email}'
         }
       );
+    } else if (templateEngine === 'freemarker') {
+      // Pour FreeMarker, utiliser la syntaxe ${variable}
+      this.fs.copyTpl(
+        this.templatePath('activation-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/activation-email.ftl`),
+        {
+          ...this.answers,
+          nameVar: '${name}',
+          activationUrlVar: '${activationUrl}',
+          emailVar: '${email}'
+        }
+      );
+    } else if (templateEngine === 'handlebars') {
+      // Pour Handlebars, la syntaxe {{variable}} est déjà correcte
+      this.fs.copyTpl(
+        this.templatePath('activation-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/activation-email.hbs`),
+        {
+          ...this.answers,
+          nameVar: '{{name}}',
+          activationUrlVar: '{{activationUrl}}',
+          emailVar: '{{email}}'
+        }
+      );
+    } else {
+      // Par défaut, utiliser un format simple
+      this.fs.copyTpl(
+        this.templatePath('activation-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/activation-email.html`),
+        this.answers
+      );
+    }
 
+    // Template de réinitialisation de mot de passe
+    this._generatePasswordResetTemplate();
+  }
+
+  _generatePasswordResetTemplate() {
+    const { templateEngine } = this.answers;
+    const resourcesDir = 'src/main/resources';
+    const templatesDir = `${resourcesDir}/templates`;
+
+    // Assurez-vous que le répertoire existe
+    this.fs.mkdirp(`${templatesDir}/email`);
+
+    // Générer le template de réinitialisation de mot de passe adapté au moteur de template choisi
+    if (templateEngine === 'thymeleaf') {
       this.fs.copyTpl(
         this.templatePath('password-reset-email.html.ejs'),
-        this.destinationPath(`${templateDir}/password-reset-email.html`),
+        this.destinationPath(`${templatesDir}/email/password-reset-email.html`),
         {
-          templateEngine: this.answers.templateEngine
+          ...this.answers,
+          nameVar: '${name}',
+          resetUrlVar: '${resetUrl}',
+          emailVar: '${email}'
         }
       );
-
+    } else if (templateEngine === 'freemarker') {
+      // Pour FreeMarker, utiliser la syntaxe ${variable}
       this.fs.copyTpl(
-        this.templatePath('notification-email.html.ejs'),
-        this.destinationPath(`${templateDir}/notification-email.html`),
+        this.templatePath('password-reset-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/password-reset-email.ftl`),
         {
-          templateEngine: this.answers.templateEngine
+          ...this.answers,
+          nameVar: '${name}',
+          resetUrlVar: '${resetUrl}',
+          emailVar: '${email}'
         }
+      );
+    } else if (templateEngine === 'handlebars') {
+      // Pour Handlebars, utiliser la syntaxe {{variable}}
+      this.fs.copyTpl(
+        this.templatePath('password-reset-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/password-reset-email.hbs`),
+        {
+          ...this.answers,
+          nameVar: '{{name}}',
+          resetUrlVar: '{{resetUrl}}',
+          emailVar: '{{email}}'
+        }
+      );
+    } else {
+      // Par défaut, utiliser un format simple
+      this.fs.copyTpl(
+        this.templatePath('password-reset-email.html.ejs'),
+        this.destinationPath(`${templatesDir}/email/password-reset-email.html`),
+        this.answers
       );
     }
   }
 
-  private _generateNotificationTests() {
-    // Tests pour les services de notification
-    if (this.answers.notificationTypes.includes('email')) {
-      this.fs.copyTpl(
-        this.templatePath('EmailServiceTest.java.ejs'),
-        this.destinationPath(`src/test/java/${this.packageFolder}/service/EmailServiceTest.java`),
-        {
-          packageName: this.packageName,
-          emailProvider: this.answers.emailProvider
-        }
-      );
-    }
+  _updateMavenDependencies() {
+    const { notificationTypes, emailProvider, pushProviders } = this.answers;
+    const pomPath = this.destinationPath('pom.xml');
+    let pomContent = this.fs.read(pomPath);
 
-    if (this.answers.notificationTypes.includes('websocket')) {
-      this.fs.copyTpl(
-        this.templatePath('WebSocketServiceTest.java.ejs'),
-        this.destinationPath(`src/test/java/${this.packageFolder}/service/WebSocketServiceTest.java`),
-        {
-          packageName: this.packageName
-        }
-      );
-    }
+    const dependencies:any = [];
 
-    if (this.answers.notificationTypes.includes('push')) {
-      this.fs.copyTpl(
-        this.templatePath('PushNotificationServiceTest.java.ejs'),
-        this.destinationPath(`src/test/java/${this.packageFolder}/service/PushNotificationServiceTest.java`),
-        {
-          packageName: this.packageName,
-          pushProviders: this.answers.pushProviders || []
-        }
-      );
-    }
-  }
+    // Dépendances pour les emails
+    if (notificationTypes.includes('email')) {
+      dependencies.push(`
+        <!-- Spring Mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>`);
 
-  private _generateNotificationDocumentation() {
-    // Créer la documentation pour les fonctionnalités de notification
-    this.fs.copyTpl(
-      this.templatePath('notification-guide.md.ejs'),
-      this.destinationPath('docs/notification-guide.md'),
-      {
-        notificationTypes: this.answers.notificationTypes,
-        emailProvider: this.answers.emailProvider,
-        pushProviders: this.answers.pushProviders,
-        useTemplating: this.answers.useTemplating,
-        templateEngine: this.answers.templateEngine
+      // Dépendances spécifiques au provider
+      if (emailProvider === 'sendgrid') {
+        dependencies.push(`
+        <!-- SendGrid -->
+        <dependency>
+            <groupId>com.sendgrid</groupId>
+            <artifactId>sendgrid-java</artifactId>
+            <version>4.9.3</version>
+        </dependency>`);
+      } else if (emailProvider === 'mailgun') {
+        dependencies.push(`
+        <!-- Mailgun -->
+        <dependency>
+            <groupId>com.mailgun</groupId>
+            <artifactId>mailgun-java</artifactId>
+            <version>1.0.5</version>
+        </dependency>`);
       }
-    );
+    }
+
+    // Dépendances pour WebSocket
+    if (notificationTypes.includes('websocket')) {
+      dependencies.push(`
+        <!-- WebSocket -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>`);
+    }
+
+    // Dépendances pour les notifications push
+    if (notificationTypes.includes('push') && pushProviders && pushProviders.includes('fcm')) {
+      dependencies.push(`
+        <!-- Firebase Cloud Messaging -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.1.1</version>
+        </dependency>`);
+    }
+
+    // Ajouter les dépendances avant la fermeture des dependencies
+    if (dependencies.length > 0) {
+      if (pomContent.includes('</dependencies>')) {
+        pomContent = pomContent.replace('</dependencies>', `${dependencies.join('\n')}\n    </dependencies>`);
+        this.fs.write(pomPath, pomContent);
+        this.log('✅ Dépendances Maven ajoutées avec succès');
+      } else {
+        this.log('⚠️ Impossible d\'ajouter les dépendances Maven. Structure du pom.xml non reconnue.');
+        this.log('Veuillez ajouter les dépendances suivantes manuellement:');
+        this.log(dependencies.join('\n'));
+      }
+    }
+  }
+
+  _updateGradleDependencies() {
+    const { notificationTypes, emailProvider, pushProviders } = this.answers;
+    const buildGradlePath = this.destinationPath('build.gradle');
+
+    // Si le fichier build.gradle existe
+    if (this.fs.exists(buildGradlePath)) {
+      let buildGradleContent = this.fs.read(buildGradlePath);
+      const dependencies: string[] = [];
+
+      // Dépendances pour les emails
+      if (notificationTypes.includes('email')) {
+        dependencies.push(`implementation 'org.springframework.boot:spring-boot-starter-mail'`);
+
+        // Dépendances spécifiques au provider
+        if (emailProvider === 'sendgrid') {
+          dependencies.push(`implementation 'com.sendgrid:sendgrid-java:4.9.3'`);
+        } else if (emailProvider === 'mailgun') {
+          dependencies.push(`implementation 'com.mailgun:mailgun-java:1.0.5'`);
+        } else if (emailProvider === 'ses') {
+          dependencies.push(`implementation 'com.amazonaws:aws-java-sdk-ses:1.12.1'`);
+        }
+      }
+
+      // Dépendances pour WebSocket
+      if (notificationTypes.includes('websocket')) {
+        dependencies.push(`implementation 'org.springframework.boot:spring-boot-starter-websocket'`);
+      }
+
+      // Dépendances pour les notifications push
+      if (notificationTypes.includes('push') && pushProviders && pushProviders.includes('fcm')) {
+        dependencies.push(`implementation 'com.google.firebase:firebase-admin:9.1.1'`);
+      } else if (notificationTypes.includes('push') && pushProviders && pushProviders.includes('onesignal')) {
+        dependencies.push(`implementation 'com.github.OneSignal:OneSignal-Java-SDK:1.0.0'`);
+      }
+
+      // Dépendances pour les templates
+      const { useTemplating, templateEngine } = this.answers;
+      if (useTemplating) {
+        if (templateEngine === 'thymeleaf') {
+          dependencies.push(`implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'`);
+        } else if (templateEngine === 'freemarker') {
+          dependencies.push(`implementation 'org.springframework.boot:spring-boot-starter-freemarker'`);
+        } else if (templateEngine === 'handlebars') {
+          dependencies.push(`implementation 'com.github.jknack:handlebars:4.3.1'`);
+          dependencies.push(`implementation 'com.github.jknack:handlebars-springmvc:4.3.1'`);
+        }
+      }
+
+      // Ajouter les dépendances à build.gradle
+      if (dependencies.length > 0) {
+        if (buildGradleContent.includes('dependencies {')) {
+          const newDependenciesBlock = `dependencies {\n    ${dependencies.join('\n    ')}\n`;
+
+          // Vérifier si les dépendances existent déjà pour éviter les doublons
+          const updatedContent = dependencies.reduce((content, dep) => {
+            if (!content.includes(dep)) {
+              return content.replace('dependencies {', `dependencies {\n    ${dep}`);
+            }
+            return content;
+          }, buildGradleContent);
+
+          this.fs.write(buildGradlePath, updatedContent);
+          this.log('✅ Dépendances Gradle ajoutées avec succès');
+        } else {
+          this.log('⚠️ Impossible d\'ajouter les dépendances Gradle. Structure du build.gradle non reconnue.');
+          this.log('Veuillez ajouter les dépendances suivantes manuellement:');
+          this.log(dependencies.join('\n'));
+        }
+      }
+    } else {
+      this.log('⚠️ Le fichier build.gradle n\'existe pas. Impossible d\'ajouter les dépendances.');
+    }
   }
 }

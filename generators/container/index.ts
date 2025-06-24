@@ -124,243 +124,174 @@ export default class ContainerizationGenerator extends BaseGenerator {
   }
 
   writing() {
-    this.log(chalk.blue('Génération des fichiers Docker...'));
+    this.log(chalk.blue('Génération des fichiers de containerisation...'));
 
-    // 1. Créer le Dockerfile
-    this._generateDockerfile();
+    const { multiStage, baseImage, healthcheck, healthcheckPath, containerPort, dockerCompose, services } = this.answers;
 
-    // 2. Créer docker-compose.yml si demandé
-    if (this.answers.dockerCompose) {
-      this._generateDockerCompose();
-    }
+    // Création des répertoires nécessaires
+    this.fs.mkdirp('docker');
+    this.fs.mkdirp('docker/scripts');
+    this.fs.mkdirp('docker/conf');
+    this.fs.mkdirp('docker/secrets');
 
-    // 3. Créer les scripts utilitaires si demandés
-    if (this.answers.dockerScripts) {
-      this._generateDockerScripts();
-    }
-
-    // 4. Configurer les secrets Docker si demandés
-    if (this.answers.dockerSecrets) {
-      this._generateDockerSecrets();
-    }
-
-    // 5. Ajouter un .dockerignore
-    this._generateDockerIgnore();
-
-    // 6. Générer la documentation Docker
-    this._generateDockerDocs();
-  }
-
-  end() {
-    this.log(chalk.green('Génération de la configuration Docker terminée!'));
-    this.log(chalk.yellow('Vous pouvez maintenant construire votre image Docker avec:'));
-    this.log(chalk.cyan('  docker build -t your-app:latest .'));
-
-    if (this.answers.dockerCompose) {
-      this.log(chalk.yellow('Pour démarrer tous les services avec docker-compose:'));
-      this.log(chalk.cyan('  docker compose up -d'));
-    }
-
-    if (this.answers.dockerScripts) {
-      this.log(chalk.yellow('Ou utilisez les scripts générés:'));
-      this.log(chalk.cyan('  ./docker/build.sh'));
-      this.log(chalk.cyan('  ./docker/run.sh'));
-    }
-  }
-
-  // Méthodes privées
-  private _generateDockerfile() {
-    const buildTool = this._detectBuildTool();
-
-    if (this.answers.multiStage) {
-      // Dockerfile multi-stage pour une image optimisée
+    // Génération du Dockerfile principal
+    if (multiStage) {
       this.fs.copyTpl(
         this.templatePath('Dockerfile.multistage.ejs'),
         this.destinationPath('Dockerfile'),
         {
-          baseImage: this.answers.baseImage,
-          healthcheck: this.answers.healthcheck,
-          healthcheckPath: this.answers.healthcheckPath,
-          containerPort: this.answers.containerPort,
-          buildTool,
-          applicationName: this._getApplicationName(),
-          javaOpts: this._getDefaultJavaOpts()
+          baseImage,
+          healthcheck,
+          healthcheckPath,
+          containerPort
         }
       );
     } else {
-      // Dockerfile simple
       this.fs.copyTpl(
         this.templatePath('Dockerfile.simple.ejs'),
         this.destinationPath('Dockerfile'),
         {
-          baseImage: this.answers.baseImage,
-          healthcheck: this.answers.healthcheck,
-          healthcheckPath: this.answers.healthcheckPath,
-          containerPort: this.answers.containerPort,
-          buildTool,
-          applicationName: this._getApplicationName(),
-          javaOpts: this._getDefaultJavaOpts()
+          baseImage,
+          healthcheck,
+          healthcheckPath,
+          containerPort
         }
       );
     }
-  }
 
-  private _generateDockerCompose() {
-    const dbDetails = this._getDbDetails();
-    const applicationName = this._getApplicationName();
-    const dependencies = dbDetails.dependencies || [];
+    // Génération du .dockerignore
+    this.fs.copyTpl(
+      this.templatePath('dockerignore.ejs'),
+      this.destinationPath('.dockerignore'),
+      this.answers
+    );
 
-    // Ajouter les services sélectionnés comme dépendances
-    if (this.answers.services && this.answers.services.length > 0) {
-      dependencies.push(...this.answers.services);
+    // Génération des scripts utilitaires
+    this.fs.copyTpl(
+      this.templatePath('scripts/build.sh.ejs'),
+      this.destinationPath('docker/scripts/build.sh'),
+      this.answers
+    );
+
+    this.fs.copyTpl(
+      this.templatePath('scripts/run.sh.ejs'),
+      this.destinationPath('docker/scripts/run.sh'),
+      this.answers
+    );
+
+    this.fs.copyTpl(
+      this.templatePath('scripts/deploy.sh.ejs'),
+      this.destinationPath('docker/scripts/deploy.sh'),
+      this.answers
+    );
+
+    // Gestion des secrets Docker
+    this.fs.copyTpl(
+      this.templatePath('secrets/manage-secrets.sh.ejs'),
+      this.destinationPath('docker/secrets/manage-secrets.sh'),
+      this.answers
+    );
+
+    this.fs.copyTpl(
+      this.templatePath('secrets/secrets-example.env.ejs'),
+      this.destinationPath('docker/secrets/secrets-example.env'),
+      this.answers
+    );
+
+    // Documentation
+    this.fs.copyTpl(
+      this.templatePath('docs/docker-guide.md.ejs'),
+      this.destinationPath('docs/docker-guide.md'),
+      this.answers
+    );
+
+    this.fs.copyTpl(
+      this.templatePath('docs/docker-best-practices.md.ejs'),
+      this.destinationPath('docs/docker-best-practices.md'),
+      this.answers
+    );
+
+    // Docker Compose si demandé
+    if (dockerCompose) {
+      this._generateDockerCompose();
     }
 
-    // Générer le fichier docker-compose.yml
+    // Documentation des services si des services ont été sélectionnés
+    if (services && services.length > 0) {
+      this.fs.copyTpl(
+        this.templatePath('docs/services-guide.md.ejs'),
+        this.destinationPath('docs/services-guide.md'),
+        this.answers
+      );
+    }
+
+    this.log(chalk.green('✅ Fichiers de containerisation générés avec succès !'));
+  }
+
+  install() {
+    this.log(chalk.blue('Configuration des permissions pour les scripts...'));
+
+    // Rendre les scripts exécutables (sous Linux/Mac)
+    if (process.platform !== 'win32') {
+      try {
+        fs.chmodSync(this.destinationPath('docker/scripts/build.sh'), '755');
+        fs.chmodSync(this.destinationPath('docker/scripts/run.sh'), '755');
+        fs.chmodSync(this.destinationPath('docker/scripts/deploy.sh'), '755');
+        fs.chmodSync(this.destinationPath('docker/secrets/manage-secrets.sh'), '755');
+        this.log(chalk.green('✅ Permissions configurées pour les scripts'));
+      } catch (error) {
+        this.log(chalk.yellow(`⚠️ Impossible de définir les permissions d'exécution: ${error}`));
+      }
+    }
+  }
+
+  end() {
+    this.log(chalk.green('🚀 Configuration de containerisation terminée !'));
+
+    // Afficher les instructions d'utilisation
+    this.log(chalk.blue('\nPour construire l\'image Docker :'));
+    this.log('docker build -t nom-application .');
+
+    this.log(chalk.blue('\nPour exécuter le conteneur :'));
+    this.log(`docker run -p ${this.answers.containerPort}:${this.answers.containerPort} nom-application`);
+
+    if (this.answers.dockerCompose) {
+      this.log(chalk.blue('\nPour démarrer tous les services avec Docker Compose :'));
+      this.log('docker-compose up -d');
+    }
+
+    this.log(chalk.blue('\nPour plus d\'informations, consultez :'));
+    this.log('- docs/docker-guide.md');
+    this.log('- docs/docker-best-practices.md');
+  }
+
+  // Méthodes privées
+
+  private _generateDockerCompose() {
+    const { services, containerPort } = this.answers;
+    const servicesToInclude = services || [];
+
+    // Générer le docker-compose.yml
     this.fs.copyTpl(
       this.templatePath('docker-compose.yml.ejs'),
       this.destinationPath('docker-compose.yml'),
       {
-        applicationName,
-        containerPort: this.answers.containerPort,
-        dbDetails,
-        services: this.answers.services || [],
-        healthcheck: this.answers.healthcheck,
-        healthcheckPath: this.answers.healthcheckPath,
-        hasElasticsearch: (this.answers.services || []).includes('elasticsearch'),
-        hasKibana: (this.answers.services || []).includes('kibana'),
-        hasRedis: (this.answers.services || []).includes('redis'),
-        hasPrometheus: (this.answers.services || []).includes('prometheus'),
-        hasGrafana: (this.answers.services || []).includes('grafana'),
-        hasKafka: (this.answers.services || []).includes('kafka'),
-        hasRabbitMQ: (this.answers.services || []).includes('rabbitmq')
-      }
-    );
-  }
-
-  private _generateDockerScripts() {
-    // Créer le dossier docker si nécessaire en ajoutant un fichier .gitkeep
-    this.fs.write(
-      this.destinationPath('docker/.gitkeep'),
-      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
-    );
-
-    // Script de build
-    this.fs.copyTpl(
-      this.templatePath('scripts/build.sh.ejs'),
-      this.destinationPath('docker/build.sh'),
-      {
-        applicationName: this._getApplicationName(),
-        dockerRegistry: 'localhost'
+        containerPort,
+        services: servicesToInclude,
+        includePostgres: servicesToInclude.includes('postgres'),
+        includeMysql: servicesToInclude.includes('mysql'),
+        includeMongodb: servicesToInclude.includes('mongodb'),
+        includeRedis: servicesToInclude.includes('redis'),
+        includeElasticsearch: servicesToInclude.includes('elasticsearch'),
+        includeKibana: servicesToInclude.includes('kibana'),
+        includeRabbitmq: servicesToInclude.includes('rabbitmq'),
+        includeKafka: servicesToInclude.includes('kafka'),
+        includePrometheus: servicesToInclude.includes('prometheus'),
+        includeGrafana: servicesToInclude.includes('grafana')
       }
     );
 
-    // Script de run
-    this.fs.copyTpl(
-      this.templatePath('scripts/run.sh.ejs'),
-      this.destinationPath('docker/run.sh'),
-      {
-        applicationName: this._getApplicationName(),
-        containerPort: this.answers.containerPort
-      }
-    );
-
-    // Script de déploiement
-    this.fs.copyTpl(
-      this.templatePath('scripts/deploy.sh.ejs'),
-      this.destinationPath('docker/deploy.sh'),
-      {
-        applicationName: this._getApplicationName()
-      }
-    );
-
-    // Rendre les scripts exécutables
-    try {
-      fs.chmodSync(path.join(this.destinationPath(), 'docker/build.sh'), '755');
-      fs.chmodSync(path.join(this.destinationPath(), 'docker/run.sh'), '755');
-      fs.chmodSync(path.join(this.destinationPath(), 'docker/deploy.sh'), '755');
-    } catch (e) {
-      this.log(chalk.yellow('Impossible de rendre les scripts exécutables. Vous devrez le faire manuellement.'));
-    }
-  }
-
-  private _generateDockerSecrets() {
-    // Créer le dossier docker/secrets si nécessaire en ajoutant un fichier .gitkeep
-    this.fs.write(
-      this.destinationPath('docker/secrets/.gitkeep'),
-      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
-    );
-
-    // Fichier exemple pour les secrets Docker
-    this.fs.copyTpl(
-      this.templatePath('secrets/secrets-example.env.ejs'),
-      this.destinationPath('docker/secrets/secrets-example.env'),
-      {
-        dbDetails: this._getDbDetails(),
-        services: this.answers.services || []
-      }
-    );
-
-    // Script pour gérer les secrets
-    this.fs.copyTpl(
-      this.templatePath('secrets/manage-secrets.sh.ejs'),
-      this.destinationPath('docker/secrets/manage-secrets.sh'),
-      {}
-    );
-
-    // Rendre le script exécutable
-    try {
-      fs.chmodSync(path.join(this.destinationPath(), 'docker/secrets/manage-secrets.sh'), '755');
-    } catch (e) {
-      this.log(chalk.yellow('Impossible de rendre le script exécutable. Vous devrez le faire manuellement.'));
-    }
-  }
-
-  private _generateDockerIgnore() {
-    this.fs.copyTpl(
-      this.templatePath('dockerignore.ejs'),
-      this.destinationPath('.dockerignore'),
-      {}
-    );
-  }
-
-  private _generateDockerDocs() {
-    // Créer le dossier docs/docker si nécessaire en ajoutant un fichier .gitkeep
-    this.fs.write(
-      this.destinationPath('docs/docker/.gitkeep'),
-      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
-    );
-
-    // Documentation Docker principale
-    this.fs.copyTpl(
-      this.templatePath('docs/docker-guide.md.ejs'),
-      this.destinationPath('docs/docker/docker-guide.md'),
-      {
-        applicationName: this._getApplicationName(),
-        multiStage: this.answers.multiStage,
-        baseImage: this.answers.baseImage,
-        healthcheck: this.answers.healthcheck,
-        dockerCompose: this.answers.dockerCompose,
-        services: this.answers.services || []
-      }
-    );
-
-    // Documentation des services (si docker-compose est utilisé)
-    if (this.answers.dockerCompose && this.answers.services && this.answers.services.length > 0) {
-      this.fs.copyTpl(
-        this.templatePath('docs/services-guide.md.ejs'),
-        this.destinationPath('docs/docker/services-guide.md'),
-        {
-          services: this.answers.services
-        }
-      );
-    }
-
-    // Documentation des bonnes pratiques
-    this.fs.copyTpl(
-      this.templatePath('docs/docker-best-practices.md.ejs'),
-      this.destinationPath('docs/docker/docker-best-practices.md'),
-      {}
-    );
+    this.log(chalk.green('✅ Fichier docker-compose.yml généré avec succès !'));
   }
 
   private _detectBuildTool(): 'maven' | 'gradle' {

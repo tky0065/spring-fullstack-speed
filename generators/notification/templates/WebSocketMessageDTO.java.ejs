@@ -1,69 +1,27 @@
-package <%= packageName %>.dto;
+package <%= packageName %>.notification.dto;
 
 import java.io.Serializable;
-import java.time.Instant;
 
 /**
- * DTO pour représenter un message WebSocket.
+ * DTO représentant un message WebSocket
  */
 public class WebSocketMessageDTO implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
-    private String from;
-    private String to;
-    private String content;
     private String type;
-    private Instant timestamp;
+    private Object content;
+    private long timestamp;
 
-    // Constructeurs
     public WebSocketMessageDTO() {
-        this.timestamp = Instant.now();
+        this.timestamp = System.currentTimeMillis();
     }
 
-    public WebSocketMessageDTO(String content) {
+    public WebSocketMessageDTO(String type, Object content) {
         this();
-        this.content = content;
-    }
-
-    public WebSocketMessageDTO(String from, String content) {
-        this();
-        this.from = from;
-        this.content = content;
-    }
-
-    public WebSocketMessageDTO(String from, String to, String content) {
-        this();
-        this.from = from;
-        this.to = to;
+        this.type = type;
         this.content = content;
     }
 
     // Getters et Setters
-    public String getFrom() {
-        return from;
-    }
-
-    public void setFrom(String from) {
-        this.from = from;
-    }
-
-    public String getTo() {
-        return to;
-    }
-
-    public void setTo(String to) {
-        this.to = to;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
     public String getType() {
         return type;
     }
@@ -72,21 +30,19 @@ public class WebSocketMessageDTO implements Serializable {
         this.type = type;
     }
 
-    public Instant getTimestamp() {
+    public Object getContent() {
+        return content;
+    }
+
+    public void setContent(Object content) {
+        this.content = content;
+    }
+
+    public long getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Instant timestamp) {
+    public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
-    }
-
-    @Override
-    public String toString() {
-        return "WebSocketMessageDTO{" +
-            "from='" + from + '\'' +
-            ", to='" + to + '\'' +
-            ", type='" + type + '\'' +
-            ", timestamp=" + timestamp +
-            '}';
     }
 }

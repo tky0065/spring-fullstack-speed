@@ -1,0 +1,44 @@
+package <%= packageName %>.notification.service;
+
+import <%= packageName %>.notification.dto.PushNotificationDTO;
+
+/**
+ * Interface de service pour l'envoi de notifications push
+ */
+public interface PushNotificationService {
+
+    /**
+     * Envoie une notification push à un appareil spécifique via son token
+     *
+     * @param notification DTO contenant les informations de la notification
+     * @return true si la notification a été envoyée avec succès, false sinon
+     */
+    boolean sendToDevice(PushNotificationDTO notification);
+
+    /**
+     * Envoie une notification push à tous les appareils abonnés à un sujet
+     *
+     * @param notification DTO contenant les informations de la notification
+     * @param topic Le sujet auquel les appareils sont abonnés
+     * @return true si la notification a été envoyée avec succès, false sinon
+     */
+    boolean sendToTopic(PushNotificationDTO notification, String topic);
+
+    /**
+     * Abonne un appareil à un sujet
+     *
+     * @param token Le token de l'appareil
+     * @param topic Le sujet auquel s'abonner
+     * @return true si l'abonnement a été effectué avec succès, false sinon
+     */
+    boolean subscribeToTopic(String token, String topic);
+
+    /**
+     * Désabonne un appareil d'un sujet
+     *
+     * @param token Le token de l'appareil
+     * @param topic Le sujet duquel se désabonner
+     * @return true si le désabonnement a été effectué avec succès, false sinon
+     */
+    boolean unsubscribeFromTopic(String token, String topic);
+}

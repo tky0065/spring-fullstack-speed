@@ -139,306 +139,244 @@ export default class CicdGenerator extends BaseGenerator {
     this.config.set('cicd', this.answers);
   }
 
-  writing() {
-    this.log(chalk.blue('Génération des fichiers de configuration CI/CD...'));
+  async writing() {
+    this.log(chalk.blue('Génération des fichiers CI/CD...'));
 
-    // Créer les configurations CI/CD selon les choix de l'utilisateur
-    if (this.answers.ciTools.includes('github')) {
-      this._generateGitHubActions();
-    }
+    const { ciTools, stages, dockerRegistry, sonarqube, environments, deploymentStrategy } = this.answers;
 
-    if (this.answers.ciTools.includes('gitlab')) {
-      this._generateGitLabCI();
-    }
+    // Créer le répertoire docs pour les guides CI/CD
+    this._createDirectory('docs/cicd');
 
-    if (this.answers.ciTools.includes('jenkins')) {
-      this._generateJenkins();
-    }
-
-    // Générer la documentation
-    this._generateCicdDocs();
-  }
-
-  end() {
-    this.log(chalk.green('Génération des pipelines CI/CD terminée!'));
-
-    if (this.answers.ciTools.includes('github')) {
-      this.log(chalk.yellow('Les workflows GitHub Actions ont été générés dans le dossier .github/workflows'));
-      this.log(chalk.yellow('Pour les utiliser, committez et poussez ces fichiers vers votre dépôt GitHub.'));
-    }
-
-    if (this.answers.ciTools.includes('gitlab')) {
-      this.log(chalk.yellow('Le fichier .gitlab-ci.yml a été généré à la racine du projet.'));
-      this.log(chalk.yellow('Pour l\'utiliser, committez et poussez ce fichier vers votre dépôt GitLab.'));
-    }
-
-    if (this.answers.ciTools.includes('jenkins')) {
-      this.log(chalk.yellow('Le Jenkinsfile a été généré à la racine du projet.'));
-      this.log(chalk.yellow('Pour l\'utiliser, configurez un pipeline Jenkins pointant vers ce fichier.'));
-    }
-
-    this.log(chalk.yellow('Consultez la documentation dans le dossier docs/cicd pour plus d\'informations.'));
-  }
-
-  // Méthodes privées
-  private _generateGitHubActions() {
-    // Créer le répertoire .github/workflows s'il n'existe pas en ajoutant un fichier .gitkeep
-    this.fs.write(
-      this.destinationPath('.github/workflows/.gitkeep'),
-      '# Ce fichier garantit que le répertoire sera inclus dans Git\n'
-    );
-
-    // Pipeline principal
-    this.fs.copyTpl(
-      this.templatePath('github/ci-cd.yml'),
-      this.destinationPath('.github/workflows/ci-cd.yml'),
-      {
-        stages: this.answers.stages,
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        deploymentStrategy: this.answers.deploymentStrategy,
-        sonarqube: this.answers.sonarqube,
-        caching: this.answers.caching,
-        notifications: this.answers.notifications || [],
-        qualityGates: this.answers.qualityGates || []
-      }
-    );
-
-    // Pipeline de déploiement si sélectionné
-    if (this.answers.stages.includes('deploy')) {
-      this.fs.copyTpl(
-        this.templatePath('github/deploy.yml'),
-        this.destinationPath('.github/workflows/deploy.yml'),
-        {
-          environments: this.answers.environments || [],
-          deploymentStrategy: this.answers.deploymentStrategy,
-          dockerRegistry: this.answers.dockerRegistry
-        }
-      );
-    }
-
-    // Pipeline pour les Pull Requests
-    this.fs.copyTpl(
-      this.templatePath('github/pull-request.yml'),
-      this.destinationPath('.github/workflows/pull-request.yml'),
-      {
-        stages: this.answers.stages,
-        sonarqube: this.answers.sonarqube,
-        caching: this.answers.caching,
-        qualityGates: this.answers.qualityGates || []
-      }
-    );
-
-    // Configuration des secrets GitHub en fonction des besoins
-    if (this.answers.stages.includes('deploy') || this.answers.stages.includes('docker')) {
-      this.fs.copyTpl(
-        this.templatePath('github/secrets-example.md'),
-        this.destinationPath('docs/cicd/github-secrets-example.md'),
-        {
-          dockerRegistry: this.answers.dockerRegistry,
-          environments: this.answers.environments || [],
-          sonarqube: this.answers.sonarqube,
-          notifications: this.answers.notifications || []
-        }
-      );
-    }
-
-    // Script d'aide pour les releases GitHub si sélectionné
-    if (this.answers.stages.includes('release')) {
-      this.fs.copyTpl(
-        this.templatePath('github/release.yml'),
-        this.destinationPath('.github/workflows/release.yml'),
-        {
-          dockerRegistry: this.answers.dockerRegistry
-        }
-      );
-    }
-  }
-
-  private _generateGitLabCI() {
-    // Générer le fichier .gitlab-ci.yml principal
-    this.fs.copyTpl(
-      this.templatePath('gitlab/gitlab-ci.yml'),
-      this.destinationPath('.gitlab-ci.yml'),
-      {
-        stages: this.answers.stages,
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        deploymentStrategy: this.answers.deploymentStrategy,
-        sonarqube: this.answers.sonarqube,
-        caching: this.answers.caching,
-        notifications: this.answers.notifications || [],
-        qualityGates: this.answers.qualityGates || []
-      }
-    );
-
-    // Scripts auxiliaires pour GitLab CI si nécessaire
-    if (this.answers.deploymentStrategy === 'blue-green' || this.answers.deploymentStrategy === 'canary') {
-      this.fs.mkdirp('ci/gitlab');
-
-      // Script de déploiement Blue/Green
-      if (this.answers.deploymentStrategy === 'blue-green') {
-        this.fs.copyTpl(
-          this.templatePath('gitlab/scripts/blue-green-deploy.sh'),
-          this.destinationPath('ci/gitlab/blue-green-deploy.sh'),
-          {}
-        );
-      }
-
-      // Script de déploiement Canary
-      if (this.answers.deploymentStrategy === 'canary') {
-        this.fs.copyTpl(
-          this.templatePath('gitlab/scripts/canary-deploy.sh'),
-          this.destinationPath('ci/gitlab/canary-deploy.sh'),
-          {}
-        );
-      }
-
-      // Script de rollback
-      this.fs.copyTpl(
-        this.templatePath('gitlab/scripts/rollback.sh'),
-        this.destinationPath('ci/gitlab/rollback.sh'),
-        {}
-      );
-
-      // Rendre les scripts exécutables
-      try {
-        const fs = require('fs');
-        const scriptsPath = this.destinationPath('ci/gitlab');
-        fs.chmodSync(path.join(scriptsPath, 'rollback.sh'), '755');
-        if (this.answers.deploymentStrategy === 'blue-green') {
-          fs.chmodSync(path.join(scriptsPath, 'blue-green-deploy.sh'), '755');
-        }
-        if (this.answers.deploymentStrategy === 'canary') {
-          fs.chmodSync(path.join(scriptsPath, 'canary-deploy.sh'), '755');
-        }
-      } catch (e) {
-        this.log(chalk.yellow('Impossible de rendre les scripts exécutables. Vous devrez le faire manuellement.'));
-      }
-    }
-
-    // Documentation des variables GitLab CI
-    this.fs.copyTpl(
-      this.templatePath('gitlab/variables-example.md'),
-      this.destinationPath('docs/cicd/gitlab-variables-example.md'),
-      {
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        sonarqube: this.answers.sonarqube,
-        notifications: this.answers.notifications || []
-      }
-    );
-  }
-
-  private _generateJenkins() {
-    // Génération du Jenkinsfile principal
-    this.fs.copyTpl(
-      this.templatePath('jenkins/Jenkinsfile'),
-      this.destinationPath('Jenkinsfile'),
-      {
-        stages: this.answers.stages,
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        deploymentStrategy: this.answers.deploymentStrategy,
-        sonarqube: this.answers.sonarqube,
-        caching: this.answers.caching,
-        notifications: this.answers.notifications || [],
-        qualityGates: this.answers.qualityGates || []
-      }
-    );
-
-    // Scripts auxiliaires pour Jenkins si nécessaire
-    if (this.answers.deploymentStrategy === 'blue-green' || this.answers.deploymentStrategy === 'canary') {
-      this.fs.mkdirp('ci/jenkins');
-
-      // Script de déploiement Blue/Green
-      if (this.answers.deploymentStrategy === 'blue-green') {
-        this.fs.copyTpl(
-          this.templatePath('jenkins/scripts/blue-green-deploy.sh'),
-          this.destinationPath('ci/jenkins/blue-green-deploy.sh'),
-          {}
-        );
-      }
-
-      // Script de déploiement Canary
-      if (this.answers.deploymentStrategy === 'canary') {
-        this.fs.copyTpl(
-          this.templatePath('jenkins/scripts/canary-deploy.sh'),
-          this.destinationPath('ci/jenkins/canary-deploy.sh'),
-          {}
-        );
-      }
-
-      // Script de rollback
-      this.fs.copyTpl(
-        this.templatePath('jenkins/scripts/rollback.sh'),
-        this.destinationPath('ci/jenkins/rollback.sh'),
-        {}
-      );
-
-      // Rendre les scripts exécutables
-      try {
-        const fs = require('fs');
-        const scriptsPath = this.destinationPath('ci/jenkins');
-        fs.chmodSync(path.join(scriptsPath, 'rollback.sh'), '755');
-        if (this.answers.deploymentStrategy === 'blue-green') {
-          fs.chmodSync(path.join(scriptsPath, 'blue-green-deploy.sh'), '755');
-        }
-        if (this.answers.deploymentStrategy === 'canary') {
-          fs.chmodSync(path.join(scriptsPath, 'canary-deploy.sh'), '755');
-        }
-      } catch (e) {
-        this.log(chalk.yellow('Impossible de rendre les scripts exécutables. Vous devrez le faire manuellement.'));
-      }
-    }
-
-    // Documentation pour la configuration Jenkins
-    this.fs.copyTpl(
-      this.templatePath('jenkins/jenkins-setup.md'),
-      this.destinationPath('docs/cicd/jenkins-setup.md'),
-      {
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        sonarqube: this.answers.sonarqube,
-        notifications: this.answers.notifications || []
-      }
-    );
-  }
-
-  private _generateCicdDocs() {
-    // Créer le dossier docs/cicd s'il n'existe pas déjà
-    this.fs.mkdirp('docs/cicd');
-
-    // Guide principal CI/CD
-    this.fs.copyTpl(
-      this.templatePath('docs/cicd-guide.md'),
-      this.destinationPath('docs/cicd/README.md'),
-      {
-        ciTools: this.answers.ciTools,
-        stages: this.answers.stages,
-        dockerRegistry: this.answers.dockerRegistry,
-        environments: this.answers.environments || [],
-        deploymentStrategy: this.answers.deploymentStrategy,
-        sonarqube: this.answers.sonarqube,
-        notifications: this.answers.notifications || [],
-        qualityGates: this.answers.qualityGates || []
-      }
-    );
-
-    // Guide des bonnes pratiques CI/CD
+    // Copier les guides communs
     this.fs.copyTpl(
       this.templatePath('docs/cicd-best-practices.md'),
       this.destinationPath('docs/cicd/best-practices.md'),
-      {}
+      this.answers
     );
 
-    // Guide de dépannage CI/CD
+    this.fs.copyTpl(
+      this.templatePath('docs/cicd-guide.md'),
+      this.destinationPath('docs/cicd/guide.md'),
+      this.answers
+    );
+
     this.fs.copyTpl(
       this.templatePath('docs/cicd-troubleshooting.md'),
       this.destinationPath('docs/cicd/troubleshooting.md'),
-      {
-        ciTools: this.answers.ciTools
-      }
+      this.answers
     );
+
+    // Générer les configurations pour chaque outil CI/CD sélectionné
+    if (ciTools.includes('github')) {
+      this._generateGithubActions();
+    }
+
+    if (ciTools.includes('gitlab')) {
+      this._generateGitlabCI();
+    }
+
+    if (ciTools.includes('jenkins')) {
+      this._generateJenkins();
+    }
+
+    this.log(chalk.green('✅ Fichiers CI/CD générés avec succès!'));
+  }
+
+  install() {
+    this.log(chalk.blue('Configuration des hooks Git pour CI/CD...'));
+    // Pas besoin d'installer des dépendances pour CI/CD, mais on peut configurer des hooks Git
+
+    // Si ce n'est pas un repo Git, on suggère d'en initialiser un
+    if (!this._isGitRepository()) {
+      this.log(chalk.yellow('⚠️ Aucun dépôt Git détecté. Pour utiliser CI/CD, initialisez un repo Git:'));
+      this.log('  git init');
+      this.log('  git add .');
+      this.log('  git commit -m "Initial commit"');
+    }
+  }
+
+  end() {
+    this.log(chalk.green('🚀 Configuration CI/CD terminée!'));
+
+    const { ciTools } = this.answers;
+
+    // Afficher des conseils basés sur les outils sélectionnés
+    if (ciTools.includes('github')) {
+      this.log(chalk.blue('\nPour activer GitHub Actions:'));
+      this.log('1. Créez un dépôt sur GitHub');
+      this.log('2. Poussez votre code avec: git push origin main');
+      this.log('3. Allez dans l\'onglet "Actions" de votre dépôt GitHub');
+    }
+
+    if (ciTools.includes('gitlab')) {
+      this.log(chalk.blue('\nPour activer GitLab CI:'));
+      this.log('1. Créez un dépôt sur GitLab');
+      this.log('2. Poussez votre code avec: git push origin main');
+      this.log('3. Allez dans la section CI/CD de votre projet GitLab');
+    }
+
+    if (ciTools.includes('jenkins')) {
+      this.log(chalk.blue('\nPour configurer Jenkins:'));
+      this.log('1. Installez et configurez Jenkins');
+      this.log('2. Créez un pipeline pointant vers votre dépôt et utilisez le Jenkinsfile généré');
+      this.log('3. Plus de détails dans: docs/cicd/guide.md');
+    }
+  }
+
+  // Méthodes privées d'aide à la génération
+
+  _createDirectory(relativePath: string) {
+    const dirPath = this.destinationPath(relativePath);
+    if (!this.fs.existsSync(dirPath)) {
+      this.fs.mkdirSync(dirPath, { recursive: true });
+    }
+  }
+
+  _isGitRepository() {
+    return this.fs.existsSync(this.destinationPath('.git'));
+  }
+
+  _generateGithubActions() {
+    const { stages, environments, deploymentStrategy, sonarqube } = this.answers;
+
+    // Créer le répertoire .github/workflows
+    this._createDirectory('.github/workflows');
+
+    // CI principal (tests, build, analyse)
+    this.fs.copyTpl(
+      this.templatePath('github/ci-cd.yml'),
+      this.destinationPath('.github/workflows/ci-cd.yml'),
+      this.answers
+    );
+
+    // Pull request workflow
+    this.fs.copyTpl(
+      this.templatePath('github/pull-request.yml'),
+      this.destinationPath('.github/workflows/pull-request.yml'),
+      this.answers
+    );
+
+    // Déploiement si sélectionné
+    if (stages.includes('deploy')) {
+      this.fs.copyTpl(
+        this.templatePath('github/deploy.yml'),
+        this.destinationPath('.github/workflows/deploy.yml'),
+        this.answers
+      );
+    }
+
+    // Release si sélectionnée
+    if (stages.includes('release')) {
+      this.fs.copyTpl(
+        this.templatePath('github/release.yml'),
+        this.destinationPath('.github/workflows/release.yml'),
+        this.answers
+      );
+    }
+
+    // Documentation sur les secrets GitHub Actions
+    this.fs.copyTpl(
+      this.templatePath('github/secrets-example.md'),
+      this.destinationPath('.github/secrets-example.md'),
+      this.answers
+    );
+  }
+
+  _generateGitlabCI() {
+    const { stages, environments, deploymentStrategy } = this.answers;
+
+    // CI principal
+    this.fs.copyTpl(
+      this.templatePath('gitlab/gitlab-ci.yml'),
+      this.destinationPath('.gitlab-ci.yml'),
+      this.answers
+    );
+
+    // Scripts de déploiement si nécessaires
+    if (stages.includes('deploy')) {
+      this._createDirectory('.gitlab/scripts');
+
+      if (deploymentStrategy === 'blue-green') {
+        this.fs.copyTpl(
+          this.templatePath('gitlab/scripts/blue-green-deploy.sh'),
+          this.destinationPath('.gitlab/scripts/blue-green-deploy.sh'),
+          this.answers
+        );
+      }
+
+      if (deploymentStrategy === 'canary') {
+        this.fs.copyTpl(
+          this.templatePath('gitlab/scripts/canary-deploy.sh'),
+          this.destinationPath('.gitlab/scripts/canary-deploy.sh'),
+          this.answers
+        );
+      }
+
+      // Script de rollback commun
+      this.fs.copyTpl(
+        this.templatePath('gitlab/scripts/rollback.sh'),
+        this.destinationPath('.gitlab/scripts/rollback.sh'),
+        this.answers
+      );
+
+      // Exemple des variables GitLab CI
+      this.fs.copyTpl(
+        this.templatePath('gitlab/variables-example.md'),
+        this.destinationPath('.gitlab/variables-example.md'),
+        this.answers
+      );
+    }
+  }
+
+  _generateJenkins() {
+    const { stages, environments, deploymentStrategy } = this.answers;
+
+    // Jenkinsfile principal
+    this.fs.copyTpl(
+      this.templatePath('jenkins/Jenkinsfile'),
+      this.destinationPath('Jenkinsfile'),
+      this.answers
+    );
+
+    // Documentation pour configuration Jenkins
+    this.fs.copyTpl(
+      this.templatePath('jenkins/jenkins-setup.md'),
+      this.destinationPath('docs/cicd/jenkins-setup.md'),
+      this.answers
+    );
+
+    // Scripts de déploiement si nécessaires
+    if (stages.includes('deploy')) {
+      this._createDirectory('jenkins/scripts');
+
+      if (deploymentStrategy === 'blue-green') {
+        this.fs.copyTpl(
+          this.templatePath('jenkins/scripts/blue-green-deploy.sh'),
+          this.destinationPath('jenkins/scripts/blue-green-deploy.sh'),
+          this.answers
+        );
+      }
+
+      if (deploymentStrategy === 'canary') {
+        this.fs.copyTpl(
+          this.templatePath('jenkins/scripts/canary-deploy.sh'),
+          this.destinationPath('jenkins/scripts/canary-deploy.sh'),
+          this.answers
+        );
+
+        this.fs.copyTpl(
+          this.templatePath('jenkins/scripts/promote-canary.sh'),
+          this.destinationPath('jenkins/scripts/promote-canary.sh'),
+          this.answers
+        );
+      }
+
+      // Script de rollback commun
+      this.fs.copyTpl(
+        this.templatePath('jenkins/scripts/rollback.sh'),
+        this.destinationPath('jenkins/scripts/rollback.sh'),
+        this.answers
+      );
+    }
   }
 }

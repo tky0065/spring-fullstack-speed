@@ -10,6 +10,9 @@ const INFO_COLOR = chalk.yellow;
 const SUCCESS_COLOR = chalk.green;
 const ERROR_COLOR = chalk.red;
 
+// Valeur par défaut pour le package
+const DEFAULT_PACKAGE = "com.dev.app";
+
 /**
  * Générateur de CRUD pour les entités
  * Permet de générer automatiquement les opérations CRUD pour une entité existante
@@ -26,6 +29,12 @@ export default class CrudGenerator extends BaseGenerator {
     this.option("entity-name", {
       description: "Nom de l'entité pour laquelle générer le CRUD",
       type: String,
+    });
+
+    this.option("package-name", {
+      description: "Nom du package Java à utiliser",
+      type: String,
+      default: DEFAULT_PACKAGE
     });
   }
 
@@ -52,6 +61,48 @@ export default class CrudGenerator extends BaseGenerator {
           return true;
         },
       },
+    ];
+
+    const initialAnswers = await this.prompt(prompts);
+    this.answers = { ...initialAnswers };
+
+    // Rechercher le fichier de l'entité pour en extraire le package
+    this.entityFile = this.findEntityFile(this.answers.entityName);
+    if (this.entityFile) {
+      const packageName = this.extractPackageName(this.entityFile);
+      if (packageName) {
+        this.packageName = packageName;
+      }
+    }
+
+    // Si on ne trouve pas le package, utiliser un package par défaut
+    if (!this.packageName) {
+      this.packageName = this.findBasePackageName();
+    }
+
+    // Log pour informer l'utilisateur du package détecté
+    this.log(INFO_COLOR(`📦 Package détecté: ${this.packageName}`));
+
+    // Afficher le package détecté et demander à l'utilisateur s'il souhaite l'utiliser ou le modifier
+    const packagePrompt: any = [{
+      type: "input",
+      name: "customPackage",
+      message: "Quel package souhaitez-vous utiliser pour l'entité?",
+      default: this.packageName,
+      validate: (input: string) => {
+        if (!input || input.trim() === "") {
+          return "Le package est obligatoire.";
+        }
+        return true;
+      },
+    }];
+
+    // Demander à l'utilisateur de confirmer ou de modifier le package
+    const packageAnswer = await this.prompt(packagePrompt);
+    this.packageName = packageAnswer.customPackage;
+
+    // Continuer avec les autres prompts
+    const operationsPrompts: any = [
       {
         type: "checkbox",
         name: "operations",
@@ -77,21 +128,8 @@ export default class CrudGenerator extends BaseGenerator {
       },
     ];
 
-    this.answers = await this.prompt(prompts);
-
-    // Rechercher le fichier de l'entité pour en extraire le package
-    this.entityFile = this.findEntityFile(this.answers.entityName);
-    if (this.entityFile) {
-      const packageName = this.extractPackageName(this.entityFile);
-      if (packageName) {
-        this.packageName = packageName;
-      }
-    }
-
-    // Si on ne trouve pas le package, utiliser un package par défaut
-    if (!this.packageName) {
-      this.packageName = this.findBasePackageName();
-    }
+    const additionalAnswers = await this.prompt(operationsPrompts);
+    this.answers = { ...this.answers, ...additionalAnswers };
   }
 
   configuring() {
@@ -102,6 +140,11 @@ export default class CrudGenerator extends BaseGenerator {
     this.log("Génération des fichiers CRUD...");
 
     const { entityName, operations, generateDtos } = this.answers;
+
+    // Générer l'entité elle-même si elle n'existe pas déjà
+    if (!this.entityFile) {
+      this._generateEntity(entityName);
+    }
 
     // Si le DTO est demandé, générer le DTO en premier
     if (generateDtos) {
@@ -125,7 +168,7 @@ export default class CrudGenerator extends BaseGenerator {
     // Préparer les données du template
     const templateData = {
       entityName,
-      packageName: `${this.packageName.replace(/\.entity|\.domain/, '.dto')}`,
+      packageName: this._constructSubPackage(this.packageName, 'dto'),
       className: `${entityName}DTO`,
       fields: this._extractEntityFields(),
       imports: []
@@ -154,8 +197,8 @@ export default class CrudGenerator extends BaseGenerator {
     // Préparer les données du template
     const templateData = {
       entityName,
-      packageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.repository')}`,
-      entityPackageName: this.packageName
+      packageName: this._constructSubPackage(this.packageName, 'repository'),
+      entityPackageName: this._constructSubPackage(this.packageName, 'entity')
     };
 
     // Créer le répertoire pour le repository
@@ -181,10 +224,10 @@ export default class CrudGenerator extends BaseGenerator {
     // Préparer les données du template
     const templateData = {
       entityName,
-      packageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.service')}`,
-      repositoryPackageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.repository')}`,
-      entityPackageName: this.packageName,
-      dtoPackageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.dto')}`,
+      packageName: this._constructSubPackage(this.packageName, 'service'),
+      repositoryPackageName: this._constructSubPackage(this.packageName, 'repository'),
+      entityPackageName: this._constructSubPackage(this.packageName, 'entity'),
+      dtoPackageName: this._constructSubPackage(this.packageName, 'dto'),
       operations,
       includeCreate: operations.includes('create'),
       includeRead: operations.includes('read'),
@@ -226,10 +269,10 @@ export default class CrudGenerator extends BaseGenerator {
     // Préparer les données du template
     const templateData = {
       entityName,
-      packageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.controller')}`,
-      servicePackageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.service')}`,
-      entityPackageName: this.packageName,
-      dtoPackageName: `${this.packageName.replace(/\.entity|\.domain|\.model/, '.dto')}`,
+      packageName: this._constructSubPackage(this.packageName, 'controller'),
+      servicePackageName: this._constructSubPackage(this.packageName, 'service'),
+      entityPackageName: this._constructSubPackage(this.packageName, 'entity'),
+      dtoPackageName: this._constructSubPackage(this.packageName, 'dto'),
       operations,
       useDtos,
       includeCreate: operations.includes('create'),
@@ -252,6 +295,76 @@ export default class CrudGenerator extends BaseGenerator {
       this.log(SUCCESS_COLOR(`✅ Controller ${entityName}Controller.java généré avec succès`));
     } else {
       this.log(INFO_COLOR(`⚠️ Le fichier ${entityName}Controller.java existe déjà et n'a pas été écrasé.`));
+    }
+  }
+
+  /**
+   * Génère l'entité si elle n'existe pas déjà
+   */
+  _generateEntity(entityName: string) {
+    // Préparer les données du template
+    const templateData = {
+      entityName,
+      packageName: this._constructSubPackage(this.packageName, 'entity'),
+      imports: [], // Tableau des imports supplémentaires
+      dateTimeImport: false, // Flag pour l'import de java.time
+      bigDecimalImport: false, // Flag pour l'import de BigDecimal
+      auditable: true, // Flag pour les champs d'audit
+      fields: [ // Champs par défaut
+        {
+          name: 'name',
+          type: 'String',
+          required: true,
+          unique: true,
+          minLength: 2,
+          maxLength: 100
+        },
+        {
+          name: 'description',
+          type: 'String',
+          required: false,
+          unique: false
+        },
+        {
+          name: 'active',
+          type: 'Boolean',
+          required: true,
+          defaultValue: true
+        },
+        {
+          name: 'createdAt',
+          type: 'LocalDateTime',
+          required: false
+        }
+      ]
+    };
+
+    // Si le champ createdAt est présent, activer l'import de java.time
+    if (templateData.fields.some(field => field.type.includes('Local') || field.type.includes('Zoned') || field.type.includes('Instant'))) {
+      templateData.dateTimeImport = true;
+    }
+
+    // Si un champ de type BigDecimal est présent, activer l'import de BigDecimal
+    if (templateData.fields.some(field => field.type === 'BigDecimal')) {
+      templateData.bigDecimalImport = true;
+    }
+
+    // Créer le répertoire pour l'entité
+    const entityDir = path.join(process.cwd(), 'src/main/java', templateData.packageName.replace(/\./g, '/'));
+    this._createDirectoryIfNotExists(entityDir);
+
+    // Générer le fichier d'entité
+    const entityPath = path.join(entityDir, `${entityName}.java`);
+
+    // Ne pas écraser le fichier s'il existe déjà
+    if (!fs.existsSync(entityPath)) {
+      this.renderEjsTemplate('Entity.java.ejs', entityPath, templateData);
+      this.log(SUCCESS_COLOR(`✅ Entité ${entityName}.java générée avec succès`));
+
+      // Mettre à jour la référence au fichier d'entité
+      this.entityFile = entityPath;
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ${entityName}.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -390,11 +503,17 @@ export default class CrudGenerator extends BaseGenerator {
                 const packageMatch = content.match(/package\s+([^;]+);/);
                 if (packageMatch && packageMatch.length > 1) {
                   const pkg = packageMatch[1].trim();
+
+                  // Chercher d'abord le package d'application principal
+                  if (file.endsWith('Application.java')) {
+                    const basePackage = pkg.split('.').slice(0, -1).join('.');
+                    return basePackage;
+                  }
+
                   // Si on trouve un package "entity" ou "domain", c'est probablement ce qu'on veut
                   if (pkg.includes('.entity') || pkg.includes('.domain') || pkg.includes('.model')) {
                     return pkg;
                   }
-                  return pkg;
                 }
               } catch (e) {
                 // Ignorer les erreurs de lecture de fichier
@@ -404,7 +523,43 @@ export default class CrudGenerator extends BaseGenerator {
           return null;
         };
 
-        const foundPackage = findPackageInDir('src/main/java');
+        // Essayer d'abord de trouver le fichier Application.java
+        const findAppFile = (dir: string): string | null => {
+          const files = fs.readdirSync(dir);
+
+          for (const file of files) {
+            const fullPath = path.join(dir, file);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isDirectory()) {
+              const result = findAppFile(fullPath);
+              if (result) return result;
+            }
+            else if (file.endsWith('Application.java')) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                const packageMatch = content.match(/package\s+([^;]+);/);
+                if (packageMatch && packageMatch.length > 1) {
+                  const pkg = packageMatch[1].trim();
+                  // Retourner le package de base sans le ".application" ou équivalent
+                  return pkg.split('.').slice(0, -1).join('.');
+                }
+              } catch (e) {
+                // Ignorer les erreurs de lecture de fichier
+              }
+            }
+          }
+          return null;
+        };
+
+        // Essayer d'abord de trouver le fichier Application.java
+        let foundPackage: string | null = findAppFile('src/main/java');
+        if (foundPackage) {
+          return foundPackage;
+        }
+
+        // Si on n'a pas trouvé de fichier Application.java, continuer avec la recherche habituelle
+        foundPackage = findPackageInDir('src/main/java');
         if (foundPackage) {
           if (foundPackage.includes('.entity')) {
             return foundPackage;
@@ -415,15 +570,57 @@ export default class CrudGenerator extends BaseGenerator {
           if (foundPackage.includes('.model')) {
             return foundPackage;
           }
-          // Si on n'a pas trouvé de package spécifique, essayer d'en construire un
-          return foundPackage.split('.').slice(0, -1).join('.') + '.entity';
+          // Si on n'a pas trouvé de package spécifique, utiliser le package de base
+          return foundPackage.split('.').slice(0, -1).join('.');
         }
       }
     } catch (error) {
       this.log(ERROR_COLOR(`Erreur lors de la recherche du package de base: ${error}`));
     }
 
-    return 'com.example.domain';
+    // Utiliser le package par défaut défini en constante
+    return (this.options as any)["package-name"] || DEFAULT_PACKAGE;
+  }
+
+  /**
+   * Construit un sous-package à partir du package de base
+   * @param basePackage Package de base (fourni par l'utilisateur)
+   * @param subPackageName Nom du sous-package à construire (dto, repository, etc.)
+   * @returns Le nom du package complet
+   */
+  _constructSubPackage(basePackage: string, subPackageName: string): string {
+    if (!basePackage) {
+      return `com.example.${subPackageName}`;
+    }
+
+    // Si le package contient déjà "entity", "domain" ou "model", les remplacer par le sous-package
+    if (basePackage.includes('.entity')) {
+      return basePackage.replace('.entity', `.${subPackageName}`);
+    }
+    if (basePackage.includes('.domain')) {
+      return basePackage.replace('.domain', `.${subPackageName}`);
+    }
+    if (basePackage.includes('.model')) {
+      return basePackage.replace('.model', `.${subPackageName}`);
+    }
+
+    // Vérifier si le package se termine par un des sous-packages connus
+    const knownSubPackages = ['dto', 'repository', 'service', 'controller', 'entity', 'domain', 'model'];
+    for (const known of knownSubPackages) {
+      if (basePackage.endsWith(`.${known}`)) {
+        return basePackage.substring(0, basePackage.lastIndexOf(`.${known}`)) + `.${subPackageName}`;
+      }
+    }
+
+    // Si le package ne contient pas de sous-package connu, ajouter le nouveau sous-package
+    // Si l'utilisateur a spécifié un package qui correspond à la structure de l'app
+    if (subPackageName === 'entity') {
+      // Si on génère des fichiers entity, on utilise le package d'entité directement
+      return basePackage;
+    } else {
+      // Sinon on ajoute le sous-package au package de base
+      return `${basePackage}.${subPackageName}`;
+    }
   }
 
   end() {

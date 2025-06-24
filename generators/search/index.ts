@@ -9,6 +9,7 @@ export interface SearchGeneratorOptions extends SFSOptions {
   elasticsearchHost?: string;
   elasticsearchPort?: string;
   elasticsearchSecurity?: boolean;
+  packageName?: string; // Ajout de la propriété packageName
   [key: string]: any;
 }
 
@@ -108,273 +109,290 @@ export default class ElasticsearchGenerator extends BaseGenerator {
   writing() {
     this.log('Génération des fichiers pour Elasticsearch...');
 
-    // Configuration Elasticsearch
-    this._generateElasticsearchConfig();
+    // Déterminer le package de base
+    // Cast des options vers SearchGeneratorOptions pour accéder à packageName
+    let packageName = (this.options as SearchGeneratorOptions).packageName || this.config.get('packageName');
+    if (!packageName) {
+      // Essayer de déduire le package from src/main/java
+      const files = this.fs.glob.sync('src/main/java/**/*Application.java');
+      if (files.length > 0) {
+        const fileContent = this.fs.read(files[0]);
+        const packageMatch = fileContent.match(/package ([a-z0-9.]+);/);
+        if (packageMatch) {
+          packageName = packageMatch[1];
+        }
+      }
+    }
 
-    // Classes Repository pour Elasticsearch
-    this._generateElasticsearchRepositories();
+    // Fallback si toujours pas de package
+    if (!packageName) {
+      packageName = 'com.example.app';
+    }
 
-    // Classes Service et DTO pour la recherche
-    this._generateSearchServices();
+    // S'assurer que packageName est bien une chaîne de caractères
+    packageName = String(packageName);
 
-    // Controllers pour les API de recherche
-    this._generateSearchControllers();
+    this.log(`📦 Package détecté: ${packageName}`);
+    const packagePath = packageName.replace(/\./g, '/');
 
-    // Ajouter la configuration Docker si nécessaire
-    this._updateDockerCompose();
+    // Configuration de base
+    this._generateElasticsearchConfig(packageName, packagePath);
+
+    // Génération des repositories search
+    this._generateSearchRepositories(packageName, packagePath);
+
+    // Génération du service de recherche
+    this._generateSearchService(packageName, packagePath);
+
+    // Génération du controller de recherche
+    this._generateSearchController(packageName, packagePath);
+
+    // Configuration de la propriété elasticsearch
+    this._addElasticsearchProperties();
+
+    // Docker compose pour Elasticsearch (si demandé)
+    if (this.answers.elasticsearchCluster) {
+      this._generateElasticsearchDockerCompose();
+    }
+
+    this.log('✅ Les fichiers Elasticsearch ont été générés avec succès!');
   }
 
   install() {
-    this.log('Installation terminée pour Elasticsearch');
+    this.log('Installation des dépendances pour Elasticsearch...');
+
+    // Ajouter les dépendances nécessaires au projet
+    if (this.fs.exists(this.destinationPath('pom.xml'))) {
+      this._addMavenDependencies();
+    } else if (this.fs.exists(this.destinationPath('build.gradle'))) {
+      this._addGradleDependencies();
+    } else {
+      this.log('❌ Aucun fichier de build (pom.xml ou build.gradle) n\'a été trouvé. Impossible d\'ajouter les dépendances.');
+      this.log('Ajoutez manuellement la dépendance: org.springframework.boot:spring-boot-starter-data-elasticsearch');
+    }
   }
 
   end() {
-    this.log('Intégration d\'Elasticsearch terminée!');
-  }
+    this.log('🚀 Configuration Elasticsearch terminée!');
 
-  // Méthodes privées d'aide
-  private _addMavenDependencies() {
-    try {
-      const pomXml = this.fs.read(this.destinationPath('pom.xml'));
-      const elasticsearchDeps = `
-        <!-- Spring Data Elasticsearch -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-        </dependency>`;
+    // Instructions pour démarrer Elasticsearch
+    this.log('\nPour démarrer Elasticsearch:');
 
-      if (!pomXml.includes('spring-boot-starter-data-elasticsearch')) {
-        const updatedPom = pomXml.replace(
-          '</dependencies>',
-          `${elasticsearchDeps}\n    </dependencies>`
-        );
-        this.fs.write(this.destinationPath('pom.xml'), updatedPom);
-      }
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier pom.xml');
+    if (this.answers.elasticsearchCluster) {
+      this.log('1. Exécutez: docker-compose -f docker-compose-elasticsearch.yml up -d');
+    } else {
+      this.log('1. Assurez-vous qu\'Elasticsearch est en cours d\'exécution sur ' +
+        this.answers.elasticsearchHost + ':' + this.answers.elasticsearchPort);
+    }
+
+    this.log('2. Lancez votre application Spring Boot');
+    this.log('3. Les indices seront créés automatiquement au démarrage');
+
+    // Instructions d'utilisation
+    this.log('\nExemple d\'utilisation:');
+    this.log(`
+@Autowired
+private ProductSearchRepository productSearchRepository;
+
+// Indexer un produit
+productSearchRepository.save(product);
+
+// Rechercher des produits
+List<Product> results = productSearchRepository.findByNameContainingIgnoreCase("keyword");
+    `);
+
+    if (this.answers.elasticsearchSecurity) {
+      this.log('\n⚠️ N\'oubliez pas de configurer les identifiants Elasticsearch dans application.properties');
     }
   }
 
-  private _addGradleDependencies() {
-    try {
-      const buildFile = this.fs.exists(this.destinationPath('build.gradle.kts'))
-        ? this.destinationPath('build.gradle.kts')
-        : this.destinationPath('build.gradle');
+  // Méthodes privées pour la génération des fichiers
+  _generateElasticsearchConfig(packageName: string, packagePath: string) {
+    const configDir = `src/main/java/${packagePath}/config`;
+    this.fs.mkdirp(configDir);
 
-      const buildContent = this.fs.read(buildFile);
-      const elasticsearchDeps = `
-    // Spring Data Elasticsearch
-    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")`;
+    const templateData = {
+      packageName,
+      elasticsearchHost: this.answers.elasticsearchHost,
+      elasticsearchPort: this.answers.elasticsearchPort,
+      useSecurityConfig: this.answers.elasticsearchSecurity,
+      elasticsearchUsername: this.answers.elasticsearchUsername,
+      elasticsearchPassword: this.answers.elasticsearchPassword
+    };
 
-      if (!buildContent.includes('spring-boot-starter-data-elasticsearch')) {
-        let updatedContent;
-        if (buildFile.endsWith('.kts')) {
-          updatedContent = buildContent.replace(
-            'dependencies {',
-            `dependencies {${elasticsearchDeps}`
-          );
-        } else {
-          updatedContent = buildContent.replace(
-            'dependencies {',
-            `dependencies {${elasticsearchDeps}`
-          );
-        }
-
-        this.fs.write(buildFile, updatedContent);
-      }
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier build.gradle');
-    }
-  }
-
-  private _generateElasticsearchConfig() {
-    // Générer la configuration Elasticsearch
     this.fs.copyTpl(
       this.templatePath('ElasticsearchConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/config/ElasticsearchConfig.java`),
-      {
-        packageName: this.packageName,
-        elasticsearchHost: this.answers.elasticsearchHost,
-        elasticsearchPort: this.answers.elasticsearchPort,
-        elasticsearchSecurity: this.answers.elasticsearchSecurity,
-        elasticsearchUsername: this.answers.elasticsearchUsername,
-        elasticsearchPassword: this.answers.elasticsearchPassword
-      }
+      this.destinationPath(`${configDir}/ElasticsearchConfig.java`),
+      templateData
+    );
+  }
+
+  _generateSearchRepositories(packageName: string, packagePath: string) {
+    const { entitiesToIndex } = this.answers;
+    const repoDir = `src/main/java/${packagePath}/repository/search`;
+    this.fs.mkdirp(repoDir);
+
+    // Créer un repository générique pour recherche
+    this.fs.copyTpl(
+      this.templatePath('ElasticsearchRepository.java.ejs'),
+      this.destinationPath(`${repoDir}/ElasticsearchRepository.java`),
+      { packageName }
     );
 
-    // Ajouter les propriétés dans application.properties ou application.yml
-    const propertiesPath = this.fs.exists(this.destinationPath('src/main/resources/application.yml'))
-      ? this.destinationPath('src/main/resources/application.yml')
-      : this.destinationPath('src/main/resources/application.properties');
-
-    if (propertiesPath.endsWith('.yml')) {
-      this._updateYamlProperties(propertiesPath);
-    } else {
-      this._updateProperties(propertiesPath);
+    // Créer des repositories spécifiques pour chaque entité
+    if (entitiesToIndex && entitiesToIndex.length > 0) {
+      entitiesToIndex.forEach((entity: string) => {
+        if (entity !== 'custom') {
+          this.fs.copyTpl(
+            this.templatePath('EntitySearchRepository.java.ejs'),
+            this.destinationPath(`${repoDir}/${entity}SearchRepository.java`),
+            { packageName, entityName: entity }
+          );
+        }
+      });
     }
   }
 
-  private _updateProperties(propertiesPath: string) {
-    try {
-      const properties = this.fs.read(propertiesPath);
-      const elasticsearchProps = `
-# Elasticsearch Configuration
+  _generateSearchService(packageName: string, packagePath: string) {
+    const { entitiesToIndex } = this.answers;
+    const serviceDir = `src/main/java/${packagePath}/service`;
+    this.fs.mkdirp(serviceDir);
+
+    // Service générique
+    this.fs.copyTpl(
+      this.templatePath('SearchService.java.ejs'),
+      this.destinationPath(`${serviceDir}/SearchService.java`),
+      { packageName }
+    );
+
+    // Services spécifiques pour chaque entité
+    if (entitiesToIndex && entitiesToIndex.length > 0) {
+      entitiesToIndex.forEach((entity: string) => {
+        if (entity !== 'custom') {
+          this.fs.copyTpl(
+            this.templatePath('EntitySearchService.java.ejs'),
+            this.destinationPath(`${serviceDir}/${entity}SearchService.java`),
+            { packageName, entityName: entity }
+          );
+        }
+      });
+    }
+  }
+
+  _generateSearchController(packageName: string, packagePath: string) {
+    const { entitiesToIndex } = this.answers;
+    const controllerDir = `src/main/java/${packagePath}/controller`;
+    const dtoDir = `src/main/java/${packagePath}/dto`;
+
+    this.fs.mkdirp(controllerDir);
+    this.fs.mkdirp(dtoDir);
+
+    // DTOs pour la recherche
+    this.fs.copyTpl(
+      this.templatePath('SearchDTO.java.ejs'),
+      this.destinationPath(`${dtoDir}/SearchDTO.java`),
+      { packageName }
+    );
+
+    this.fs.copyTpl(
+      this.templatePath('SearchResultDTO.java.ejs'),
+      this.destinationPath(`${dtoDir}/SearchResultDTO.java`),
+      { packageName }
+    );
+
+    // Controller générique
+    this.fs.copyTpl(
+      this.templatePath('SearchController.java.ejs'),
+      this.destinationPath(`${controllerDir}/SearchController.java`),
+      { packageName, entities: entitiesToIndex }
+    );
+
+    // Controllers spécifiques pour chaque entité
+    if (entitiesToIndex && entitiesToIndex.length > 0) {
+      entitiesToIndex.forEach((entity: string) => {
+        if (entity !== 'custom') {
+          this.fs.copyTpl(
+            this.templatePath('EntitySearchController.java.ejs'),
+            this.destinationPath(`${controllerDir}/${entity}SearchController.java`),
+            { packageName, entityName: entity }
+          );
+        }
+      });
+    }
+  }
+
+  _addElasticsearchProperties() {
+    const propertiesPath = this.destinationPath('src/main/resources/application.properties');
+    const ymlPath = this.destinationPath('src/main/resources/application.yml');
+
+    let propertiesContent = `
+# Configuration Elasticsearch
 spring.elasticsearch.uris=http://${this.answers.elasticsearchHost}:${this.answers.elasticsearchPort}
 spring.elasticsearch.connection-timeout=1s
 spring.elasticsearch.socket-timeout=30s
-spring.elasticsearch.restclient.sniffer.interval=10m
-spring.elasticsearch.restclient.sniffer.delay-after-failure=30s
-${this.answers.elasticsearchSecurity ? `spring.elasticsearch.username=${this.answers.elasticsearchUsername}
-spring.elasticsearch.password=${this.answers.elasticsearchPassword}` : ''}
-      `;
+spring.elasticsearch.restclient.sniffer.interval=300000
+spring.elasticsearch.restclient.sniffer.delay-after-failure=300000
+spring.data.elasticsearch.repositories.enabled=true
+spring.data.elasticsearch.cluster-name=elasticsearch
+`;
 
-      this.fs.write(propertiesPath, properties + elasticsearchProps);
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier application.properties');
+    if (this.answers.elasticsearchSecurity) {
+      propertiesContent += `
+# Elasticsearch Security (X-Pack)
+spring.elasticsearch.username=${this.answers.elasticsearchUsername}
+spring.elasticsearch.password=${this.answers.elasticsearchPassword}
+`;
     }
-  }
 
-  private _updateYamlProperties(propertiesPath: string) {
-    try {
-      const properties = this.fs.read(propertiesPath);
-      const elasticsearchProps = `
-# Elasticsearch Configuration
+    // Ajouter la configuration au fichier de propriétés existant
+    if (this.fs.exists(propertiesPath)) {
+      this.fs.append(propertiesPath, propertiesContent);
+      this.log('✅ Configuration Elasticsearch ajoutée au fichier application.properties');
+    } else if (this.fs.exists(ymlPath)) {
+      // Convertir les propriétés en YAML
+      const ymlContent = `
+# Configuration Elasticsearch
 spring:
   elasticsearch:
     uris: http://${this.answers.elasticsearchHost}:${this.answers.elasticsearchPort}
     connection-timeout: 1s
     socket-timeout: 30s
+${this.answers.elasticsearchSecurity ? `    username: ${this.answers.elasticsearchUsername}\n    password: ${this.answers.elasticsearchPassword}` : ''}
     restclient:
       sniffer:
-        interval: 10m
-        delay-after-failure: 30s
-${this.answers.elasticsearchSecurity ? `    username: ${this.answers.elasticsearchUsername}
-    password: ${this.answers.elasticsearchPassword}` : ''}
-      `;
-
-      this.fs.write(propertiesPath, properties + elasticsearchProps);
-    } catch (error) {
-      this.log('Erreur lors de la mise à jour du fichier application.yml');
+        interval: 300000
+        delay-after-failure: 300000
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+      cluster-name: elasticsearch
+`;
+      this.fs.append(ymlPath, ymlContent);
+      this.log('✅ Configuration Elasticsearch ajoutée au fichier application.yml');
+    } else {
+      // Créer un nouveau fichier application.properties
+      this.fs.write(propertiesPath, propertiesContent);
+      this.log('✅ Fichier application.properties créé avec la configuration Elasticsearch');
     }
   }
 
-  private _generateElasticsearchRepositories() {
-    // Générer un repository de base pour Elasticsearch
-    this.fs.copyTpl(
-      this.templatePath('ElasticsearchRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/repository/search/SearchRepository.java`),
-      {
-        packageName: this.packageName
-      }
-    );
+  _generateElasticsearchDockerCompose() {
+    const dockerComposePath = this.destinationPath('docker-compose-elasticsearch.yml');
 
-    // Générer les repositories spécifiques pour chaque entité sélectionnée
-    if (this.answers.entitiesToIndex && this.answers.entitiesToIndex.length > 0) {
-      this.answers.entitiesToIndex.forEach((entity: string) => {
-        if (entity !== 'custom') {
-          this.fs.copyTpl(
-            this.templatePath('EntitySearchRepository.java.ejs'),
-            this.destinationPath(`src/main/java/${this.packageFolder}/repository/search/${entity}SearchRepository.java`),
-            {
-              packageName: this.packageName,
-              entity
-            }
-          );
-        }
-      });
-    }
-  }
+    const dockerComposeContent = `
+version: '3.8'
 
-  private _generateSearchServices() {
-    // Générer le service de recherche générique
-    this.fs.copyTpl(
-      this.templatePath('SearchService.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/service/SearchService.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Générer les DTO pour la recherche
-    this.fs.copyTpl(
-      this.templatePath('SearchDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/SearchDTO.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    this.fs.copyTpl(
-      this.templatePath('SearchResultDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/dto/SearchResultDTO.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Générer des services spécifiques pour chaque entité
-    if (this.answers.entitiesToIndex && this.answers.entitiesToIndex.length > 0) {
-      this.answers.entitiesToIndex.forEach((entity: string) => {
-        if (entity !== 'custom') {
-          this.fs.copyTpl(
-            this.templatePath('EntitySearchService.java.ejs'),
-            this.destinationPath(`src/main/java/${this.packageFolder}/service/search/${entity}SearchService.java`),
-            {
-              packageName: this.packageName,
-              entity
-            }
-          );
-        }
-      });
-    }
-  }
-
-  private _generateSearchControllers() {
-    // Générer le contrôleur de recherche principal
-    this.fs.copyTpl(
-      this.templatePath('SearchController.java.ejs'),
-      this.destinationPath(`src/main/java/${this.packageFolder}/controller/SearchController.java`),
-      {
-        packageName: this.packageName
-      }
-    );
-
-    // Générer des contrôleurs spécifiques pour chaque entité
-    if (this.answers.entitiesToIndex && this.answers.entitiesToIndex.length > 0) {
-      this.answers.entitiesToIndex.forEach((entity: string) => {
-        if (entity !== 'custom') {
-          this.fs.copyTpl(
-            this.templatePath('EntitySearchController.java.ejs'),
-            this.destinationPath(`src/main/java/${this.packageFolder}/controller/${entity}SearchController.java`),
-            {
-              packageName: this.packageName,
-              entity
-            }
-          );
-        }
-      });
-    }
-  }
-
-  private _updateDockerCompose() {
-    const dockerComposePath = this.destinationPath('docker/docker-compose.yml');
-    if (this.fs.exists(dockerComposePath)) {
-      try {
-        let dockerCompose = this.fs.read(dockerComposePath);
-
-        // Vérifier si Elasticsearch est déjà dans le fichier
-        if (!dockerCompose.includes('elasticsearch:')) {
-          const elasticsearchService = `
+services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     container_name: elasticsearch
     environment:
       - node.name=elasticsearch
-      - cluster.name=docker-cluster
+      - cluster.name=elasticsearch-cluster
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=${this.answers.elasticsearchSecurity ? 'true' : 'false'}
     ulimits:
       memlock:
         soft: -1
@@ -384,42 +402,96 @@ ${this.answers.elasticsearchSecurity ? `    username: ${this.answers.elasticsear
     ports:
       - ${this.answers.elasticsearchPort}:9200
     networks:
-      - app-network
+      - elastic-net
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.10.4
+    image: docker.elastic.co/kibana/kibana:7.17.0
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
-      - "5601:5601"
+      - 5601:5601
     depends_on:
       - elasticsearch
     networks:
-      - app-network`;
+      - elastic-net
 
-          // Ajouter le service à docker-compose
-          dockerCompose = dockerCompose.replace(
-            'networks:',
-            `${elasticsearchService}\n\nnetworks:`
-          );
+networks:
+  elastic-net:
+    driver: bridge
 
-          // Ajouter le volume si nécessaire
-          if (!dockerCompose.includes('elasticsearch-data:')) {
-            dockerCompose = dockerCompose.replace(
-              'volumes:',
-              'volumes:\n  elasticsearch-data:'
-            );
-            if (!dockerCompose.includes('volumes:')) {
-              dockerCompose += '\nvolumes:\n  elasticsearch-data:';
-            }
-          }
+volumes:
+  elasticsearch-data:
+    driver: local
+`;
 
-          this.fs.write(dockerComposePath, dockerCompose);
-        }
-      } catch (error) {
-        this.log('Erreur lors de la mise à jour du fichier docker-compose.yml');
+    this.fs.write(dockerComposePath, dockerComposeContent);
+    this.log('✅ Fichier docker-compose-elasticsearch.yml généré avec succès');
+  }
+
+  private _addMavenDependencies() {
+    const pomPath = this.destinationPath('pom.xml');
+
+    if (!this.fs.exists(pomPath)) {
+      this.log('❌ Fichier pom.xml non trouvé. Impossible d\'ajouter les dépendances.');
+      return;
+    }
+
+    let pomContent = this.fs.read(pomPath);
+
+    // Vérifier si la dépendance Elasticsearch existe déjà
+    if (!pomContent.includes('spring-boot-starter-data-elasticsearch')) {
+      // Ajouter la dépendance Elasticsearch
+      const elasticDependency = `
+        <!-- Elasticsearch -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>`;
+
+      if (pomContent.includes('</dependencies>')) {
+        pomContent = pomContent.replace('</dependencies>', `${elasticDependency}\n    </dependencies>`);
+        this.fs.write(pomPath, pomContent);
+        this.log('✅ Dépendances Elasticsearch ajoutées au fichier pom.xml');
+      } else {
+        this.log('⚠️ Structure du fichier pom.xml non reconnue. Impossible d\'ajouter les dépendances automatiquement.');
+        this.log('Ajoutez manuellement les dépendances suivantes:');
+        this.log(elasticDependency);
       }
+    } else {
+      this.log('ℹ️ Les dépendances Elasticsearch sont déjà présentes dans le pom.xml');
+    }
+  }
+
+  private _addGradleDependencies() {
+    const buildGradlePath = this.destinationPath('build.gradle');
+
+    if (!this.fs.exists(buildGradlePath)) {
+      this.log('❌ Fichier build.gradle non trouvé. Impossible d\'ajouter les dépendances.');
+      return;
+    }
+
+    let buildGradleContent = this.fs.read(buildGradlePath);
+
+    // Vérifier si la dépendance Elasticsearch existe déjà
+    if (!buildGradleContent.includes('spring-boot-starter-data-elasticsearch')) {
+      // Ajouter la dépendance Elasticsearch
+      const elasticDependency = `implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'`;
+
+      if (buildGradleContent.includes('dependencies {')) {
+        buildGradleContent = buildGradleContent.replace(
+          'dependencies {',
+          `dependencies {\n    ${elasticDependency}\n`
+        );
+        this.fs.write(buildGradlePath, buildGradleContent);
+        this.log('✅ Dépendances Elasticsearch ajoutées au fichier build.gradle');
+      } else {
+        this.log('⚠️ Structure du fichier build.gradle non reconnue. Impossible d\'ajouter les dépendances automatiquement.');
+        this.log('Ajoutez manuellement la dépendance suivante:');
+        this.log(elasticDependency);
+      }
+    } else {
+      this.log('ℹ️ Les dépendances Elasticsearch sont déjà présentes dans le build.gradle');
     }
   }
 }

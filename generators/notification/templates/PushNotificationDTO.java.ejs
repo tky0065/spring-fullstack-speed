@@ -1,60 +1,32 @@
-package <%= packageName %>.dto;
+package <%= packageName %>.notification.dto;
 
-import java.io.Serializable;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
 /**
- * DTO pour représenter une notification push.
+ * DTO représentant une notification push à envoyer
  */
-public class PushNotificationDTO implements Serializable {
+public class PushNotificationDTO {
 
-    private static final long serialVersionUID = 1L;
-
-    @NotNull
-    @Size(min = 1, max = 255)
     private String title;
-
-    @NotNull
-    @Size(min = 1, max = 1024)
     private String body;
-
+    private String topic;
+    private String token;
+    private Map<String, String> data;
     private String imageUrl;
 
-    private String clickAction;
-
-    private String topic;
-
-    private String token;
-
-    private String[] tokens;
-
-    private Map<String, String> data = new HashMap<>();
-
-    private Instant timestamp = Instant.now();
-
-    private String priority = "high";
-
-    private boolean silent = false;
-
-    private int timeToLive = 86400; // 24 heures en secondes
-
-    // Constructeurs
     public PushNotificationDTO() {
+        this.data = new HashMap<>();
     }
 
     public PushNotificationDTO(String title, String body) {
+        this();
         this.title = title;
         this.body = body;
     }
 
     public PushNotificationDTO(String title, String body, String token) {
-        this.title = title;
-        this.body = body;
+        this(title, body);
         this.token = token;
     }
 
@@ -75,22 +47,6 @@ public class PushNotificationDTO implements Serializable {
         this.body = body;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public String getClickAction() {
-        return clickAction;
-    }
-
-    public void setClickAction(String clickAction) {
-        this.clickAction = clickAction;
-    }
-
     public String getTopic() {
         return topic;
     }
@@ -107,14 +63,6 @@ public class PushNotificationDTO implements Serializable {
         this.token = token;
     }
 
-    public String[] getTokens() {
-        return tokens;
-    }
-
-    public void setTokens(String[] tokens) {
-        this.tokens = tokens;
-    }
-
     public Map<String, String> getData() {
         return data;
     }
@@ -127,46 +75,11 @@ public class PushNotificationDTO implements Serializable {
         this.data.put(key, value);
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public String getImageUrl() {
+        return imageUrl;
     }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public String getPriority() {
-        return priority;
-    }
-
-    public void setPriority(String priority) {
-        this.priority = priority;
-    }
-
-    public boolean isSilent() {
-        return silent;
-    }
-
-    public void setSilent(boolean silent) {
-        this.silent = silent;
-    }
-
-    public int getTimeToLive() {
-        return timeToLive;
-    }
-
-    public void setTimeToLive(int timeToLive) {
-        this.timeToLive = timeToLive;
-    }
-
-    @Override
-    public String toString() {
-        return "PushNotificationDTO{" +
-            "title='" + title + '\'' +
-            ", body='" + body + '\'' +
-            ", token='" + token + '\'' +
-            ", topic='" + topic + '\'' +
-            ", timestamp=" + timestamp +
-            '}';
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }

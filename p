@@ -5,11 +5,11 @@ si tu modifie les fichiers assure toi de la coerrence des types et la repercutio
 
 
 
-j'ai tester la lib il ya des erreurs que je mise dans errors.txt tous les command que j'ai fait avec les logs , et le projet genere est dans test-folder-for-cleanup, creer un fichier todo que l'on vas suivre pour ressoudre tous ces erreurs
+j'ai tester la lib il ya des erreurs que je mise dans errors.txt tous les command que j'ai fait avec les logs , et le projet genere est dans test-generator-folder, creer un fichier todo que l'on vas suivre pour ressoudre tous ces erreurs
 
 
 
-Corrige les erreurs dans le fichier errors.txt  suivant le fichier TODO-CORRECTION.md, pour commencer tu dois faire un tree .\generators\ /f pour voir les fichier qui existe avant de commencer et une fois la task terminée, marque-la comme terminée dans le fichier TODO-CORRECTION.md.
+Corrige les erreurs dans le fichier errors.txt  suivant le fichier TODO-CORRECTIONS.md, pour commencer tu dois faire un tree .\generators\ /f pour voir les fichier qui existe avant de commencer et une fois la task terminée, marque-la comme terminée dans le fichier TODO-CORRECTIONS.md.
 
  quant j'ai tester la lib il me genere uniquement des la structure des dossier sans les fichier c'est ca on corrigais avec les tasks de TODO-CORRECTION.md et le resulter de test est dans le dossier test-folder-for-cleanup on devais commenecer ## 5. Configuration Kubernetes et tu doit d'abord fair tree .\generators\ /f pour voir les fichier qui existe avant de commencer
 
@@ -18,3 +18,8 @@ base toi sur les dossier guidline et on continue nos tasks mais avance de commen
 
 
 Je vais continuer l'implémentation de la commande sfs generate pour le Module 9.3 du planning. D'après la structure du projet, je vois que nous avons déjà plusieurs générateurs spécialisés (entity, dtos, crud), mais nous avons besoin de créer une commande unifiée generate qui pourra orchestrer ces différents générateurs.
+
+
+
+Je veux ameliorer tous les code (templet java) fait un todo list pour faire les mise a jour:
+  # Utilisation de lombok pour réduire le boilerplate code

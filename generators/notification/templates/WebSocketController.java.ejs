@@ -1,77 +1,46 @@
-package <%= packageName %>.controller;
+package <%= packageName %>.notification.controller;
 
-import <%= packageName %>.dto.WebSocketMessageDTO;
-import <%= packageName %>.service.WebSocketService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import <%= packageName %>.notification.dto.WebSocketMessageDTO;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 /**
- * Controller pour gérer les communications WebSocket.
+ * Contrôleur WebSocket pour gérer les messages en temps réel
  */
 @Controller
 public class WebSocketController {
 
-    private final Logger log = LoggerFactory.getLogger(WebSocketController.class);
-    private final SimpMessagingTemplate messagingTemplate;
-    private final WebSocketService webSocketService;
-
-    public WebSocketController(SimpMessagingTemplate messagingTemplate, WebSocketService webSocketService) {
-        this.messagingTemplate = messagingTemplate;
-        this.webSocketService = webSocketService;
-    }
-
     /**
-     * Gère les messages envoyés au topic /app/broadcast.
-     * Les messages sont diffusés à tous les clients abonnés au topic /topic/public.
+     * Gère les messages entrants et les diffuse à tous les abonnés
      *
-     * @param message le message à diffuser
-     * @return le message à envoyer aux clients
+     * @param message Le message reçu
+     * @return Le message à diffuser
      */
-    @MessageMapping("/broadcast")
+    @MessageMapping("/send")
     @SendTo("/topic/public")
-    public WebSocketMessageDTO broadcastMessage(@Payload WebSocketMessageDTO message) {
-        log.debug("Broadcasting message: {}", message);
-        return webSocketService.processMessage(message);
+    public WebSocketMessageDTO sendMessage(@Payload WebSocketMessageDTO message) {
+        return message;
     }
 
     /**
-     * Gère les messages privés envoyés à un utilisateur spécifique.
+     * Gère les événements de connexion utilisateur
      *
-     * @param message le message à envoyer
-     * @param headerAccessor accesseur des en-têtes du message
+     * @param message Le message reçu
+     * @param headerAccessor Accesseur pour les en-têtes du message
+     * @return Le message de notification de connexion
      */
-    @MessageMapping("/private")
-    public void sendPrivateMessage(@Payload WebSocketMessageDTO message, SimpMessageHeaderAccessor headerAccessor) {
-        log.debug("Sending private message from {} to {}", message.getFrom(), message.getTo());
-
-        // Traitement du message
-        WebSocketMessageDTO processedMessage = webSocketService.processMessage(message);
-
-        // Envoi du message au destinataire spécifique
-        messagingTemplate.convertAndSendToUser(
-            message.getTo(),
-            "/queue/private",
-            processedMessage
-        );
-    }
-
-    /**
-     * Gère les messages de notification système.
-     *
-     * @param message le message de notification
-     * @return le message traité à envoyer aux clients
-     */
-    @MessageMapping("/notification")
-    @SendTo("/topic/notifications")
-    public WebSocketMessageDTO sendNotification(@Payload WebSocketMessageDTO message) {
-        log.debug("Sending notification: {}", message);
-        message.setType("NOTIFICATION");
-        return webSocketService.processMessage(message);
+    @MessageMapping("/connect")
+    @SendTo("/topic/public")
+    public WebSocketMessageDTO connect(
+            @Payload WebSocketMessageDTO message,
+            SimpMessageHeaderAccessor headerAccessor) {
+        // Ajouter le nom d'utilisateur dans la session WebSocket
+        if (headerAccessor.getSessionAttributes() != null && message.getContent() != null) {
+            headerAccessor.getSessionAttributes().put("username", message.getContent());
+        }
+        return message;
     }
 }

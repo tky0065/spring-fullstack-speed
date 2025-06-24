@@ -1,86 +1,22 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
-import { useInertia } from '@inertiajs/vue3';
+import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../pages/Home.vue'
 
-// Importation des pages
-import Home from '../pages/Home.vue';
-import Login from '../pages/Auth/Login.vue';
-import Register from '../pages/Auth/Register.vue';
-import ForgotPassword from '../pages/Auth/ForgotPassword.vue';
-import ResetPassword from '../pages/Auth/ResetPassword.vue';
-
-/**
- * Définition des routes de l'application
- */
-const routes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    name: 'home',
-    component: Home,
-    meta: { title: 'Accueil' }
-  },
-  {
-    path: '/login',
-    name: 'login',
-    component: Login,
-    meta: { title: 'Connexion', guest: true }
-  },
-  {
-    path: '/register',
-    name: 'register',
-    component: Register,
-    meta: { title: 'Inscription', guest: true }
-  },
-  {
-    path: '/forgot-password',
-    name: 'forgot-password',
-    component: ForgotPassword,
-    meta: { title: 'Récupération de mot de passe', guest: true }
-  },
-  {
-    path: '/reset-password/:token',
-    name: 'reset-password',
-    component: ResetPassword,
-    meta: { title: 'Réinitialisation de mot de passe', guest: true },
-    props: route => ({
-      token: route.params.token,
-      email: route.query.email
-    })
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: () => import('../pages/NotFound.vue'),
-    meta: { title: 'Page non trouvée' }
-  }
-];
-
-/**
- * Création du routeur
- */
 const router = createRouter({
-  history: createWebHistory(),
-  routes,
-  scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition;
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomeView
+    },
+    {
+      path: '/about',
+      name: 'about',
+      // route level code-splitting - this generates a separate chunk for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import('../pages/NotFound.vue')
     }
-    return { top: 0 };
-  }
-});
+  ]
+})
 
-/**
- * Middleware pour gérer les titres de page et l'authentification
- */
-router.beforeEach((to, from, next) => {
-  // Mise à jour du titre de la page
-  document.title = to.meta.title
-    ? `${to.meta.title} | <%= appName %>`
-    : '<%= appName %>';
-
-  // Logique d'authentification peut être ajoutée ici
-  // Par exemple, redirection si l'utilisateur n'est pas connecté
-
-  next();
-});
-
-export default router;
+export default router

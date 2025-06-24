@@ -1,116 +1,56 @@
-package <%= packageName %>.controller;
+package <%= packageName %>.notification.controller;
 
-import <%= packageName %>.dto.EmailDTO;
-import <%= packageName %>.service.EmailService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import <%= packageName %>.notification.dto.EmailDTO;
+import <%= packageName %>.notification.service.EmailService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
-import java.util.Map;
-
 /**
- * REST controller pour gérer les emails.
+ * Contrôleur REST pour l'envoi d'emails
  */
 @RestController
-@RequestMapping("/api/email")
+@RequestMapping("/api/emails")
 public class EmailController {
 
-    private final Logger log = LoggerFactory.getLogger(EmailController.class);
-    private final EmailService emailService;
-
-    public EmailController(EmailService emailService) {
-        this.emailService = emailService;
-    }
+    @Autowired
+    private EmailService emailService;
 
     /**
-     * {@code POST /api/email/send} : Envoie un email.
+     * Envoie un email simple
      *
-     * @param emailDTO l'email à envoyer
-     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     * @param emailDTO DTO contenant les informations de l'email
+     * @return ResponseEntity avec un message de confirmation
      */
     @PostMapping("/send")
-    public ResponseEntity<Map<String, Object>> sendEmail(@Valid @RequestBody EmailDTO emailDTO) {
-        log.debug("REST request to send email to : {}", emailDTO.getTo());
-        boolean result = emailService.sendEmail(emailDTO);
-        return ResponseEntity.ok(Map.of("sent", result));
+    public ResponseEntity<String> sendEmail(@RequestBody EmailDTO emailDTO) {
+        emailService.sendEmail(
+                emailDTO.getTo(),
+                emailDTO.getSubject(),
+                emailDTO.getContent(),
+                emailDTO.isHtml()
+        );
+        return ResponseEntity.ok("Email envoyé avec succès");
     }
 
     <% if (useTemplating) { %>
     /**
-     * {@code POST /api/email/template} : Envoie un email à partir d'un template.
+     * Envoie un email basé sur un template
      *
-     * @param templateRequest les données pour construire l'email à partir du template
-     * @return {@code 200 OK} avec un statut indiquant si l'envoi a réussi
+     * @param emailDTO DTO contenant les informations de l'email
+     * @return ResponseEntity avec un message de confirmation
      */
-    @PostMapping("/template")
-    public ResponseEntity<Map<String, Object>> sendTemplateEmail(@Valid @RequestBody TemplateEmailRequest templateRequest) {
-        log.debug("REST request to send template email to: {}", templateRequest.getTo());
-        boolean result = emailService.sendTemplateEmail(
-            templateRequest.getTo(),
-            templateRequest.getSubject(),
-            templateRequest.getTemplateName(),
-            templateRequest.getVariables()
+    @PostMapping("/send-template")
+    public ResponseEntity<String> sendTemplateEmail(
+            @RequestBody EmailDTO emailDTO,
+            @RequestParam String templateName) {
+        emailService.sendTemplateEmail(
+                emailDTO.getTo(),
+                emailDTO.getSubject(),
+                templateName,
+                emailDTO.getTemplateModel()
         );
-        return ResponseEntity.ok(Map.of("sent", result));
-    }
-
-    /**
-     * Classe interne pour représenter une demande d'envoi d'email avec template.
-     */
-    public static class TemplateEmailRequest {
-        private String to;
-        private String subject;
-        private String templateName;
-        private Map<String, Object> variables;
-
-        // Getters et setters
-        public String getTo() {
-            return to;
-        }
-
-        public void setTo(String to) {
-            this.to = to;
-        }
-
-        public String getSubject() {
-            return subject;
-        }
-
-        public void setSubject(String subject) {
-            this.subject = subject;
-        }
-
-        public String getTemplateName() {
-            return templateName;
-        }
-
-        public void setTemplateName(String templateName) {
-            this.templateName = templateName;
-        }
-
-        public Map<String, Object> getVariables() {
-            return variables;
-        }
-
-        public void setVariables(Map<String, Object> variables) {
-            this.variables = variables;
-        }
-    }
-    <% } %>
-
-    <% if (trackingEnabled) { %>
-    /**
-     * {@code GET /api/email/stats} : Récupère les statistiques d'envoi d'emails.
-     *
-     * @return {@code 200 OK} avec les statistiques
-     */
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getEmailStats() {
-        log.debug("REST request to get email statistics");
-        Map<String, Object> stats = emailService.getEmailStats();
-        return ResponseEntity.ok(stats);
+        return ResponseEntity.ok("Email basé sur template envoyé avec succès");
     }
     <% } %>
 }

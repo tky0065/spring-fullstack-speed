@@ -1,50 +1,48 @@
-package <%= packageName %>.service;
+package <%= packageName %>.notification.service;
 
-import <%= packageName %>.dto.EmailDTO;
+import org.springframework.stereotype.Service;
+<% if (asyncNotifications) { %>
+import org.springframework.scheduling.annotation.Async;
+<% } %>
 
 /**
- * Interface pour les services d'envoi d'emails.
+ * Interface de service pour l'envoi d'emails
  */
 public interface EmailService {
 
     /**
-     * Envoie un email simple.
+     * Envoie un email simple
      *
-     * @param to destinataire
-     * @param subject sujet
-     * @param content contenu
-     * @param isHtml si le contenu est au format HTML
-     * @return true si l'email a été envoyé avec succès
+     * @param to Destinataire
+     * @param subject Sujet de l'email
+     * @param text Contenu de l'email
+     * @param isHtml Indique si le contenu est au format HTML
      */
-    boolean sendEmail(String to, String subject, String content, boolean isHtml);
+    <% if (asyncNotifications) { %>@Async<% } %>
+    void sendEmail(String to, String subject, String text, boolean isHtml);
 
     /**
-     * Envoie un email en utilisant un DTO.
+     * Envoie un email avec pièces jointes
      *
-     * @param emailDTO DTO contenant les détails de l'email
-     * @return true si l'email a été envoyé avec succès
+     * @param to Destinataire
+     * @param subject Sujet de l'email
+     * @param text Contenu de l'email
+     * @param isHtml Indique si le contenu est au format HTML
+     * @param attachments Tableau des chemins des pièces jointes
      */
-    boolean sendEmail(EmailDTO emailDTO);
+    <% if (asyncNotifications) { %>@Async<% } %>
+    void sendEmailWithAttachments(String to, String subject, String text, boolean isHtml, String[] attachments);
 
     <% if (useTemplating) { %>
     /**
-     * Envoie un email basé sur un template.
+     * Envoie un email basé sur un template
      *
-     * @param to destinataire
-     * @param subject sujet
-     * @param templateName nom du template
-     * @param variables variables à utiliser dans le template
-     * @return true si l'email a été envoyé avec succès
+     * @param to Destinataire
+     * @param subject Sujet de l'email
+     * @param templateName Nom du template à utiliser
+     * @param model Modèle de données à injecter dans le template
      */
-    boolean sendTemplateEmail(String to, String subject, String templateName, java.util.Map<String, Object> variables);
-    <% } %>
-
-    <% if (trackingEnabled) { %>
-    /**
-     * Récupère les statistiques d'envoi d'emails.
-     *
-     * @return Map contenant les statistiques
-     */
-    java.util.Map<String, Object> getEmailStats();
+    <% if (asyncNotifications) { %>@Async<% } %>
+    void sendTemplateEmail(String to, String subject, String templateName, Object model);
     <% } %>
 }

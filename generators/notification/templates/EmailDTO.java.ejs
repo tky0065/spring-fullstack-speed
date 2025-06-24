@@ -1,54 +1,44 @@
-package <%= packageName %>.dto;
+package <%= packageName %>.notification.dto;
 
-import java.io.Serializable;
+import java.util.Map;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.validation.constraints.Email;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 /**
- * DTO pour représenter un email à envoyer.
+ * DTO représentant un email à envoyer
  */
-public class EmailDTO implements Serializable {
+public class EmailDTO {
 
-    private static final long serialVersionUID = 1L;
-
-    @NotNull
-    @Email
     private String to;
-
-    private String cc;
-
-    private String bcc;
-
-    @NotNull
-    @Size(min = 1, max = 255)
+    private String from;
     private String subject;
-
-    @NotNull
-    @Size(min = 1)
     private String content;
+    private boolean html;
+    private List<String> attachments;
+    private Map<String, Object> templateModel;
 
-    private boolean isHtml = false;
-
-    private List<String> attachments = new ArrayList<>();
-
-    private Map<String, Object> templateVariables = new HashMap<>();
-
-    private String templateName;
-
-    // Constructeurs
     public EmailDTO() {
+        this.attachments = new ArrayList<>();
+        this.templateModel = new HashMap<>();
     }
 
     public EmailDTO(String to, String subject, String content) {
+        this();
         this.to = to;
+        this.from = "<%= emailFrom %>";
         this.subject = subject;
         this.content = content;
+        this.html = false;
+    }
+
+    public EmailDTO(String to, String from, String subject, String content, boolean html) {
+        this();
+        this.to = to;
+        this.from = from;
+        this.subject = subject;
+        this.content = content;
+        this.html = html;
     }
 
     // Getters et Setters
@@ -60,20 +50,12 @@ public class EmailDTO implements Serializable {
         this.to = to;
     }
 
-    public String getCc() {
-        return cc;
+    public String getFrom() {
+        return from;
     }
 
-    public void setCc(String cc) {
-        this.cc = cc;
-    }
-
-    public String getBcc() {
-        return bcc;
-    }
-
-    public void setBcc(String bcc) {
-        this.bcc = bcc;
+    public void setFrom(String from) {
+        this.from = from;
     }
 
     public String getSubject() {
@@ -93,11 +75,11 @@ public class EmailDTO implements Serializable {
     }
 
     public boolean isHtml() {
-        return isHtml;
+        return html;
     }
 
-    public void setHtml(boolean isHtml) {
-        this.isHtml = isHtml;
+    public void setHtml(boolean html) {
+        this.html = html;
     }
 
     public List<String> getAttachments() {
@@ -112,33 +94,15 @@ public class EmailDTO implements Serializable {
         this.attachments.add(attachment);
     }
 
-    public Map<String, Object> getTemplateVariables() {
-        return templateVariables;
+    public Map<String, Object> getTemplateModel() {
+        return templateModel;
     }
 
-    public void setTemplateVariables(Map<String, Object> templateVariables) {
-        this.templateVariables = templateVariables;
+    public void setTemplateModel(Map<String, Object> templateModel) {
+        this.templateModel = templateModel;
     }
 
     public void addTemplateVariable(String key, Object value) {
-        this.templateVariables.put(key, value);
-    }
-
-    public String getTemplateName() {
-        return templateName;
-    }
-
-    public void setTemplateName(String templateName) {
-        this.templateName = templateName;
-    }
-
-    @Override
-    public String toString() {
-        return "EmailDTO{" +
-            "to='" + to + '\'' +
-            ", subject='" + subject + '\'' +
-            ", isHtml=" + isHtml +
-            ", templateName='" + templateName + '\'' +
-            '}';
+        this.templateModel.put(key, value);
     }
 }

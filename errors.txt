@@ -1,4 +1,7 @@
- il ya des erreurs dans la génération du projet. Veuillez vérifier les messages d'erreur ci-dessous pour plus de détails.
+
+il ya toujour des erreurs pendant la generation du projet maitenant j'ai chosie react , et les fichoer pour auth mais les fichier ne sont pas generer tous les logs:
+
+
 
  sfs
 Initialisation du générateur SFS (Spring-Fullstack-Speed)...
@@ -17,14 +20,14 @@ Initialisation du générateur SFS (Spring-Fullstack-Speed)...
 🚀 SPRING FULLSTACK SPEED GENERATOR
 Générez rapidement des applications fullstack Java modernes
 ────────────────────────────────────────────
-? Comment souhaitez-vous commencer? Mode interactif - Configuration guidée étape par étape
+✔ Comment souhaitez-vous commencer? Mode interactif - Configuration guidée étape par étape
 
 ────────────────────────────────────────────
 ➤  ÉTAPE 1/4: CONFIGURATION DE BASE DU PROJET
 ────────────────────────────────────────────
 
-? Nom de l'application: todo
-? Nom du package Java: com.dev.todo
+? Nom de l'application: app
+? Nom du package Java: com.dev.app
 ? Outil de build: Maven
 ? Version de Java: 21
 ? Version de Spring Boot: 3.1.0
@@ -33,7 +36,7 @@ Générez rapidement des applications fullstack Java modernes
 ➤  ÉTAPE 2/4: SÉLECTION DU FRAMEWORK FRONTEND
 ────────────────────────────────────────────
 
-? Framework frontend: Vue.js
+? Framework frontend: React
 
 ────────────────────────────────────────────
 ➤  ÉTAPE 3/4: CONFIGURATION DE L'API ET DE LA BASE DE DONNÉES
@@ -44,7 +47,7 @@ Générez rapidement des applications fullstack Java modernes
 ────────────────────────────────────────────
 🔐 CONFIGURATION DE L'AUTHENTIFICATION
 ────────────────────────────────────────────
-? Sélectionnez le type d'authentification: JWT - Authentification avec JSON Web Tokens
+✔ Sélectionnez le type d'authentification: JWT - Authentification avec JSON Web Tokens
 
 ────────────────────────────────────────────
 ➤  ÉTAPE 4/4: SÉLECTION DES FONCTIONNALITÉS SUPPLÉMENTAIRES
@@ -53,45 +56,57 @@ Générez rapidement des applications fullstack Java modernes
 ────────────────────────────────────────────
 🧩 SÉLECTION DES FONCTIONNALITÉS
 ────────────────────────────────────────────
-? Sélectionnez les fonctionnalités à ajouter: OpenAPI/Swagger, Docker, Kubernetes
+✔ Sélectionnez les fonctionnalités à ajouter: OpenAPI/Swagger, Docker, Kubernetes
 
 ────────────────────────────────────────────
  RÉSUMÉ DE LA CONFIGURATION
 ────────────────────────────────────────────
-Nom de l'application: todo
-Package Java: com.dev.todo
+Nom de l'application: app
+Package Java: com.dev.app
 Outil de build: Maven
-Framework frontend: Vue.js
+Framework frontend: React
 Base de données: H2
 Authentification: JWT
 Fonctionnalités supplémentaires: openapi, docker, kubernetes
 ────────────────────────────────────────────
 ? Confirmer cette configuration? Yes
 Configuration en cours...
-Génération du projet en cours...
+Génération des fichiers...
 Génération de la structure du projet...
 Génération des fichiers de build (MAVEN)...
-❌ Erreur lors de la génération des fichiers MAVEN: AssertionError [ERR_ASSERTION]: Trying to copy from a source that does not exist: C:\Users\HP zBooK\AppData\Roaming\npm\node__modules\@enokdev\spring-fullstack-speed\dist\generators\app\templates\mvnw
-⚠️ Tentative de récupération...
+✅ Fichier pom.xml généré avec succès
+✅ Script mvnw copié avec succès
+✅ Script mvnw.cmd copié avec succès
+Génération des fichiers Maven Wrapper...
+📁 Création du répertoire: .mvn/wrapper
+✅ Fichier maven-wrapper.properties copié avec succès
+✅ Fichier maven-wrapper.jar copié avec succès
+✅ Fichiers Maven Wrapper générés avec succès!
+❌ Erreur lors de la génération du fichier pom.xml
+✅ Fichier généré avec succès: mvnw
+✅ Fichier généré avec succès: mvnw.cmd
+✅ Permissions d'exécution configurées pour mvnw
+✅ Configuration MAVEN générée avec succès!
 Génération du README...
 Génération de l'application principale...
-📁 Création du répertoire: src/main/java/com/dev/todo
-❌ Erreur lors de la génération du fichier TodoApplication.java
+📁 Création du répertoire: src/main/java/com/dev/app
+✅ Template Application.java.ejs trouvé à /Users/mac/WebstormProjects/spring-fullstack-speed/dist/generators/app/templates/Application.java.ejs
+❌ Erreur lors de la génération du fichier AppApplication.java
 Génération des fichiers de configuration...
 Création des répertoires de base...
 📂 Création des répertoires Java...
-📁 Création du répertoire: src/main/java/com/dev/todo/controller
-📁 Création du répertoire: src/main/java/com/dev/todo/service
-📁 Création du répertoire: src/main/java/com/dev/todo/repository
-📁 Création du répertoire: src/main/java/com/dev/todo/entity
-📁 Création du répertoire: src/main/java/com/dev/todo/config
-📁 Création du répertoire: src/main/java/com/dev/todo/dto
-📁 Création du répertoire: src/main/java/com/dev/todo/exception
-📁 Création du répertoire: src/main/java/com/dev/todo/util
+📁 Création du répertoire: src/main/java/com/dev/app/controller
+📁 Création du répertoire: src/main/java/com/dev/app/service
+📁 Création du répertoire: src/main/java/com/dev/app/repository
+📁 Création du répertoire: src/main/java/com/dev/app/entity
+📁 Création du répertoire: src/main/java/com/dev/app/config
+📁 Création du répertoire: src/main/java/com/dev/app/dto
+📁 Création du répertoire: src/main/java/com/dev/app/exception
+📁 Création du répertoire: src/main/java/com/dev/app/util
 📂 Création des répertoires de test...
-📁 Création du répertoire: src/test/java/com/dev/todo/controller
-📁 Création du répertoire: src/test/java/com/dev/todo/service
-📁 Création du répertoire: src/test/java/com/dev/todo/repository
+📁 Création du répertoire: src/test/java/com/dev/app/controller
+📁 Création du répertoire: src/test/java/com/dev/app/service
+📁 Création du répertoire: src/test/java/com/dev/app/repository
 ��� Création des répertoires de ressources...
 📁 Création du répertoire: src/main/resources/static
 📁 Création du répertoire: src/main/resources/static/css
@@ -102,132 +117,125 @@ Création des répertoires de base...
 ✅ Structure des répertoires créée avec succès.
 Génération des fichiers Docker...
 ✅ Configuration Docker ajoutée avec succès!
-Génération du frontend (Vue.js)...
-Génération de l'authentification (JWT)...
-📁 Création du répertoire: src/main/java/com/dev/todo/security
-📁 Création du répertoire: src/main/java/com/dev/todo/security/config
-📁 Création du répertoire: src/main/java/com/dev/todo/security/controller
-📁 Création du répertoire: src/main/java/com/dev/todo/security/service
-📁 Création du répertoire: src/main/java/com/dev/todo/security/model
-📁 Création du répertoire: src/main/java/com/dev/todo/security/repository
-📁 Création du répertoire: src/main/java/com/dev/todo/security/dto
-❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/User.java
-❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/Role.java
-❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/model/ERole.java
-❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/config/WebSecurityConfig.java
-❌ Erreur lors de la génération du fichier de sécurité: src/main/java/com/dev/todo/security/service/JwtUtils.java
-Génération de la documentation OpenAPI...
-✅ Configuration OpenAPI/Swagger ajoutée avec succès!
+Génération des fichiers frontend (React)...
+📁 Création du répertoire: frontend
+📁 Création du répertoire: frontend/src
+Copie des fichiers react...
+✅ Configuration frontend react générée avec succès!
+Génération des fichiers d'authentification (JWT)...
+📁 Création du répertoire: src/main/java/com/dev/app/security
+📁 Création du répertoire: src/main/java/com/dev/app/security/jwt
+❌ Erreur lors de la génération des fichiers d'authentification: ReferenceError: /Users/mac/WebstormProjects/spring-fullstack-speed/dist/generators/app/templates/src/main/java/com/example/app/security/SecurityConfig.java.ejs:72
+    70|             // Configuration de la politique de session
+    71|             .sessionManagement(management -> management
+ >> 72|                 <% if (oauth2Enabled) { %>
+    73|                 // Utilisation d'une politique de session STATELESS pour JWT mais capable de supporter OAuth2
+    74|                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+    75|                 <% } else { %>
+
+oauth2Enabled is not defined
+Génération des fichiers OpenAPI/Swagger...
+✅ Configuration OpenAPI/Swagger générée avec succès!
+Génération des fichiers Kubernetes...
+📁 Création du répertoire: kubernetes
+📁 Création du répertoire: kubernetes/base
+📁 Création du répertoire: kubernetes/overlays
+📁 Création du répertoire: kubernetes/overlays/dev
+📁 Création du répertoire: kubernetes/overlays/prod
+❌ Erreur lors de la génération des fichiers Kubernetes: AssertionError [ERR_ASSERTION]: Trying to copy from a source that does not exist: /Users/mac/WebstormProjects/spring-fullstack-speed/dist/generators/app/templates/kubernetes/base/kustomization.yaml
+⚠️ Fichiers Kubernetes minimaux créés comme solution de secours
 ✅ Génération du projet terminée avec succès!
    create .gitignore
    create pom.xml
    create README.md
-   create src\main\java\com\dev\todo\TodoApplication.java
-   create src\main\resources\application.properties
-   create src\main\resources\application-dev.properties
-   create src\main\resources\application-prod.properties
-   create src\main\java\com\dev\todo\controller\.gitkeep
-   create src\main\java\com\dev\todo\service\.gitkeep
-   create src\main\java\com\dev\todo\repository\.gitkeep
-   create src\main\java\com\dev\todo\entity\.gitkeep
-   create src\main\java\com\dev\todo\config\.gitkeep
-   create src\main\java\com\dev\todo\dto\.gitkeep
-   create src\main\java\com\dev\todo\exception\.gitkeep
-   create src\main\java\com\dev\todo\util\.gitkeep
-   create src\test\java\com\dev\todo\controller\.gitkeep
-   create src\test\java\com\dev\todo\service\.gitkeep
-   create src\test\java\com\dev\todo\repository\.gitkeep
-   create src\main\resources\static\.gitkeep
-   create src\main\resources\static\css\.gitkeep
-   create src\main\resources\static\js\.gitkeep
-   create src\main\resources\static\img\.gitkeep
-   create src\main\resources\templates\.gitkeep
-   create src\test\resources\.gitkeep
-   create docker\.gitkeep
-   create docker\dev\.gitkeep
-   create nginx\.gitkeep
-   create nginx\conf\.gitkeep
-   create nginx\certs\.gitkeep
-   create nginx\logs\.gitkeep
+   create src/main/java/com/dev/app/AppApplication.java
+   create src/main/resources/application.properties
+   create src/main/resources/application-dev.properties
+   create src/main/resources/application-prod.properties
+   create src/main/java/com/dev/app/controller/.gitkeep
+   create src/main/java/com/dev/app/service/.gitkeep
+   create src/main/java/com/dev/app/repository/.gitkeep
+   create src/main/java/com/dev/app/entity/.gitkeep
+   create src/main/java/com/dev/app/config/.gitkeep
+   create src/main/java/com/dev/app/dto/.gitkeep
+   create src/main/java/com/dev/app/exception/.gitkeep
+   create src/main/java/com/dev/app/util/.gitkeep
+   create src/test/java/com/dev/app/controller/.gitkeep
+   create src/test/java/com/dev/app/service/.gitkeep
+   create src/test/java/com/dev/app/repository/.gitkeep
+   create src/main/resources/static/.gitkeep
+   create src/main/resources/static/css/.gitkeep
+   create src/main/resources/static/js/.gitkeep
+   create src/main/resources/static/img/.gitkeep
+   create src/main/resources/templates/.gitkeep
+   create src/test/resources/.gitkeep
+   create docker/.gitkeep
+   create docker/dev/.gitkeep
+   create nginx/.gitkeep
+   create nginx/conf/.gitkeep
+   create nginx/certs/.gitkeep
+   create nginx/logs/.gitkeep
    create Dockerfile
-   create frontend\Dockerfile
-   create frontend\nginx.conf
-   create docker\dev\Dockerfile.backend.dev
-   create docker\dev\Dockerfile.frontend.dev
+   create frontend/Dockerfile
+   create frontend/nginx.conf
+   create docker/dev/Dockerfile.backend.dev
+   create docker/dev/Dockerfile.frontend.dev
    create docker-compose.dev.yml
    create docker-compose.prod.yml
    create docker-compose.yml
-   create nginx\conf\default.conf
+   create nginx/conf/default.conf
    create .env
-   create src\main\java\com\dev\todo\security\.gitkeep
-   create src\main\java\com\dev\todo\security\config\.gitkeep
-   create src\main\java\com\dev\todo\security\controller\.gitkeep
-   create src\main\java\com\dev\todo\security\service\.gitkeep
-   create src\main\java\com\dev\todo\security\model\.gitkeep
-   create src\main\java\com\dev\todo\security\repository\.gitkeep
-   create src\main\java\com\dev\todo\security\dto\.gitkeep
-   create src\main\java\com\dev\todo\security\model\User.java
-   create src\main\java\com\dev\todo\security\model\Role.java
-   create src\main\java\com\dev\todo\security\model\ERole.java
-   create src\main\java\com\dev\todo\security\dto\LoginRequest.java
-   create src\main\java\com\dev\todo\security\dto\SignupRequest.java
-   create src\main\java\com\dev\todo\security\dto\JwtResponse.java
-   create src\main\java\com\dev\todo\security\dto\MessageResponse.java
-   create src\main\java\com\dev\todo\security\config\WebSecurityConfig.java
-   create src\main\java\com\dev\todo\security\config\JwtAuthEntryPoint.java
-   create src\main\java\com\dev\todo\security\service\JwtUtils.java
-   create src\main\java\com\dev\todo\security\service\UserDetailsServiceImpl.java
-   create src\main\java\com\dev\todo\security\service\UserDetailsImpl.java
-   create src\main\java\com\dev\todo\security\repository\UserRepository.java
-   create src\main\java\com\dev\todo\security\repository\RoleRepository.java
-   create src\main\java\com\dev\todo\security\controller\AuthController.java
-   create src\main\java\com\dev\todo\security\controller\TestController.java
-   create src\main\java\com\dev\todo\config\OpenApiConfig.java
-   create src\main\java\com\dev\todo\config\SwaggerUIConfig.java
-   create src\main\java\com\dev\todo\controller\ExampleApiController.java
+   create frontend/package.json
+   create frontend/tsconfig.json
+   create src/main/java/com/dev/app/config/OpenApiConfig.java
+   create src/main/java/com/dev/app/config/SwaggerUIConfig.java
+   create src/main/java/com/dev/app/controller/ExampleApiController.java
+   create src/main/resources/application-openapi.properties
+   create kubernetes/deployment.yaml
+   create kubernetes/service.yaml
 Installation des dépendances...
-npm error code ETARGET
-npm error notarget No matching version found for @types/yosay@^2.0.4.
-npm error notarget In most cases you or one of your dependencies are requesting
-npm error notarget a package version that doesn't exist.
-npm error A complete log of this run can be found in: C:\Users\HP zBooK\AppData\Local\npm-cache\_logs\2025-06-21T16_53_14_429Z-debug-0.log
-npm warn using --force Recommended protections disabled.
-npm error code ETARGET
-npm error notarget No matching version found for @types/yosay@^2.0.4.
-npm error notarget In most cases you or one of your dependencies are requesting
-npm error notarget a package version that doesn't exist.
-npm error A complete log of this run can be found in: C:\Users\HP zBooK\AppData\Local\npm-cache\_logs\2025-06-21T16_53_25_993Z-debug-0.log
-Détail de l'erreur : Error: L'installation a échoué avec toutes les méthodes
-    at AppGenerator.install (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/dist/generators/app/index.js:240:35)
-    at AppGenerator.executeTask (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:258:26)
-    at env.queueTask.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:232:56)
-    at runLoop.add.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-environment/dist/environment-base.js:395:23)
-    at Immediate._onImmediate (C:\Users\HP zBooK\AppData\Roaming\npm\node_modules\@enokdev\spring-fullstack-speed\node_modules\grouped-queue\lib\subqueue.js:48:34)
-    at process.processImmediate (node:internal/timers:483:21)
-'mvnw.cmd' n’est pas reconnu en tant que commande interne
-ou externe, un programme exécutable ou un fichier de commandes.
-'mvnw.cmd' n’est pas reconnu en tant que commande interne
-ou externe, un programme exécutable ou un fichier de commandes.
-Détail de l'erreur : Error: Command failed with exit code 1: mvnw.cmd dependency:resolve
-    at makeError (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/execa/lib/error.js:60:11)
-    at execaSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/execa/index.js:201:17)
-    at AppGenerator.spawnSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/spawn-command.js:31:16)
-    at AppGenerator.spawnCommandSync (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/spawn-command.js:22:25)
-    at AppGenerator.install (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/dist/generators/app/index.js:265:30)
-    at AppGenerator.executeTask (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:258:26)
-    at env.queueTask.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:232:56)
-    at runLoop.add.once (file:///C:/Users/HP%20zBooK/AppData/Roaming/npm/node_modules/@enokdev/spring-fullstack-speed/node_modules/yeoman-environment/dist/environment-base.js:395:23)
-    at Immediate._onImmediate (C:\Users\HP zBooK\AppData\Roaming\npm\node_modules\@enokdev\spring-fullstack-speed\node_modules\grouped-queue\lib\subqueue.js:48:34)
-    at process.processImmediate (node:internal/timers:483:21) {
-  shortMessage: 'Command failed with exit code 1: mvnw.cmd dependency:resolve',
-  command: 'mvnw.cmd dependency:resolve',
-  escapedCommand: 'mvnw.cmd "dependency:resolve"',
-  exitCode: 1,
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 644 packages, and audited 645 packages in 2m
+
+197 packages are looking for funding
+  run `npm fund` for details
+
+4 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+./mvnw: line 255: syntax error near unexpected token `fi'
+./mvnw: line 255: `fi'
+./mvnw: line 255: syntax error near unexpected token `fi'
+./mvnw: line 255: `fi'
+Détail de l'erreur : Error: Command failed with exit code 2: ./mvnw dependency:resolve
+    at makeError (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-generator/node_modules/execa/lib/error.js:60:11)
+    at execaSync (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-generator/node_modules/execa/index.js:201:17)
+    at AppGenerator.spawnSync (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/spawn-command.js:31:16)
+    at AppGenerator.install (file:///Users/mac/WebstormProjects/spring-fullstack-speed/dist/generators/app/index.js:269:30)
+    at AppGenerator.executeTask (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:258:26)
+    at env.queueTask.once (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-generator/dist/actions/lifecycle.js:232:56)
+    at runLoop.add.once (file:///Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/yeoman-environment/dist/environment-base.js:395:23)
+    at Immediate._onImmediate (/Users/mac/WebstormProjects/spring-fullstack-speed/node_modules/grouped-queue/lib/subqueue.js:48:34)
+    at process.processImmediate (node:internal/timers:478:21)
+    at process.callbackTrampoline (node:internal/async_hooks:130:17) {
+  shortMessage: 'Command failed with exit code 2: ./mvnw dependency:resolve',
+  command: './mvnw dependency:resolve',
+  escapedCommand: '"./mvnw" "dependency:resolve"',
+  exitCode: 2,
   signal: undefined,
   signalDescription: undefined,
   stdout: undefined,
   stderr: undefined,
-  cwd: 'C:\\Users\\HP zBooK\\Documents\\dev\\spring-fullstack-speed\\test-folder-for-cleanup',
+  cwd: '/Users/mac/WebstormProjects/spring-fullstack-speed/test-generator-folder',
   failed: true,
   timedOut: false,
   isCanceled: false,
@@ -236,12 +244,8 @@ Détail de l'erreur : Error: Command failed with exit code 1: mvnw.cmd dependenc
 Installation des dépendances frontend...
 Exécution de npm install dans le dossier frontend...
 Installation avec --legacy-peer-deps pour éviter les conflits de dépendances...
-⚠️ L'installation avec --legacy-peer-deps a échoué, tentative avec --force...
-⚠️ L'installation automatique des dépendances frontend a échoué.
-Vous pouvez les installer manuellement plus tard avec l'une des commandes suivantes :
-  cd frontend && npm install
-  cd frontend && npm install --legacy-peer-deps
-  cd frontend && npm install --force
+✅ Installation réussie avec --legacy-peer-deps.
+✅ Installation des dépendances frontend terminée.
 Compilation du projet backend...
 ⚠️ Tentative de résolution des dépendances sans compilation...
 ⚠️ La compilation automatique du backend a échoué.
@@ -263,31 +267,30 @@ Merci d'utiliser Spring-Fullstack-Speed! 🚀
 🔍 Vérification de l'intégrité du projet généré...
 🔍 Vérification des versions des outils requis...
 📦 Installation des dépendances frontend...
-✅ Node.js v20.17.0 détecté.
-✅ npm 10.8.2 détecté.
+Utilisation de yarn pour installer les dépendances...
+Exécution de: yarn install dans /Users/mac/WebstormProjects/spring-fullstack-speed/test-generator-folder/frontend
+✅ Installation des dépendances frontend terminée avec succès.
+✅ Node.js v20.10.0 détecté.
+✅ npm 10.9.2 détecté.
 ✅ Java 21.0 détecté.
-✅ Maven 3.8.6 détecté.
-✅ Docker version 28.1.1, build 4eba377 détecté.
+✅ Maven 3.9.9 détecté.
+✅ Docker version 27.4.0, build bde2b89 détecté.
 
 📋 RÉSUMÉ DE LA GÉNÉRATION DU PROJET
 ══════════════════════════════════════════���═
 ⚠️ Le projet a été généré mais certains problèmes ont été détectés:
 
 Fichiers manquants:
-  - mvnw
-  - mvnw.cmd
-  - src/main/java/undefined/TodoApplication.java
-  - frontend/package.json
+  - src/main/java/undefined/AppApplication.java
   - frontend/vite.config.ts
-  - frontend/src/App.vue
-  - frontend/src/main.ts
+  - frontend/src/App.tsx
   - src/main/java/undefined/security/config/WebSecurityConfig.java
   - src/main/java/undefined/security/model/User.java
   - src/main/java/undefined/security/model/Role.java
   - src/main/java/undefined/security/service/JwtUtils.java
 
 Avertissements:
-  - Le fichier package.json n'a pas été trouvé. Les dépendances frontend ne peuvent pas être installées.
+  - Le fichier package.json ne contient pas tous les scripts nécessaires: preview
 
 Vous pouvez tenter de résoudre ces problèmes avant de continuer.
 
@@ -295,11 +298,11 @@ Vous pouvez tenter de résoudre ces problèmes avant de continuer.
 ════════════════════════════════════════════
 
 Backend (Spring Boot):
-  cd C:\Users\HP zBooK\Documents\dev\spring-fullstack-speed\test-folder-for-cleanup
+  cd /Users/mac/WebstormProjects/spring-fullstack-speed/test-generator-folder
   ./mvnw spring-boot:run
 
-Frontend (Vue.js):
-  cd C:\Users\HP zBooK\Documents\dev\spring-fullstack-speed\test-folder-for-cleanup\frontend
+Frontend (React):
+  cd /Users/mac/WebstormProjects/spring-fullstack-speed/test-generator-folder/frontend
   npm install    # Si ce n'est pas déjà fait
   npm run dev
 
@@ -320,7 +323,3 @@ Docker:
 ════════════════════════════════════════════
 
 Bon développement avec Spring-Fullstack-Speed! 🚀
-
-## la commade sfs e ne fonctionne pas ca affiche le message: sfs e
-                                                             ────────────────────────────────────────────
-                                                             🧩 GÉNÉRATEUR D'ENTITÉS SPRING FULLSTACK

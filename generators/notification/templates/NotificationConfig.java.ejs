@@ -1,11 +1,15 @@
-package <%= packageName %>.config;
+package <%= packageName %>.notification.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+<% if (asyncNotifications) { %>
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import java.util.concurrent.Executor;
+<% } %>
 
 /**
- * Configuration pour les fonctionnalités de notification.
+ * Configuration générale du système de notification
  */
 @Configuration
 <% if (asyncNotifications) { %>
@@ -13,35 +17,19 @@ import org.springframework.scheduling.annotation.EnableAsync;
 <% } %>
 public class NotificationConfig {
 
+<% if (asyncNotifications) { %>
     /**
-     * Configure les paramètres de notification pour l'application.
+     * Configure un executor pour les opérations asynchrones
      */
     @Bean
-    public NotificationProperties notificationProperties() {
-        return new NotificationProperties();
+    public Executor notificationTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(25);
+        executor.setThreadNamePrefix("NotificationExecutor-");
+        executor.initialize();
+        return executor;
     }
-
-    /**
-     * Classe pour contenir les propriétés de configuration des notifications.
-     */
-    public static class NotificationProperties {
-        private boolean enabled = true;
-        private boolean trackingEnabled = <%= trackingEnabled %>;
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
-
-        public boolean isTrackingEnabled() {
-            return trackingEnabled;
-        }
-
-        public void setTrackingEnabled(boolean trackingEnabled) {
-            this.trackingEnabled = trackingEnabled;
-        }
-    }
+<% } %>
 }

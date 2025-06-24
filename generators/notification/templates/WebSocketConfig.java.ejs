@@ -1,41 +1,35 @@
-package <%= packageName %>.config;
+package <%= packageName %>.notification.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.config.annotation.*;
+import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 /**
- * Configuration pour les WebSockets.
+ * Configuration des WebSockets
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    /**
-     * Configure le message broker pour les WebSockets.
-     * @param config la configuration du message broker
-     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Définit le prefixe pour envoyer des messages à l'application
-        config.setApplicationDestinationPrefixes("/app");
-
-        // Permet l'envoi de messages en mode broadcast à tous les clients connectés au topic
+        // Préfixe pour les destinations côté client
         config.enableSimpleBroker("/topic", "/queue");
 
-        // Configuration pour les messages privés avec le préfixe /user
+        // Préfixe pour les destinations côté serveur
+        config.setApplicationDestinationPrefixes("/app");
+
+        // Destination pour les notifications utilisateur
         config.setUserDestinationPrefix("/user");
     }
 
-    /**
-     * Configure les endpoints WebSocket.
-     * @param registry le registre des endpoints
-     */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint principal WebSocket avec support SockJS pour les navigateurs ne supportant pas les WebSockets
+        // Point d'entrée WebSocket avec fallback SockJS
         registry.addEndpoint("/ws")
-            .setAllowedOrigins("*")
-            .withSockJS();
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }

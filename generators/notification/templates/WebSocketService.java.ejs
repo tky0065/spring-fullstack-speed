@@ -1,129 +1,64 @@
-package <%= packageName %>.service;
+package <%= packageName %>.notification.service;
 
-import <%= packageName %>.dto.WebSocketMessageDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import <%= packageName %>.notification.dto.WebSocketMessageDTO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Service pour gérer les communications WebSocket.
+ * Service pour l'envoi de messages via WebSocket
  */
 @Service
 public class WebSocketService {
 
     private final Logger log = LoggerFactory.getLogger(WebSocketService.class);
-    private final SimpMessagingTemplate messagingTemplate;
 
-    // Statistiques des messages
-    private final AtomicInteger messageCount = new AtomicInteger(0);
-    private final ConcurrentHashMap<String, AtomicInteger> messageTypeCount = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Instant> lastUserActivity = new ConcurrentHashMap<>();
-
-    public WebSocketService(SimpMessagingTemplate messagingTemplate) {
-        this.messagingTemplate = messagingTemplate;
-    }
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     /**
-     * Traite un message WebSocket avant son envoi.
+     * Envoie un message à un topic spécifique
      *
-     * @param message le message à traiter
-     * @return le message traité
+     * @param destination Le topic de destination
+     * @param message Le message à envoyer
      */
-    public WebSocketMessageDTO processMessage(WebSocketMessageDTO message) {
-        // Vérifier et définir le timestamp si nécessaire
-        if (message.getTimestamp() == null) {
-            message.setTimestamp(Instant.now());
+    public void sendToTopic(String destination, WebSocketMessageDTO message) {
+        try {
+            messagingTemplate.convertAndSend("/topic/" + destination, message);
+            log.debug("Message envoyé au topic: {}", destination);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message au topic {}: {}", destination, e.getMessage(), e);
         }
-
-        // Traiter le type de message
-        if (message.getType() == null) {
-            message.setType("MESSAGE");
-        }
-
-        // Mettre à jour les statistiques
-        messageCount.incrementAndGet();
-        messageTypeCount.computeIfAbsent(message.getType(), k -> new AtomicInteger()).incrementAndGet();
-
-        // Enregistrer l'activité de l'utilisateur
-        if (message.getFrom() != null) {
-            lastUserActivity.put(message.getFrom(), Instant.now());
-        }
-
-        return message;
     }
 
     /**
-     * Envoie un message à tous les clients connectés au topic spécifié.
+     * Envoie un message à un utilisateur spécifique
      *
-     * @param topic le topic cible
-     * @param message le message à envoyer
-     */
-    public void broadcastToTopic(String topic, WebSocketMessageDTO message) {
-        log.debug("Broadcasting message to topic {}: {}", topic, message);
-        messagingTemplate.convertAndSend(topic, processMessage(message));
-    }
-
-    /**
-     * Envoie un message privé à un utilisateur spécifique.
-     *
-     * @param userId l'identifiant de l'utilisateur destinataire
-     * @param message le message à envoyer
+     * @param userId L'identifiant de l'utilisateur
+     * @param message Le message à envoyer
      */
     public void sendToUser(String userId, WebSocketMessageDTO message) {
-        log.debug("Sending message to user {}: {}", userId, message);
-        messagingTemplate.convertAndSendToUser(
-            userId,
-            "/queue/private",
-            processMessage(message)
-        );
-    }
-
-    /**
-     * Envoie une notification système à tous les clients.
-     *
-     * @param content le contenu de la notification
-     */
-    public void sendSystemNotification(String content) {
-        WebSocketMessageDTO notification = new WebSocketMessageDTO();
-        notification.setFrom("system");
-        notification.setContent(content);
-        notification.setType("NOTIFICATION");
-        notification.setTimestamp(Instant.now());
-
-        broadcastToTopic("/topic/notifications", notification);
-    }
-
-    /**
-     * Récupère les statistiques des messages WebSocket.
-     *
-     * @return une map contenant les statistiques
-     */
-    public Map<String, Object> getWebSocketStats() {
-        Map<String, Object> stats = new ConcurrentHashMap<>();
-        stats.put("messageCount", messageCount.get());
-        stats.put("messageTypeCount", messageTypeCount);
-        stats.put("activeUsers", lastUserActivity.size());
-        return stats;
-    }
-
-    /**
-     * Vérifie si un utilisateur est actuellement actif.
-     *
-     * @param userId l'identifiant de l'utilisateur
-     * @return true si l'utilisateur est actif, false sinon
-     */
-    public boolean isUserActive(String userId) {
-        Instant lastActivity = lastUserActivity.get(userId);
-        if (lastActivity == null) {
-            return false;
+        try {
+            messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", message);
+            log.debug("Message envoyé à l'utilisateur: {}", userId);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message à l'utilisateur {}: {}", userId, e.getMessage(), e);
         }
-        // Considérer un utilisateur comme actif s'il a eu une activité dans les 5 minutes
-        return lastActivity.isAfter(Instant.now().minusSeconds(300));
+    }
+
+    /**
+     * Envoie une notification à tous les utilisateurs connectés
+     *
+     * @param message Le message à envoyer
+     */
+    public void sendGlobalNotification(WebSocketMessageDTO message) {
+        try {
+            messagingTemplate.convertAndSend("/topic/global", message);
+            log.debug("Notification globale envoyée");
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de la notification globale: {}", e.getMessage(), e);
+        }
     }
 }

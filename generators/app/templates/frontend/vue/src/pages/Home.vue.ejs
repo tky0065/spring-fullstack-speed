@@ -1,82 +1,44 @@
 <template>
-  <MainLayout>
-    <Head title="Accueil" />
+  <div class="home">
+    <h1>Bienvenue dans votre application <%= appName %></h1>
+    <p>Cette application a été générée avec Spring-Fullstack-Speed.</p>
 
-    <div class="py-12 bg-gray-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center">
-          <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-            {{ welcomeMessage }}
-          </h1>
-          <p class="mt-6 text-lg leading-8 text-gray-600">
-            Bienvenue sur {{ appName }}, une application générée avec Spring-Fullstack-Speed
-          </p>
-          <div class="mt-10 flex items-center justify-center gap-x-6">
-            <Button primary href="/getting-started">
-              Commencer
-            </Button>
-            <Button href="/docs">
-              Documentation
-            </Button>
-          </div>
-        </div>
+    <h2>Technologies utilisées</h2>
+    <ul>
+      <li>Backend: Spring Boot <%= springBootVersion %></li>
+      <li>Frontend: Vue.js 3</li>
+      <% if (database && database !== 'H2') { %>
+      <li>Base de données: <%= database %></li>
+      <% } else { %>
+      <li>Base de données: H2 (en mémoire)</li>
+      <% } %>
+      <% if (includeAuth) { %>
+      <li>Authentification: <%= authType %></li>
+      <% } %>
+    </ul>
 
-        <div class="mt-20">
-          <h2 class="text-2xl font-bold text-center mb-12">
-            Fonctionnalités principales
-          </h2>
-
-          <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            <Card
-              v-for="feature in features"
-              :key="feature.title"
-              :title="feature.title"
-              class="h-full"
-            >
-              {{ feature.description }}
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  </MainLayout>
+    <h2>Les API disponibles</h2>
+    <ul>
+      <li><a href="/api/hello" target="_blank">/api/hello</a> - API de test</li>
+      <% if (includeAuth) { %>
+      <li><a href="/api/auth/signin" target="_blank">/api/auth/signin</a> - Connexion</li>
+      <li><a href="/api/auth/signup" target="_blank">/api/auth/signup</a> - Inscription</li>
+      <% } %>
+      <% if (additionalFeatures && additionalFeatures.includes('openapi')) { %>
+      <li><a href="/swagger-ui.html" target="_blank">/swagger-ui.html</a> - Documentation API</li>
+      <% } %>
+    </ul>
+  </div>
 </template>
 
-<script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import MainLayout from '../layouts/MainLayout.vue';
-import Button from '../components/ui/Button.vue';
-import Card from '../components/ui/Card.vue';
-
-/**
- * Interface des props pour la page d'accueil
- */
-interface HomeProps {
-  appName: string;
-  welcomeMessage: string;
-  features: Array<{
-    title: string;
-    description: string;
-  }>;
+<style>
+.home {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-// Définir les props avec des valeurs par défaut
-const props = withDefaults(defineProps<HomeProps>(), {
-  appName: '<%= appName %>',
-  welcomeMessage: 'Bienvenue sur notre application',
-  features: () => [
-    {
-      title: 'Vue.js + TypeScript',
-      description: 'Développement frontend moderne avec Vue.js 3 et TypeScript pour un code robuste et maintenable.'
-    },
-    {
-      title: 'Spring Boot',
-      description: 'Backend puissant avec Spring Boot pour des APIs RESTful, une sécurité robuste et une excellente performance.'
-    },
-    {
-      title: 'Inertia.js',
-      description: 'Le meilleur des deux mondes : des composants frontend modernes avec la simplicité d\'un routage côté serveur.'
-    }
-  ]
-});
-</script>
+ul {
+  margin-left: 20px;
+}
+</style>

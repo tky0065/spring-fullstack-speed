@@ -466,7 +466,7 @@ export class EntityGenerator extends BaseGenerator {
 
       // Récupérer et sécuriser les informations importantes
       const entityName = this.answers.entityName || 'Example';
-      const packageName = this.answers.packageName || 'com.example.fullstack';
+      const packageName = this.answers.packageName || 'com.example.todo';
 
       // Définir directement les packages sans utiliser getSubPackage
       const entityPackage = `${packageName}.entity`;

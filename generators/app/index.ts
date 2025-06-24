@@ -29,15 +29,16 @@ import {
   generateMainApplication,
   generateApplicationProperties,
   generateBaseDirectories,
-  generateDockerFiles,
-  generateFrontend,
-  generateAuth,
-  generateOpenAPI,
-  generateTests,
-  generateMavenOrGradle
+  generateMavenOrGradle,
 } from "./generator-methods.js";
 import { postGenerationChecksAndAdvice } from "./post-generation-checks.js";
 import { increaseEventListenerLimit } from "../../utils/event-listener-fix.js";
+import { generateDockerFiles } from './generate-docker-files.js';
+import { generateFrontend } from './generate-frontend.js';
+import { generateAuth } from './generate-auth.js';
+import { generateOpenAPI } from './generate-openapi.js';
+import { generateTests } from './generate-test.js';
+import { generateKubernetes } from './generate-k8s.js';
 
 export default class AppGenerator extends BaseGenerator {
   declare answers: any;
@@ -231,23 +232,23 @@ export default class AppGenerator extends BaseGenerator {
   }
 
   writing() {
+    this.log("Génération des fichiers...");
+
+    // Préparation des données pour les templates
     const templateData: TemplateData = {
-      appName: this.answers.appName || 'sfs-app',
-      packageName: this.answers.packageName || 'com.example.app',
-      buildTool: this.answers.buildTool || 'Maven',
-      frontendFramework: this.answers.frontendFramework || 'Aucun (API seulement)',
-      database: this.answers.database || 'H2',
-      includeAuth: this.answers.includeAuth !== undefined ? this.answers.includeAuth : true,
-      authType: this.answers.authType || 'JWT',
+      appName: this.answers.appName,
+      packageName: this.answers.packageName,
+      buildTool: this.answers.buildTool,
+      javaVersion: this.answers.javaVersion,
+      springBootVersion: this.answers.springBootVersion,
+      database: this.answers.database,
+      frontendFramework: this.answers.frontendFramework,
+      includeAuth: this.answers.includeAuth,
+      authType: this.answers.authType,
       additionalFeatures: this.answers.additionalFeatures || [],
-      springBootVersion: this.answers.springBootVersion || '3.1.0',
-      javaVersion: this.answers.javaVersion || '17',
-      javaPackagePath: (this.answers.packageName || 'com.example.app').replace(/\./g, '/'),
+      javaPackagePath: this.answers.packageName.replace(/\./g, "/"),
     };
 
-    this.log(chalk.green("Génération du projet en cours..."));
-
-    // Génération du projet en utilisant les méthodes importées
     generateProjectStructure(this, templateData);
 
     // Génération des outils de build
@@ -283,6 +284,11 @@ export default class AppGenerator extends BaseGenerator {
       generateTests(this, templateData);
     }
 
+    // Générer les fichiers Kubernetes si demandé
+    if (templateData.additionalFeatures.includes('kubernetes')) {
+      generateKubernetes(this, templateData);
+    }
+
     this.log(chalk.green.bold("✅ Génération du projet terminée avec succès!"));
   }
 
@@ -310,12 +316,12 @@ export default class AppGenerator extends BaseGenerator {
           // Utiliser --legacy-peer-deps par défaut pour éviter les erreurs de dépendances connues
           try {
             this.log(chalk.blue("Installation avec --legacy-peer-deps pour éviter les conflits de dépendances..."));
-            this.spawnCommandSync(npmCmd, ["install", "--legacy-peer-deps"], { cwd: "frontend" });
+            this.spawnSync(npmCmd, ["install", "--legacy-peer-deps"], { cwd: "frontend" });
             this.log(chalk.green("✅ Installation réussie avec --legacy-peer-deps."));
           } catch (error) {
             this.log(chalk.yellow("⚠️ L'installation avec --legacy-peer-deps a échoué, tentative avec --force..."));
             try {
-              this.spawnCommandSync(npmCmd, ["install", "--force"], { cwd: "frontend" });
+              this.spawnSync(npmCmd, ["install", "--force"], { cwd: "frontend" });
               this.log(chalk.green("✅ Installation réussie avec --force."));
             } catch (forceError) {
               throw new Error("L'installation a échoué avec toutes les méthodes");

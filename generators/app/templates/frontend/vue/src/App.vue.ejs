@@ -2,24 +2,16 @@
   <header>
     <div class="wrapper">
       <nav>
-        <RouterLink to="/">Accueil</RouterLink>
-        <RouterLink to="/about">À propos</RouterLink>
+        <router-link to="/">Accueil</router-link> |
+        <router-link to="/about">À propos</router-link>
       </nav>
     </div>
   </header>
 
   <main>
-    <RouterView />
+    <router-view />
   </main>
-
-  <footer>
-    <p>&copy; <%= new Date().getFullYear() %> <%= appName %> - Créé avec Spring-Fullstack-Speed</p>
-  </footer>
 </template>
-
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-</script>
 
 <style scoped>
 header {
@@ -44,10 +36,15 @@ nav a:first-of-type {
   border: 0;
 }
 
+main {
+  padding: 1rem;
+}
+
 @media (min-width: 1024px) {
   header {
     display: flex;
     place-items: center;
+    padding-right: calc(var(--section-gap) / 2);
   }
 
   nav {
@@ -55,6 +52,7 @@ nav a:first-of-type {
     margin-left: -1rem;
     font-size: 1rem;
     padding: 1rem 0;
+    margin-top: 1rem;
   }
 }
 </style>
