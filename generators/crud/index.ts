@@ -381,10 +381,19 @@ export default class CrudGenerator extends BaseGenerator {
    * Extrait les champs de l'entité pour générer le DTO
    */
   _extractEntityFields() {
-    // Si nous n'avons pas le fichier de l'entité, retourner un tableau vide
-    if (!this.entityFile) return [];
+    // Si nous n'avons pas de référence au fichier de l'entité, retourner un tableau de champs par défaut
+    if (!this.entityFile) {
+      this.log(chalk.yellow("⚠️ Fichier d'entité non trouvé, utilisation de champs par défaut pour le DTO"));
+      return this._getDefaultFields();
+    }
 
     try {
+      // Vérifier que le fichier existe réellement avant de tenter de le lire
+      if (!fs.existsSync(this.entityFile)) {
+        this.log(chalk.yellow(`⚠️ Fichier d'entité ${this.entityFile} inexistant, utilisation de champs par défaut`));
+        return this._getDefaultFields();
+      }
+
       const content = fs.readFileSync(this.entityFile, 'utf8');
       // Définir explicitement le type du tableau pour éviter l'erreur "not assignable to parameter of type never"
       const fields: Array<{ name: string; type: string; required: boolean }> = [];
@@ -408,11 +417,30 @@ export default class CrudGenerator extends BaseGenerator {
         }
       }
 
+      // Si aucun champ n'a été trouvé, utiliser les champs par défaut
+      if (fields.length === 0) {
+        this.log(chalk.yellow("⚠️ Aucun champ trouvé dans l'entité, utilisation de champs par défaut"));
+        return this._getDefaultFields();
+      }
+
       return fields;
     } catch (error) {
-      this.log(ERROR_COLOR(`Erreur lors de l'extraction des champs: ${error}`));
-      return [];
+      this.log(ERROR_COLOR(`⚠️ Erreur lors de l'extraction des champs: ${error}`));
+      this.log(chalk.yellow("⚠️ Utilisation de champs par défaut pour le DTO"));
+      return this._getDefaultFields();
     }
+  }
+
+  /**
+   * Retourne les champs par défaut pour une entité ou un DTO
+   */
+  _getDefaultFields() {
+    return [
+      { name: 'name', type: 'String', required: true },
+      { name: 'description', type: 'String', required: false },
+      { name: 'active', type: 'Boolean', required: true },
+      { name: 'createdAt', type: 'LocalDateTime', required: false }
+    ];
   }
 
   /**
@@ -426,6 +454,31 @@ export default class CrudGenerator extends BaseGenerator {
       if (!fs.existsSync(srcDir)) {
         return null;
       }
+
+      // Vérifier d'abord si l'entité existe directement dans le package com.example.app
+      const mainPackagePath = this.findBasePackageName().replace(/\./g, '/');
+      const directEntityPath = path.join(srcDir, mainPackagePath, `${entityName}.java`);
+
+      this.log(INFO_COLOR(`Recherche de l'entité dans: ${directEntityPath}`));
+
+      if (fs.existsSync(directEntityPath)) {
+        this.log(INFO_COLOR(`✅ Entité ${entityName}.java trouvée dans le package principal`));
+        return directEntityPath;
+      }
+
+      // Si l'entité n'existe pas directement dans le package principal,
+      // chercher dans le sous-package entity
+      const entityPackagePath = path.join(srcDir, mainPackagePath, 'entity', `${entityName}.java`);
+
+      this.log(INFO_COLOR(`Recherche de l'entité dans: ${entityPackagePath}`));
+
+      if (fs.existsSync(entityPackagePath)) {
+        this.log(INFO_COLOR(`✅ Entité ${entityName}.java trouvée dans le sous-package entity`));
+        return entityPackagePath;
+      }
+
+      // Si toujours pas trouvé, faire une recherche récursive
+      this.log(INFO_COLOR(`⚠️ Entité non trouvée dans les emplacements standards, recherche récursive...`));
 
       // Recherche récursive du fichier d'entité
       const findFile = (dir: string, fileName: string): string | null => {
@@ -446,7 +499,13 @@ export default class CrudGenerator extends BaseGenerator {
         return null;
       };
 
-      return findFile(srcDir, entityName);
+      const result = findFile(srcDir, entityName);
+      if (result) {
+        this.log(INFO_COLOR(`✅ Entité ${entityName}.java trouvée par recherche récursive: ${result}`));
+      } else {
+        this.log(INFO_COLOR(`⚠️ Entité ${entityName}.java non trouvée, une nouvelle entité sera créée`));
+      }
+      return result;
     } catch (error) {
       this.log(ERROR_COLOR(`Erreur lors de la recherche de l'entité: ${error}`));
       return null;

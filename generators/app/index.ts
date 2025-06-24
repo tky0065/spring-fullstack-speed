@@ -283,6 +283,21 @@ export default class AppGenerator extends BaseGenerator {
         generateAuth(this, templateData);
       }
 
+      // Générer la documentation OpenAPI si demandée
+      if (templateData.additionalFeatures.includes('openapi')) {
+        generateOpenAPI(this, templateData);
+      }
+
+      // Générer les fichiers de test si demandé
+      if (templateData.additionalFeatures.includes('tests')) {
+        generateTests(this, templateData);
+      }
+
+      // Générer les fichiers Kubernetes si demandé
+      if (templateData.additionalFeatures.includes('kubernetes')) {
+        generateKubernetes(this, templateData);
+      }
+
       // Génération frontend si nécessaire
       if (templateData.frontendFramework !== 'Aucun (API seulement)') {
         // Générer le frontend quelle que soit l'option choisie (React, Vue, Angular, Thymeleaf ou JTE)
