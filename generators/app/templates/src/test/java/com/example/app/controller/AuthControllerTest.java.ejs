@@ -141,7 +141,7 @@ public class AuthControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    <% if (oauth2Enabled) { %>
+    <% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
     @Test
     public void testLogout() throws Exception {
         mockMvc.perform(post("/api/auth/logout"))

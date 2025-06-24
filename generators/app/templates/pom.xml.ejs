@@ -69,6 +69,37 @@
         </dependency>
 <% } %>
 
+<% if (frontendFramework === 'Thymeleaf') { %>
+        <!-- Thymeleaf pour les vues côté serveur -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- TailwindCSS pour le styling -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>tailwindcss</artifactId>
+            <version>4.1.8</version>
+        </dependency>
+<% } %>
+
+<% if (frontendFramework === 'JTE') { %>
+        <!-- JTE pour les vues côté serveur -->
+        <dependency>
+            <groupId>gg.jte</groupId>
+            <artifactId>jte-spring-boot-starter-3</artifactId>
+            <version>3.1.16</version>
+        </dependency>
+
+        <!-- TailwindCSS pour le styling -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>tailwindcss</artifactId>
+            <version>4.1.8</version>
+        </dependency>
+<% } %>
+
 <% if (database === 'MySQL') { %>
         <dependency>
             <groupId>com.mysql</groupId>

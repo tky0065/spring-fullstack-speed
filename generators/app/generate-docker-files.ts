@@ -1,6 +1,7 @@
 import { TemplateData } from './generator-methods.js';
 import { ensureDirectoryExists } from './ensure-dir-exists.js';
 import chalk from 'chalk';
+import fs from 'fs';
 
 /**
  * Génère les fichiers Docker si demandé
@@ -8,8 +9,11 @@ import chalk from 'chalk';
  * @param templateData Les données pour la génération
  */
 export function generateDockerFiles(generator: any, templateData: TemplateData) {
-  if (!templateData.additionalFeatures || !templateData.additionalFeatures.includes('docker')) {
-    return; // Ne rien faire si Docker n'est pas demandé
+  // Toujours générer les fichiers Docker de base, même si l'option n'est pas explicitement sélectionnée
+  const dockerEnabled = templateData.additionalFeatures && templateData.additionalFeatures.includes('docker');
+
+  if (!dockerEnabled) {
+    generator.log(chalk.yellow("Docker n'est pas explicitement activé, mais les fichiers de base seront quand même générés."));
   }
 
   generator.log(chalk.blue("Génération des fichiers Docker..."));
@@ -33,7 +37,7 @@ export function generateDockerFiles(generator: any, templateData: TemplateData) 
   });
 
   try {
-    // Contenu du Dockerfile principal (multi-étapes optimisé)
+    // Contenu du Dockerfile principal (multi-étages optimisé)
     const dockerfileBackendContent = `FROM eclipse-temurin:${templateData.javaVersion || '21'}-jdk-alpine as build
 
 WORKDIR /workspace/app
@@ -42,476 +46,262 @@ WORKDIR /workspace/app
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
-
-# Correction des permissions pour mvnw
-RUN chmod +x ./mvnw
-
-# Téléchargement des dépendances (mise en cache des couches)
-RUN ./mvnw dependency:go-offline -B
-
-# Copie du code source
 COPY src src
 
-# Construction du projet
-RUN ./mvnw package -DskipTests
-RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+# Nettoyage des fichiers de script
+RUN chmod +x ./mvnw
+RUN dos2unix ./mvnw || true
 
-# Étape d'exécution avec JRE uniquement
+# Construction de l'application
+RUN ./mvnw install -DskipTests
+
+# Image finale avec moins de couches
 FROM eclipse-temurin:${templateData.javaVersion || '21'}-jre-alpine
 
-# Variables d'environnement
-ENV SPRING_PROFILES_ACTIVE=prod
-ENV JAVA_OPTS=""
-
-# Ajout d'un utilisateur non-root pour la sécurité
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
-
-# Configuration des volumes pour la persistence des données
 VOLUME /tmp
+WORKDIR /app
 
-# Copie des fichiers de l'étape de build
-ARG DEPENDENCY=/workspace/app/target/dependency
-COPY --from=build \${DEPENDENCY}/BOOT-INF/lib /app/lib
-COPY --from=build \${DEPENDENCY}/META-INF /app/META-INF
-COPY --from=build \${DEPENDENCY}/BOOT-INF/classes /app
+# Copie de l'application à partir de l'image de build
+COPY --from=build /workspace/app/target/*.jar app.jar
 
-# Configuration des healthchecks
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+# Configuration de l'application
+ENV SPRING_PROFILES_ACTIVE=prod
 
-# Exposition du port de l'application
 EXPOSE 8080
 
-# Point d'entrée pour l'application avec configuration de la mémoire
-ENTRYPOINT ["java", "-cp", "app:app/lib/*", "${templateData.packageName}.${templateData.appNameFormatted || 'App'}Application"]`;
+ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+`;
 
-    generator.fs.write(
-      generator.destinationPath("Dockerfile"),
-      dockerfileBackendContent
-    );
-
-    // Génération du Dockerfile pour le frontend (si un frontend est inclus)
-    if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
-      const frontendType = templateData.frontendFramework.toLowerCase();
-      let frontendDockerfile = '';
-
-      if (frontendType === 'react' || frontendType === 'vue' || frontendType === 'vue.js') {
-        frontendDockerfile = `# Étape de build
-FROM node:18-alpine AS build
-
-WORKDIR /app
-
-# Copie des fichiers package.json et installation des dépendances
-COPY frontend/package*.json ./
-RUN npm ci
-
-# Copie des sources et build
-COPY frontend/ .
-RUN npm run build
-
-# Étape de production avec Nginx
-FROM nginx:stable-alpine
-
-# Copie de la configuration Nginx
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copie des fichiers statiques du build
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Exposition du port 80
-EXPOSE 80
-
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -q --spider http://localhost:80/ || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]`;
-      } else if (frontendType === 'angular') {
-        frontendDockerfile = `# Étape de build
-FROM node:18-alpine AS build
-
-WORKDIR /app
-
-# Copie des fichiers package.json et installation des dépendances
-COPY frontend/package*.json ./
-RUN npm ci
-
-# Copie des sources et build
-COPY frontend/ .
-RUN npm run build -- --configuration production
-
-# Étape de production avec Nginx
-FROM nginx:stable-alpine
-
-# Copie de la configuration Nginx
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copie des fichiers statiques du build
-COPY --from=build /app/dist/${templateData.appName}/browser /usr/share/nginx/html
-
-# Exposition du port 80
-EXPOSE 80
-
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -q --spider http://localhost:80/ || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]`;
-      }
-
-      if (frontendDockerfile) {
-        generator.fs.write(
-          generator.destinationPath("frontend/Dockerfile"),
-          frontendDockerfile
-        );
-      }
-
-      // Génération d'une configuration Nginx pour le frontend
-      const nginxConf = `server {
-    listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Gzip configuration
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-    gzip_min_length 1000;
-    
-    # Cache static assets
-    location ~* \\.(?:jpg|jpeg|gif|png|ico|svg|woff|woff2|ttf|css|js|html)$ {
-        expires 30d;
-        add_header Cache-Control "public, max-age=2592000";
-    }
-
-    # Application routes
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API proxy
-    location /api/ {
-        proxy_pass http://app:8080/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-}`;
-
-      generator.fs.write(
-        generator.destinationPath("frontend/nginx.conf"),
-        nginxConf
-      );
-    }
-
-    // Génération des Dockerfiles de développement
-    // Backend dev Dockerfile
-    const backendDevDockerfile = `FROM eclipse-temurin:${templateData.javaVersion || '21'}-jdk-alpine
-
-WORKDIR /app
-
-# Installation des outils de développement
-RUN apk add --no-cache curl jq bash
-
-# Variables d'environnement
-ENV SPRING_PROFILES_ACTIVE=dev
-ENV JAVA_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
-
-# Expo du port de debug et de l'application
-EXPOSE 8080 5005
-
-# Copie de l'application
-COPY target/*.jar app.jar
-
-# Commande pour le hot-reload
-CMD ["java", "-jar", "app.jar"]`;
-
-    generator.fs.write(
-      generator.destinationPath("docker/dev/Dockerfile.backend.dev"),
-      backendDevDockerfile
-    );
-
-    // Frontend dev Dockerfile (si un frontend est inclus)
-    if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
-      const frontendDevDockerfile = `FROM node:18-alpine
-
-WORKDIR /app
-
-# Installation des dépendances
-COPY frontend/package*.json ./
-RUN npm install
-
-# Exposition du port de développement
-EXPOSE 3000 5173
-
-# Commande pour le serveur de développement avec hot-reload
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]`;
-
-      generator.fs.write(
-        generator.destinationPath("docker/dev/Dockerfile.frontend.dev"),
-        frontendDevDockerfile
-      );
-    }
-
-    // Génération des fichiers docker-compose
-
-    // docker-compose.yml (principal)
-    let dockerComposeYml = `version: '3.8'
+    // Contenu du docker-compose.yml
+    const dockerComposeContent = `version: '3.8'
 
 services:
   app:
     build: .
+    container_name: ${templateData.appName}-api
     ports:
       - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATASOURCE_URL=jdbc:${templateData.database === 'PostgreSQL' ? 'postgresql' : templateData.database === 'MySQL' ? 'mysql' : 'h2:mem'}://${templateData.database === 'H2' ? '' : 'db/'}${templateData.appName.toLowerCase()}${templateData.database === 'H2' ? '' : '?useSSL=false'}
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=password
-    volumes:
-      - app-data:/app/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-`;
+      - SPRING_PROFILES_ACTIVE=prod${templateData.database === 'PostgreSQL' ? `
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/${templateData.appName}
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres` : templateData.database === 'MySQL' ? `
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${templateData.appName}?useSSL=false
+      - SPRING_DATASOURCE_USERNAME=mysql
+      - SPRING_DATASOURCE_PASSWORD=mysql` : ''}
+    depends_on:${templateData.database !== 'H2' ? `
+      - db` : ''}${templateData.additionalFeatures?.includes('redis') ? `
+      - redis` : ''}
 
-    // Ajouter le service de base de données selon le type de DB
-    if (templateData.database === 'PostgreSQL') {
-      dockerComposeYml += `
-  db:
-    image: postgres:14-alpine
-    environment:
-      - POSTGRES_DB=${templateData.appName.toLowerCase()}
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+${templateData.database === 'PostgreSQL' ? `  db:
+    image: postgres:16-alpine
+    container_name: ${templateData.appName}-postgres
     volumes:
-      - db-data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "user", "-d", "${templateData.appName.toLowerCase()}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-`;
-    } else if (templateData.database === 'MySQL') {
-      dockerComposeYml += `
-  db:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${templateData.appName}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+` : templateData.database === 'MySQL' ? `  db:
     image: mysql:8.0
-    environment:
-      - MYSQL_DATABASE=${templateData.appName.toLowerCase()}
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=password
-      - MYSQL_ROOT_PASSWORD=rootpassword
+    container_name: ${templateData.appName}-mysql
     volumes:
-      - db-data:/var/lib/mysql
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "--password=password"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-`;
-    } else if (templateData.database !== 'H2') {
-      dockerComposeYml += `
-  db:
-    image: mongo:5.0
-    environment:
-      - MONGO_INITDB_DATABASE=${templateData.appName.toLowerCase()}
-      - MONGO_INITDB_ROOT_USERNAME=user
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    volumes:
-      - db-data:/data/db
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-`;
-    }
-
-    // Ajouter le service frontend si un framework frontend est inclus
-    if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
-      dockerComposeYml += `
-  frontend:
-    build:
-      context: ./frontend
+      - mysql_data:/var/lib/mysql
     ports:
-      - "80:80"
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=${templateData.appName}
+      - MYSQL_ROOT_PASSWORD=mysql
+      - MYSQL_USER=mysql
+      - MYSQL_PASSWORD=mysql
+` : ''}${templateData.additionalFeatures?.includes('redis') ? `  redis:
+    image: redis:alpine
+    container_name: ${templateData.appName}-redis
+    ports:
+      - "6379:6379"
+` : ''}${templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)' ? `
+  frontend:
+    build: ./frontend
+    container_name: ${templateData.appName}-frontend
+    ports:
+      - "80:80" 
     depends_on:
       - app
-    restart: unless-stopped
-`;
-    }
+` : ''}
+${(templateData.database === 'PostgreSQL' || templateData.database === 'MySQL') ? 'volumes:' : ''}${templateData.database === 'PostgreSQL' ? `
+  postgres_data:` : templateData.database === 'MySQL' ? `
+  mysql_data:` : ''}`;
 
-    // Définir les volumes
-    dockerComposeYml += `
-volumes:
-  app-data:
-    driver: local`;
-
-    // Ajouter le volume pour la base de données si ce n'est pas H2
-    if (templateData.database !== 'H2') {
-      dockerComposeYml += `
-  db-data:
-    driver: local`;
-    }
-
+    // Création du Dockerfile
     generator.fs.write(
-      generator.destinationPath("docker-compose.yml"),
-      dockerComposeYml
+      generator.destinationPath(`Dockerfile`),
+      dockerfileBackendContent
     );
 
-    // docker-compose.dev.yml (pour le développement)
-    let dockerComposeDevYml = `version: '3.8'
+    // Création du docker-compose.yml
+    generator.fs.write(
+      generator.destinationPath(`docker-compose.yml`),
+      dockerComposeContent
+    );
 
-services:
-  app:
-    build:
-      context: .
-      dockerfile: docker/dev/Dockerfile.backend.dev
-    ports:
-      - "8080:8080"
-      - "5005:5005"  # Expose debug port
-    environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      - JAVA_OPTS=-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005
-    volumes:
-      - ./:/app  # Mount project root for live reload
-      - ~/.m2:/root/.m2  # Share Maven cache
-    restart: unless-stopped
-`;
-
-    // Ajouter le service frontend dev si un framework frontend est inclus
+    // Ajouter un dockerfile pour le frontend si nécessaire
     if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
-      const frontendDevPort = templateData.frontendFramework.toLowerCase() === 'react' || templateData.frontendFramework.toLowerCase() === 'vue' ? 5173 : 3000;
-      dockerComposeDevYml += `
-  frontend-dev:
-    build:
-      context: .
-      dockerfile: docker/dev/Dockerfile.frontend.dev
-    ports:
-      - "${frontendDevPort}:${frontendDevPort}"
-    volumes:
-      - ./frontend:/app  # Mount frontend code for live reload
-      - /app/node_modules  # Preserve node_modules
-    environment:
-      - NODE_ENV=development
-    depends_on:
-      - app
-`;
+      const dockerfileFrontendContent = getFrontendDockerfile(templateData.frontendFramework);
+      generator.fs.write(
+        generator.destinationPath(`frontend/Dockerfile`),
+        dockerfileFrontendContent
+      );
     }
 
-    // Ajouter la base de données si nécessaire
-    if (templateData.database !== 'H2') {
-      dockerComposeDevYml += `
-  db:
-    extends:
-      file: docker-compose.yml
-      service: db
-    ports:
-      - "${templateData.database === 'PostgreSQL' ? '5432' : templateData.database === 'MySQL' ? '3306' : '27017'}:${templateData.database === 'PostgreSQL' ? '5432' : templateData.database === 'MySQL' ? '3306' : '27017'}"  # Expose DB port for direct access
+    // Création d'un fichier .dockerignore
+    const dockerignoreContent = `
+# Fichiers et répertoires à ignorer lors de la création d'une image Docker
+
+# Répertoires de build et dépendances
+target/
+node_modules/
+dist/
+build/
+
+# Fichiers d'environnement et secrets
+.env
+*.env
+.env.*
+*.key
+*.pem
+
+# Fichiers de log et caches
+*.log
+logs/
+.gradle/
+.idea/
+.vscode/
+.mvn/wrapper/maven-wrapper.jar
+
+# Autres fichiers système
+.DS_Store
+Thumbs.db
 `;
-    }
 
     generator.fs.write(
-      generator.destinationPath("docker-compose.dev.yml"),
-      dockerComposeDevYml
+      generator.destinationPath(`.dockerignore`),
+      dockerignoreContent
     );
 
-    // docker-compose.prod.yml (pour la production)
-    let dockerComposeProdYml = `version: '3.8'
+    generator.log(chalk.green("✅ Fichiers Docker générés avec succès"));
 
-services:
-  app:
-    image: ${templateData.appName.toLowerCase()}/backend:latest
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-`;
+    // Copier les fichiers docker-compose spécifiques depuis les templates
+    try {
+      // Vérifier si les templates existent
+      const dockerComposeTemplate = generator.templatePath('docker/docker-compose.yml.ejs');
+      const dockerComposeDevTemplate = generator.templatePath('docker/docker-compose.dev.yml.ejs');
+      const dockerComposeProdTemplate = generator.templatePath('docker/docker-compose.prod.yml.ejs');
 
-    // Ajouter le service frontend prod si un framework frontend est inclus
-    if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
-      dockerComposeProdYml += `
-  frontend:
-    image: ${templateData.appName.toLowerCase()}/frontend:latest
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
-`;
+      // Copier les fichiers s'ils existent
+      if (fs.existsSync(dockerComposeTemplate)) {
+        generator.fs.copyTpl(
+          dockerComposeTemplate,
+          generator.destinationPath('docker-compose.yml'),
+          templateData
+        );
+        generator.log(chalk.green("✅ Fichier docker-compose.yml généré depuis le template"));
+      }
+
+      if (fs.existsSync(dockerComposeDevTemplate)) {
+        generator.fs.copyTpl(
+          dockerComposeDevTemplate,
+          generator.destinationPath('docker-compose.dev.yml'),
+          templateData
+        );
+        generator.log(chalk.green("✅ Fichier docker-compose.dev.yml généré depuis le template"));
+      }
+
+      if (fs.existsSync(dockerComposeProdTemplate)) {
+        generator.fs.copyTpl(
+          dockerComposeProdTemplate,
+          generator.destinationPath('docker-compose.prod.yml'),
+          templateData
+        );
+        generator.log(chalk.green("✅ Fichier docker-compose.prod.yml généré depuis le template"));
+      }
+    } catch (error) {
+      generator.log(chalk.yellow(`⚠️ Erreur lors de la génération des fichiers docker-compose spécifiques: ${error}`));
     }
-
-    // Ajouter la base de données si nécessaire
-    if (templateData.database !== 'H2') {
-      dockerComposeProdYml += `
-  db:
-    extends:
-      file: docker-compose.yml
-      service: db
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"
-`;
-    }
-
-    generator.fs.write(
-      generator.destinationPath("docker-compose.prod.yml"),
-      dockerComposeProdYml
-    );
-
-    generator.log(chalk.green("✅ Fichiers Docker générés avec succès!"));
   } catch (error) {
     generator.log(chalk.red(`❌ Erreur lors de la génération des fichiers Docker: ${error}`));
+  }
+}
+
+/**
+ * Renvoie le contenu d'un Dockerfile pour le frontend en fonction du framework utilisé
+ * @param frontendFramework Le framework frontend utilisé (React, Vue, Angular)
+ * @returns Le contenu du Dockerfile
+ */
+function getFrontendDockerfile(frontendFramework: string): string {
+  const framework = frontendFramework.toLowerCase();
+
+  if (framework === 'angular') {
+    return `# Étape 1: Build de l'application Angular
+FROM node:18-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Étape 2: Image de production avec Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist/* /usr/share/nginx/html/
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]`;
+  }
+  else if (framework === 'react') {
+    return `# Étape 1: Build de l'application React
+FROM node:18-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Étape 2: Image de production avec Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]`;
+  }
+  else if (framework === 'vue.js' || framework === 'vue') {
+    return `# Étape 1: Build de l'application Vue
+FROM node:18-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Étape 2: Image de production avec Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]`;
+  }
+  else {
+    // Framework générique
+    return `# Étape 1: Build de l'application frontend
+FROM node:18-alpine as build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Étape 2: Image de production avec Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]`;
   }
 }

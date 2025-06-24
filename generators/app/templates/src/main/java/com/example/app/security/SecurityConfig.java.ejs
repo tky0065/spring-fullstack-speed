@@ -2,9 +2,11 @@ package <%= packageName %>.security;
 
 import <%= packageName %>.security.jwt.JwtAuthenticationFilter;
 import <%= packageName %>.security.jwt.JwtTokenProvider;
+<% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
 import <%= packageName %>.security.oauth2.CustomOAuth2UserService;
 import <%= packageName %>.security.oauth2.OAuth2AuthenticationFailureHandler;
 import <%= packageName %>.security.oauth2.OAuth2AuthenticationSuccessHandler;
+<% } %>
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Configuration principale de la sécurité Spring Security avec JWT et OAuth2
+ * Configuration principale de la sécurité Spring Security avec JWT<% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %> et OAuth2<% } %>
  */
 @Configuration
 @EnableWebSecurity
@@ -34,21 +36,25 @@ public class SecurityConfig {
 
     private final JwtTokenProvider tokenProvider;
     private final AuthEntryPointJwt unauthorizedHandler;
+<% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+<% } %>
 
     public SecurityConfig(
             JwtTokenProvider tokenProvider,
-            AuthEntryPointJwt unauthorizedHandler,
+            AuthEntryPointJwt unauthorizedHandler<% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>,
             CustomOAuth2UserService customOAuth2UserService,
             OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
-            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler) {
+            OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler<% } %>) {
         this.tokenProvider = tokenProvider;
         this.unauthorizedHandler = unauthorizedHandler;
+<% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
         this.customOAuth2UserService = customOAuth2UserService;
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
+<% } %>
     }
 
     @Bean
@@ -69,7 +75,7 @@ public class SecurityConfig {
             )
             // Configuration de la politique de session
             .sessionManagement(management -> management
-                <% if (oauth2Enabled) { %>
+                <% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
                 // Utilisation d'une politique de session STATELESS pour JWT mais capable de supporter OAuth2
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 <% } else { %>
@@ -89,7 +95,7 @@ public class SecurityConfig {
                 // Ressources statiques pour les templates
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                 <% } %>
-                <% if (oauth2Enabled) { %>
+                <% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
                 // Endpoints OAuth2
                 .requestMatchers("/oauth2/**").permitAll()
                 <% } %>
@@ -97,7 +103,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             );
 
-        <% if (oauth2Enabled) { %>
+        <% if (typeof oauth2Enabled !== 'undefined' && oauth2Enabled) { %>
         // Configuration OAuth2
         http.oauth2Login(oauth2 -> oauth2
             .authorizationEndpoint(endpoint -> endpoint

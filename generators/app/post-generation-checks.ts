@@ -30,8 +30,9 @@ interface CheckResult {
  */
 function getEssentialFiles(templateData: any): string[] {
   const files:any = [];
-  const buildTool = templateData.buildTool.toLowerCase();
-  const mainPath = `src/main/java/${templateData.javaPackagePath}`;
+  const buildTool = templateData.buildTool?.toLowerCase() || 'maven';
+  const packagePath = templateData.javaPackagePath || templateData.packageName?.replace(/\./g, '/') || 'com/example';
+  const mainPath = `src/main/java/${packagePath}`;
   const className = templateData.appName
     .split("-")
     .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -462,7 +463,7 @@ export function displayFinalInstructions(generator: any, templateData: any, chec
   generator.log(chalk.blue("\n📚 DOCUMENTATION ET AIDE:"));
   generator.log(chalk.gray("════════════════════════════════════════════"));
   generator.log(chalk.white("  Documentation: README.md"));
-  generator.log(chalk.white("  Aide supplémentaire: https://github.com/votre-organisation/spring-fullstack-speed/wiki"));
+  generator.log(chalk.white("  Aide supplémentaire: https://github.com/tky0065/spring-fullstack-speed/wiki"));
 
   generator.log(chalk.gray("\n════════════════════════════════════════════"));
   generator.log(chalk.green("\nBon développement avec Spring-Fullstack-Speed! 🚀"));

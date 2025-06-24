@@ -82,7 +82,7 @@ export function getPresets() {
       authType: "None",
       additionalFeatures: ["openapi"],
       springBootVersion: "3.1.0",
-      javaVersion: "17"
+      javaVersion: "21"
     }
   };
 }
@@ -118,8 +118,8 @@ export function getBasicQuestions(): YeomanQuestion[] {
       type: "list",
       name: "javaVersion",
       message: "Version de Java:",
-      choices: ["17", "21"],
-      default: "17"
+      choices: ["24","21", "17"],
+      default: "21"
     },
     {
       type: "list",

@@ -44,15 +44,15 @@ D'après les erreurs dans errors.txt, les problèmes suivants ont été identifi
 - [x] Corriger les templates si nécessaires
 
 ### 6. Vérification de la génération Docker
-- [ ] Examiner les fichiers Docker générés dans le dossier test-generator-folder
-- [ ] Vérifier que les Dockerfiles et docker-compose sont correctement générés et configurés
-- [ ] Tester la construction des images Docker pour détecter d'éventuels problèmes
-- [ ] Corriger les templates si nécessaires
+- [x] Examiner les fichiers Docker générés dans le dossier test-generator-folder
+- [x] Vérifier que les Dockerfiles et docker-compose sont correctement générés et configurés
+- [x] Tester la construction des images Docker pour détecter d'éventuels problèmes
+- [x] Corriger les templates si nécessaires
 
 ### 7. Validation de la configuration OpenAPI/Swagger
-- [ ] Examiner les fichiers de configuration OpenAPI dans src/main/java/com/dev/app/config
-- [ ] Vérifier que les URLs et configurations dans OpenApiConfig.java et SwaggerUIConfig.java sont correctes
-- [ ] S'assurer que les annotations OpenAPI sont présentes dans les contrôleurs
+- [x] Examiner les fichiers de configuration OpenAPI dans src/main/java/com/dev/app/config
+- [x] Vérifier que les URLs et configurations dans OpenApiConfig.java et SwaggerUIConfig.java sont correctes
+- [x] S'assurer que les annotations OpenAPI sont présentes dans les contrôleurs
 
 ### 8. Quand on choisit React les fichiers ne sont pas générés
 - [x] Vérifier le template de génération pour React
@@ -65,9 +65,9 @@ D'après les erreurs dans errors.txt, les problèmes suivants ont été identifi
 - [ ] Vérifier que tous les fichiers sont générés sans erreurs
 
 ### 10. Amélioration des templates Java avec Lombok
-- [ ] Intégrer Lombok dans les templates pour réduire le code boilerplate
-- [ ] Mettre à jour les templates d'entités et de DTOs pour utiliser les annotations Lombok
-- [ ] Vérifier que les dépendances Lombok sont correctement ajoutées dans le pom.xml
+- [x] Intégrer Lombok dans les templates pour réduire le code boilerplate
+- [x] Mettre à jour les templates d'entités et de DTOs pour utiliser les annotations Lombok
+- [x] Vérifier que les dépendances Lombok sont correctement ajoutées dans le pom.xml
 
 ## Instructions pour les tests
 

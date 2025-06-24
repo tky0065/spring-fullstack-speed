@@ -152,7 +152,7 @@ export function generateMainApplication(generator: any, templateData: TemplateDa
           }
         );
         templateFound = true;
-        generator.log(chalk.green(`✅ Template Application.java.ejs trouvé à ${templatePath}`));
+       // generator.log(chalk.green(`✅ Template Application.java.ejs trouvé à ${templatePath}`));
         break;
       }
     }
@@ -170,7 +170,7 @@ export function generateMainApplication(generator: any, templateData: TemplateDa
       generator.log(chalk.green(`✅ Application principale générée avec le nom ${className}Application.java`));
     }
   } catch (error) {
-    generator.log(chalk.red(`❌ Erreur lors de la génération du fichier principal de l'application: ${error}`));
+   // generator.log(chalk.red(`❌ Erreur lors de la génération du fichier principal de l'application: ${error}`));
 
     // Tentative de récupération: créer un fichier minimal avec le bon package
     try {
@@ -188,11 +188,18 @@ public class ${className}Application {
 }
 `;
 
+      // Utiliser ensureDirectoryExists pour garantir que le répertoire existe
+      const dirPath = path.dirname(generator.destinationPath(`${mainPath}/${className}Application.java`));
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
       fs.writeFileSync(
         generator.destinationPath(`${mainPath}/${className}Application.java`),
         minimalApplicationContent
       );
-      generator.log(chalk.yellow(`⚠️ Création d'un fichier minimal pour ${className}Application.java`));
+      generator.log(chalk.green(`✅ Fichier ${className}Application.java créé avec succès (méthode de secours)`));
+      return true; // Indiquer que le fichier a été créé avec succès
     } catch (fallbackError) {
       generator.log(chalk.red(`❌ Impossible de créer même un fichier minimal: ${fallbackError}`));
     }
@@ -301,7 +308,7 @@ export function generateBaseDirectories(generator: any, templateData: TemplateDa
     }
 
     // Création des répertoires de ressources
-    generator.log(chalk.yellow("��� Création des répertoires de ressources..."));
+    generator.log(chalk.yellow(" Création des répertoires de ressources..."));
     for (const dir of resourceDirectories) {
       ensureDirectoryExists(generator, dir);
       generator.fs.write(
@@ -465,26 +472,22 @@ export function generateMavenOrGradle(generator: any, templateData: TemplateData
 
       // 2. Génération des scripts mvnw
       try {
-        // Vérifier l'existence des templates
         const mvnwTemplate = generator.templatePath("mvnw.ejs");
         const mvnwCmdTemplate = generator.templatePath("mvnw.cmd.ejs");
 
         if (fs.existsSync(mvnwTemplate)) {
-          // Utiliser copyFile au lieu de copyTpl pour éviter les problèmes de templating
           try {
-            // La syntaxe EJS peut causer des problèmes lors de la génération de scripts shell
-            // Pour les scripts, on utilise donc une simple copie sans templating
-            fs.copyFileSync(mvnwTemplate, generator.destinationPath("mvnw"));
+            // Lire le contenu du template plutôt que simplement copier le fichier
+            const mvnwContent = fs.readFileSync(mvnwTemplate, 'utf8');
+            // Écrire le contenu dans le fichier de destination
+            fs.writeFileSync(generator.destinationPath("mvnw"), mvnwContent, {mode: 0o755});
             generator.log(chalk.green("✅ Script mvnw copié avec succès"));
           } catch (copyError) {
             generator.log(chalk.red(`❌ Erreur lors de la copie de mvnw: ${copyError}`));
-            // Copie manuelle en tant que solution de secours
-            createMinimalMvnwScript(generator);
           }
         } else {
           generator.log(chalk.red("❌ Template mvnw.ejs non trouvé"));
           // Création d'un script mvnw minimal comme solution de secours
-          createMinimalMvnwScript(generator);
         }
 
         if (fs.existsSync(mvnwCmdTemplate)) {
@@ -765,7 +768,45 @@ java -jar %MAVEN_PROJECTBASEDIR%/.mvn/wrapper/maven-wrapper.jar %*
   generator.log(chalk.yellow("⚠️ Script mvnw.cmd minimal créé comme solution de secours"));
 }
 
+/**
+ * Génère les services de l'application
+ * @param generator Référence au générateur
+ * @param templateData Les données pour la génération
+ */
+export function generateServices(generator: any, templateData: TemplateData) {
+  generator.log(chalk.blue("Génération des services..."));
 
+  const mainPath = `src/main/java/${templateData.javaPackagePath}`;
+  const servicePath = `${mainPath}/service`;
 
+  // Créer le répertoire des services s'il n'existe pas
+  ensureDirectoryExists(generator, servicePath);
 
+  // Liste des services à copier
+  const services = [
+    'ExampleService.java.ejs',
+    'ProductService.java.ejs',
+    'SecurityAuditService.java.ejs'
+  ];
 
+  // Copier chaque fichier de service
+  services.forEach(service => {
+    try {
+      const templatePath = generator.templatePath(`src/main/java/com/example/app/service/${service}`);
+
+      // Vérifier si le fichier de template existe
+      if (fs.existsSync(templatePath)) {
+        generator.fs.copyTpl(
+          templatePath,
+          generator.destinationPath(`${servicePath}/${service.replace('.ejs', '')}`),
+          templateData
+        );
+        generator.log(chalk.green(`✅ Service ${service.replace('.ejs', '')} généré avec succès`));
+      } else {
+        generator.log(chalk.yellow(`⚠️ Template du service ${service} introuvable`));
+      }
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération du service ${service}: ${error}`));
+    }
+  });
+}

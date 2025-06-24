@@ -52,14 +52,18 @@ dependencies {
 <% } %>
 
 <% if (frontendFramework === 'Thymeleaf') { %>
-    // Thymeleaf
+    // Thymeleaf pour les vues côté serveur
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 <% if (includeAuth) { %>
     implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity6")
 <% } %>
-<% } else if (frontendFramework === 'JTE') { %>
-    // JTE Template Engine
-    implementation("gg.jte:jte-spring-boot-starter-3:3.1.9")
+
+<% if (frontendFramework === 'JTE') { %>
+    // JTE pour les vues côté serveur
+    implementation("gg.jte:jte-spring-boot-starter-3:3.1.16")
+
+    // TailwindCSS pour le styling
+    implementation("org.webjars.npm:tailwindcss:4.1.8")
 <% } %>
 
 <% if (additionalFeatures.includes('openapi')) { %>
