@@ -18,10 +18,18 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 <% } -%>
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 /**
  * DTO for {@link <%= entityPackageName %>.<%= entityName %>}
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class <%= entityName %>DTO implements Serializable {
     private Long id;
 <% fields.forEach(function(field) { -%>
@@ -43,79 +51,18 @@ public class <%= entityName %>DTO implements Serializable {
     private <%= field.type %> <%= field.name %>;
 <% }); -%>
 
-    // Constructeur par défaut
-    public <%= entityName %>DTO() {
-        // Constructeur vide requis pour la sérialisation/désérialisation JSON
-    }
-
-    // Constructeur avec tous les champs
-    public <%= entityName %>DTO(Long id<% fields.forEach(function(field) { %>, <%= field.type %> <%= field.name %><% }); %>) {
-        this.id = id;
-<% fields.forEach(function(field) { -%>
-        this.<%= field.name %> = <%= field.name %>;
-<% }); -%>
-    }
-
-    // Getters et setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-<% fields.forEach(function(field) { -%>
-    public <%= field.type %> get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() {
-        return <%= field.name %>;
-    }
-
-    public void set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= field.type %> <%= field.name %>) {
-        this.<%= field.name %> = <%= field.name %>;
-    }
-
-<% }); -%>
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof <%= entityName %>DTO)) return false;
-        <%= entityName %>DTO that = (<%= entityName %>DTO) o;
-        return id != null && id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "<%= entityName %>DTO{" +
-                "id=" + id +
-<% fields.forEach(function(field, index) { -%>
-                ", <%= field.name %>=" + <%= field.name %> +
-<% }); -%>
-                '}';
-    }
 <% if (useMapstruct) { -%>
-
     /**
-     * Mapper pour convertir entre l'entité <%= entityName %> et son DTO
+     * Mapper pour convertir entre l'entité et le DTO
      */
     @Mapper
     public interface <%= entityName %>Mapper {
         <%= entityName %>Mapper INSTANCE = Mappers.getMapper(<%= entityName %>Mapper.class);
 
         @Mapping(target = "id", source = "id")
-<% fields.forEach(function(field) { -%>
-        @Mapping(target = "<%= field.name %>", source = "<%= field.name %>")
-<% }); -%>
         <%= entityName %>DTO toDto(<%= entityPackageName %>.<%= entityName %> entity);
 
         @Mapping(target = "id", source = "id")
-<% fields.forEach(function(field) { -%>
-        @Mapping(target = "<%= field.name %>", source = "<%= field.name %>")
-<% }); -%>
         <%= entityPackageName %>.<%= entityName %> toEntity(<%= entityName %>DTO dto);
     }
 <% } -%>

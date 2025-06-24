@@ -61,7 +61,11 @@ const availableGenerators = [
   { name: 'upgrade', path: './dist/generators/upgrade/index.js' },
   { name: 'plugins', path: './dist/generators/plugins/index.js' },
   { name: 'kubernetes', path: './dist/generators/kubernetes/index.js' },
-  { name: 'docker', path: './dist/generators/docker/index.js' }
+  { name: 'docker', path: './dist/generators/docker/index.js' },
+  { name: 'notification', path: './dist/generators/notification/index.js' },
+  { name: 'search', path: './dist/generators/search/index.js' },
+  { name: 'cicd', path: './dist/generators/cicd/index.js' },
+  { name: 'container', path: './dist/generators/container/index.js' }
 ];
 
 // Enregistrer chaque générateur avec un namespace spécifique
@@ -102,6 +106,10 @@ ${chalk.yellow('Générateurs disponibles:')}
   plugins  : Gestion des extensions
   kubernetes: Gestion des déploiements Kubernetes
   docker   : Gestion des conteneurs Docker
+  notification: Gestion des notifications
+  search   : Fonctionnalités de recherche
+  cicd     : Intégration et déploiement continus
+  container : Gestion des conteneurs
 
 ${chalk.yellow('Raccourcis communs:')}
   sfs g e   : équivalent à "sfs generate entity"

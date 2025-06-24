@@ -8,6 +8,10 @@ import chalk from 'chalk';
  * @param templateData Les données pour la génération
  */
 export function generateDockerFiles(generator: any, templateData: TemplateData) {
+  if (!templateData.additionalFeatures || !templateData.additionalFeatures.includes('docker')) {
+    return; // Ne rien faire si Docker n'est pas demandé
+  }
+
   generator.log(chalk.blue("Génération des fichiers Docker..."));
 
   // Création des répertoires nécessaires pour Docker
@@ -401,7 +405,20 @@ services:
       - /app/node_modules  # Preserve node_modules
     environment:
       - NODE_ENV=development
-    restart: unless-stopped
+    depends_on:
+      - app
+`;
+    }
+
+    // Ajouter la base de données si nécessaire
+    if (templateData.database !== 'H2') {
+      dockerComposeDevYml += `
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+    ports:
+      - "${templateData.database === 'PostgreSQL' ? '5432' : templateData.database === 'MySQL' ? '3306' : '27017'}:${templateData.database === 'PostgreSQL' ? '5432' : templateData.database === 'MySQL' ? '3306' : '27017'}"  # Expose DB port for direct access
 `;
     }
 
@@ -416,20 +433,20 @@ services:
 services:
   app:
     image: ${templateData.appName.toLowerCase()}/backend:latest
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
     deploy:
       replicas: 2
-      restart_policy:
-        condition: any
-        max_attempts: 3
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: '1'
+          memory: 1G
         reservations:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
     logging:
       driver: "json-file"
       options:
@@ -443,22 +460,48 @@ services:
   frontend:
     image: ${templateData.appName.toLowerCase()}/frontend:latest
     deploy:
-      replicas: 3
-      restart_policy:
-        condition: any
-        max_attempts: 3
+      replicas: 2
       resources:
         limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
           cpus: '0.25'
           memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
+        max-size: "5m"
         max-file: "3"
+`;
+    }
+
+    // Ajouter la base de données si nécessaire
+    if (templateData.database !== 'H2') {
+      dockerComposeProdYml += `
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 `;
     }
 
@@ -467,65 +510,8 @@ services:
       dockerComposeProdYml
     );
 
-    // Fichier .env pour les variables d'environnement Docker
-    const envContent = `# Variables d'environnement pour Docker
-# Base de données
-DB_USERNAME=user
-DB_PASSWORD=password
-DB_ROOT_PASSWORD=rootpassword
-
-# Ports de l'application
-APP_PORT=80
-APP_BACKEND_PORT=8080
-APP_SSL_PORT=443
-
-# Profil Spring
-SPRING_PROFILES_ACTIVE=prod
-
-# Options JVM
-JAVA_OPTS=-Xmx512m -Xms256m
-`;
-
-    generator.fs.write(
-      generator.destinationPath(".env"),
-      envContent
-    );
-
-    generator.log(chalk.green("✅ Configuration Docker générée avec succès!"));
+    generator.log(chalk.green("✅ Fichiers Docker générés avec succès!"));
   } catch (error) {
     generator.log(chalk.red(`❌ Erreur lors de la génération des fichiers Docker: ${error}`));
-    generator.log(chalk.yellow("⚠️ Tentative de récupération..."));
-
-    // Génération de fichiers Docker minimaux en cas d'erreur
-    try {
-      const minimalDockerfile = `FROM eclipse-temurin:${templateData.javaVersion || '21'}-jdk-alpine
-WORKDIR /app
-COPY target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-`;
-
-      generator.fs.write(
-        generator.destinationPath("Dockerfile"),
-        minimalDockerfile
-      );
-
-      const minimalDockerCompose = `version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "8080:8080"
-`;
-
-      generator.fs.write(
-        generator.destinationPath("docker-compose.yml"),
-        minimalDockerCompose
-      );
-
-      generator.log(chalk.yellow("⚠️ Configuration Docker minimale générée après erreur."));
-    } catch (fallbackError) {
-      generator.log(chalk.red(`❌ Échec complet de la génération Docker: ${fallbackError}`));
-    }
   }
 }

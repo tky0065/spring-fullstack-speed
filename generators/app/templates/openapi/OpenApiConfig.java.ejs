@@ -1,46 +1,61 @@
 package <%= packageName %>.config;
 
-import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
+import java.util.List;
+
+/**
+ * Configuration pour OpenAPI 3.0 / Swagger
+ */
 @Configuration
 public class OpenApiConfig {
 
-    private static final String SECURITY_SCHEME_NAME = "Bearer Authentication";
+    @Value("${openapi.dev-url:http://localhost:8080}")
+    private String devUrl;
 
+    @Value("${openapi.prod-url:https://api.<%= appName.toLowerCase() %>.example.com}")
+    private String prodUrl;
+
+    /**
+     * Configuration de la documentation OpenAPI 3.0
+     * @return L'objet OpenAPI configuré
+     */
     @Bean
-    public OpenAPI openAPI() {
-        return new OpenAPI()
-                .info(apiInfo())
-                .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
-                .components(new Components()
-                        .addSecuritySchemes(SECURITY_SCHEME_NAME, createSecurityScheme()));
-    }
+    public OpenAPI myOpenAPI() {
+        Server devServer = new Server();
+        devServer.setUrl(devUrl);
+        devServer.setDescription("Serveur de développement");
 
-    private Info apiInfo() {
-        return new Info()
+        Server prodServer = new Server();
+        prodServer.setUrl(prodUrl);
+        prodServer.setDescription("Serveur de production");
+
+        Contact contact = new Contact();
+        contact.setName("<%= appName %> API Support");
+        contact.setEmail("contact@example.com");
+        contact.setUrl("https://www.example.com");
+
+        License mitLicense = new License()
+                .name("MIT License")
+                .url("https://opensource.org/licenses/MIT");
+
+        Info info = new Info()
                 .title("<%= appName %> API")
-                .description("API documentation pour l'application <%= appName %>")
+                .description("Documentation de l'API pour <%= appName %>")
                 .version("1.0.0")
-                .contact(new Contact()
-                        .name("Support <%= appName %>")
-                        .email("support@<%= appName.toLowerCase().replace(/-/g, '') %>.com")
-                        .url("https://www.<%= appName.toLowerCase().replace(/-/g, '') %>.com"))
-                .license(new License().name("Licence <%= appName %>").url("https://www.<%= appName.toLowerCase().replace(/-/g, '') %>.com/license"));
-    }
+                .contact(contact)
+                .license(mitLicense);
 
-    private SecurityScheme createSecurityScheme() {
-        return new SecurityScheme()
-                .name(SECURITY_SCHEME_NAME)
-                .type(SecurityScheme.Type.HTTP)
-                .scheme("bearer")
-                .bearerFormat("JWT");
+        return new OpenAPI()
+                .info(info)
+                .servers(List.of(devServer, prodServer));
     }
 }

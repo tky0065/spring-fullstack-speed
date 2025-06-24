@@ -1,17 +1,37 @@
 package <%= packageName %>.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Configuration de l'interface Swagger UI
+ */
 @Configuration
 public class SwaggerUIConfig implements WebMvcConfigurer {
 
+    /**
+     * Configure les redirections pour l'interface Swagger UI
+     * @param registry Le registre des contrôleurs de vue
+     */
     @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
-        // Redirection pour accéder facilement à l'UI Swagger
-        registry.addRedirectViewController("/api", "/swagger-ui/index.html");
-        registry.addRedirectViewController("/api/", "/swagger-ui/index.html");
+    public void addViewControllers(final ViewControllerRegistry registry) {
+        // Redirection depuis /swagger-ui vers la page Swagger UI
+        registry.addRedirectViewController("/swagger-ui", "/swagger-ui/index.html");
+        // Redirection de la racine API vers Swagger UI
         registry.addRedirectViewController("/api/docs", "/swagger-ui/index.html");
+    }
+
+    /**
+     * Configure les ressources statiques pour Swagger UI
+     * @param registry Le registre des gestionnaires de ressources
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Configuration des ressources Swagger UI
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/4.15.5/");
     }
 }

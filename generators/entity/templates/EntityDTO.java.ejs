@@ -13,10 +13,18 @@ import java.math.BigDecimal;
 <% } -%>
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 /**
  * DTO pour l'entité <%= entityName %>.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class <%= entityName %>DTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -52,94 +60,4 @@ public class <%= entityName %>DTO implements Serializable {
     private Instant lastModifiedDate;
 <% } -%>
 
-    // Getters and setters
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-<% fields.forEach(function(field) { -%>
-    public <%= field.type %> get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() {
-        return <%= field.name %>;
-    }
-
-    public void set<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>(<%= field.type %> <%= field.name %>) {
-        this.<%= field.name %> = <%= field.name %>;
-    }
-<% }); -%>
-
-<% if (auditable) { -%>
-    public String getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public Instant getCreatedDate() {
-        return createdDate;
-    }
-
-    public void setCreatedDate(Instant createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public String getLastModifiedBy() {
-        return lastModifiedBy;
-    }
-
-    public void setLastModifiedBy(String lastModifiedBy) {
-        this.lastModifiedBy = lastModifiedBy;
-    }
-
-    public Instant getLastModifiedDate() {
-        return lastModifiedDate;
-    }
-
-    public void setLastModifiedDate(Instant lastModifiedDate) {
-        this.lastModifiedDate = lastModifiedDate;
-    }
-<% } -%>
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof <%= entityName %>DTO)) {
-            return false;
-        }
-
-        <%= entityName %>DTO <%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO = (<%= entityName %>DTO) o;
-        if (this.id == null) {
-            return false;
-        }
-        return this.id.equals(<%= entityName.charAt(0).toLowerCase() + entityName.slice(1) %>DTO.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return 31;
-    }
-
-    @Override
-    public String toString() {
-        return "<%= entityName %>DTO{" +
-            "id=" + getId() +
-<% fields.forEach(function(field) { -%>
-            ", <%= field.name %>=" + get<%= field.name.charAt(0).toUpperCase() + field.name.slice(1) %>() +
-<% }); -%>
-<% if (auditable) { -%>
-            ", createdBy='" + getCreatedBy() + "'" +
-            ", createdDate='" + getCreatedDate() + "'" +
-            ", lastModifiedBy='" + getLastModifiedBy() + "'" +
-            ", lastModifiedDate='" + getLastModifiedDate() + "'" +
-<% } -%>
-            "}";
-    }
 }

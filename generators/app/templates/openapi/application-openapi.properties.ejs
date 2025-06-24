@@ -1,9 +1,18 @@
-# Configuration personnalisée OpenAPI/Swagger
-springdoc.swagger-ui.path=/swagger-ui.html
+# Configuration OpenAPI/Swagger
 springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
 springdoc.swagger-ui.operationsSorter=method
 springdoc.swagger-ui.tagsSorter=alpha
-springdoc.swagger-ui.displayRequestDuration=true
-springdoc.writer-with-order-by-keys=true
-springdoc.swagger-ui.disable-swagger-default-url=true
 
+# URLs des serveurs API pour la documentation
+openapi.dev-url=http://localhost:8080
+openapi.prod-url=https://api.<%= appName.toLowerCase() %>.example.com
+
+# Activer/désactiver la documentation API
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.enabled=true
+
+# Personnalisation de l'apparence
+springdoc.swagger-ui.displayRequestDuration=true
+springdoc.swagger-ui.filter=true
+springdoc.swagger-ui.syntaxHighlight.activated=true
