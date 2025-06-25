@@ -1,4 +1,4 @@
-# Spring-Fullstack-Speed (SFS)
+# Spring-Fullstack-Speed (SFS) - v1.0.2
 
 > Générateur rapide d'applications fullstack avec Spring Boot et divers frameworks frontend
 
@@ -12,6 +12,14 @@ SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapide
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md)
 [![Documentation](https://img.shields.io/badge/docs-available-blue.svg)](https://github.com/tky0065/spring-fullstack-speed/tree/main/docs)
 
+## 🆕 Nouveautés de la version 1.0.2
+
+- **Système de paiement complet** : Intégration facile avec Stripe, PayPal et autres passerelles de paiement
+- **Gestion des abonnements** : Support pour les plans d'abonnement et paiements récurrents
+- **Support international** : Plus de 135 devises et méthodes de paiement locales
+- **Sécurité renforcée** : Authentification 3D Secure 2.0 et conformité PSD2
+- **Paiement mobile** : Support pour Apple Pay et Google Pay
+
 ## 📋 Table des matières
 
 - [Installation](#installation)
@@ -22,6 +30,7 @@ SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapide
   - [Générer des DTOs](#générer-des-dtos)
   - [Générer des opérations CRUD](#générer-des-opérations-crud)
   - [Générer un module](#générer-un-module-fonctionnel)
+  - [Système de paiement](#système-de-paiement)
   - [Recherche et Indexation](#recherche-et-indexation)
   - [Notifications](#notifications)
   - [Conteneurisation](#conteneurisation)
@@ -143,6 +152,17 @@ Options :
 - `--name` : Nom du module
 - `--entities` : Liste d'entités à inclure
 - `--package` : Package spécifique pour le module
+
+### Système de paiement
+
+```bash
+sfs payment --provider=stripe --currency=usd --plan=monthly
+```
+
+Options :
+- `--provider` : Fournisseur de paiement (stripe, paypal, braintree)
+- `--currency` : Devise (usd, eur, gbp, etc.)
+- `--plan` : Type de plan (one-time, monthly, yearly)
 
 ### Recherche et Indexation
 

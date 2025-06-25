@@ -1,6 +1,6 @@
 {
   "name": "@enokdev/spring-fullstack-speed",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Générateur pour créer rapidement des applications Spring Boot avec frontend (Vue, React, Angular)",
   "main": "index.js",
   "type": "module",

@@ -3,12 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentation - Spring-Fullstack-Speed</title>
+    <title>Documentation - Spring-Fullstack-Speed v1.0.2</title>
     <meta name="description" content="Documentation complète sur l'utilisation du générateur Spring-Fullstack-Speed pour créer des applications Spring Boot fullstack.">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/documentation.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <style>
+        .version-badge {
+            background-color: #4caf50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .new-feature {
+            position: relative;
+            border-left: 4px solid #4caf50;
+            padding-left: 20px;
+        }
+        .new-tag {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+            position: relative;
+            top: -1px;
+        }
+        .feature-highlight {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3949ab;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .feature-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .provider-logos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .provider-logo {
+            max-height: 40px;
+            max-width: 120px;
+            filter: grayscale(0.3);
+            transition: all 0.3s ease;
+        }
+        .provider-logo:hover {
+            filter: grayscale(0);
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 <body>
     <header class="documentation-header">
@@ -16,8 +86,8 @@
             <nav>
                 <div class="logo">
                     <a href="index.html">
-                        <img src="images/logo.png" alt="SFS Logo">
-                        <span>Spring-Fullstack-Speed</span>
+                        <img src="images/logo.svg" alt="SFS Logo">
+                        <span>Spring-Fullstack-Speed <span class="version-badge">v1.0.2</span></span>
                     </a>
                 </div>
                 <div class="nav-links" id="navLinks">
@@ -26,9 +96,10 @@
                         <li><a href="index.html">Accueil</a></li>
                         <li><a href="documentation.html" class="active">Documentation</a></li>
                         <li><a href="commandes.html">Commandes</a></li>
-                        <li><a href="demos.html">Démos</a></li>
+                        <li><a href="payment-system-v1.0.2.html">Paiement</a></li>
                         <li><a href="roadmap.html">Roadmap</a></li>
-                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                        <li><a href="support.html">Support</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
                     </ul>
                 </div>
                 <i class="fas fa-bars" onclick="showMenu()"></i>
@@ -74,12 +145,16 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="#systeme-paiement">Système de Paiement</a>
+                    <a href="#systeme-paiement" class="new-feature">Système de Paiement</a>
                     <ul>
                         <li><a href="#options-paiement">Options disponibles</a></li>
                         <li><a href="#fournisseurs-paiement">Fournisseurs</a></li>
+                        <li><a href="#abonnements">Abonnements</a></li>
+                        <li><a href="#factures">Factures</a></li>
                         <li><a href="#remboursements">Remboursements</a></li>
                         <li><a href="#rapports-financiers">Rapports financiers</a></li>
+                        <li><a href="#international-payment">Support international</a></li>
+                        <li><a href="#paiement-mobile">Paiement mobile</a></li>
                     </ul>
                 </li>
                 <li><a href="#bases-donnees">Bases de données</a></li>
@@ -94,7 +169,7 @@
         <div class="content">
             <section id="introduction" class="doc-section">
                 <h1>Documentation Spring-Fullstack-Speed</h1>
-                <p class="version">Version actuelle: 1.0.1</p>
+                <p class="version">Version actuelle: <span class="version-badge">1.0.2</span></p>
 
                 <div class="intro-text">
                     <p>Spring-Fullstack-Speed (SFS) est un générateur de code CLI qui permet de créer rapidement des applications web fullstack modernes avec Spring Boot comme backend et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE).</p>
@@ -108,8 +183,31 @@
                         <li>Création automatique d'entités, DTOs et opérations CRUD</li>
                         <li>Configuration de sécurité prête à l'emploi (JWT, OAuth2)</li>
                         <li>Support pour plusieurs bases de données (MySQL, PostgreSQL, MongoDB, H2)</li>
-                        <li>Système de paiement complet avec support pour Stripe et PayPal</li>
+                        <li class="new-feature">Système de paiement complet avec support pour Stripe, PayPal et autres <span class="new-tag">NOUVEAU</span></li>
                     </ul>
+                </div>
+
+                <div class="feature-highlight">
+                    <h3>Nouveautés de la version 1.0.2</h3>
+                    <p>Cette version introduit le nouveau système de paiement avec:</p>
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <h4><i class="fas fa-credit-card"></i> Système de Paiement</h4>
+                            <p>Intégration facile avec les principaux fournisseurs de paiement</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4><i class="fas fa-sync-alt"></i> Abonnements</h4>
+                            <p>Gestion complète des abonnements et paiements récurrents</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4><i class="fas fa-file-invoice-dollar"></i> Facturation</h4>
+                            <p>Génération automatique et gestion des factures</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4><i class="fas fa-globe"></i> Support international</h4>
+                            <p>Prise en charge de plus de 135 devises différentes</p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -379,10 +477,18 @@
                 </div>
             </section>
 
-            <section id="systeme-paiement" class="doc-section">
-                <h2>Système de Paiement</h2>
+            <section id="systeme-paiement" class="doc-section new-feature">
+                <h2>Système de Paiement <span class="new-tag">NOUVEAU</span></h2>
 
-                <p>Le système de paiement de Spring-Fullstack-Speed permet d'intégrer facilement des solutions de paiement dans votre application.</p>
+                <p>Le système de paiement de Spring-Fullstack-Speed v1.0.2 permet d'intégrer facilement des solutions de paiement complètes et sécurisées dans votre application Spring Boot.</p>
+
+                <div class="provider-logos">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/2560px-Stripe_Logo%2C_revised_2016.svg.png" alt="Stripe" class="provider-logo">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/1200px-PayPal.svg.png" alt="PayPal" class="provider-logo">
+                    <img src="https://cdn.worldvectorlogo.com/logos/braintree.svg" alt="Braintree" class="provider-logo">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Adyen_Corporate_Logo.svg/2560px-Adyen_Corporate_Logo.svg.png" alt="Adyen" class="provider-logo">
+                    <img src="https://www.mollie.com/images/mollie/og-image.png" alt="Mollie" class="provider-logo">
+                </div>
 
                 <div class="basic-usage">
                     <h3>Utilisation basique</h3>
@@ -399,8 +505,8 @@
                     <h3>Options disponibles</h3>
                     <p>Pour une configuration non interactive, spécifiez les options directement:</p>
                     <div class="code-block">
-                        <pre><code>sfs payment --provider=stripe --currency=eur</code></pre>
-                        <button class="copy-btn" onclick="copyToClipboard('sfs payment --provider=stripe --currency=eur')">
+                        <pre><code>sfs payment --provider=stripe,paypal --subscription=true --invoicing=true --taxes=true</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs payment --provider=stripe,paypal --subscription=true --invoicing=true --taxes=true')">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
@@ -417,21 +523,57 @@
                         <tbody>
                             <tr>
                                 <td><code>--provider</code></td>
-                                <td>Fournisseur de paiement</td>
-                                <td>stripe, paypal</td>
+                                <td>Fournisseurs de paiement à intégrer</td>
+                                <td>stripe, paypal, braintree, adyen, mollie</td>
                                 <td><code>stripe</code></td>
                             </tr>
                             <tr>
-                                <td><code>--currency</code></td>
-                                <td>Devise des transactions</td>
-                                <td>EUR, USD, ...</td>
-                                <td><code>EUR</code></td>
+                                <td><code>--subscription</code></td>
+                                <td>Activer la gestion des abonnements</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
                             </tr>
                             <tr>
-                                <td><code>--webhook</code></td>
-                                <td>URL du webhook de paiement</td>
-                                <td>String</td>
-                                <td>-</td>
+                                <td><code>--invoicing</code></td>
+                                <td>Activer le système de facturation</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--taxes</code></td>
+                                <td>Configurer la gestion des taxes</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--refunds</code></td>
+                                <td>Implémenter la gestion des remboursements</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--reporting</code></td>
+                                <td>Générer des rapports financiers</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--mobile-pay</code></td>
+                                <td>Activer le paiement mobile</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--international</code></td>
+                                <td>Support des devises internationales</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--fraud-detection</code></td>
+                                <td>Ajouter la détection de fraude</td>
+                                <td>true, false</td>
+                                <td><code>false</code></td>
                             </tr>
                         </tbody>
                     </table>
@@ -439,31 +581,145 @@
 
                 <div id="fournisseurs-paiement">
                     <h3>Fournisseurs de paiement</h3>
-                    <p>SFS prend en charge plusieurs fournisseurs de paiement:</p>
+                    <p>SFS v1.0.2 prend en charge plusieurs fournisseurs de paiement:</p>
 
                     <div class="provider-info">
                         <h4>Stripe</h4>
-                        <p>Stripe est un fournisseur de services de paiement en ligne. Pour l'utiliser, créez un compte sur <a href="https://stripe.com" target="_blank">stripe.com</a> et obtenez vos clés API.</p>
+                        <p>Stripe est un fournisseur de services de paiement en ligne leader sur le marché. Pour l'utiliser, créez un compte sur <a href="https://stripe.com" target="_blank">stripe.com</a> et obtenez vos clés API.</p>
                     </div>
 
                     <div class="provider-info">
                         <h4>PayPal</h4>
-                        <p>PayPal est un système de paiement en ligne populaire. Inscrivez-vous sur <a href="https://paypal.com" target="_blank">paypal.com</a> pour obtenir vos identifiants API.</p>
+                        <p>PayPal est un système de paiement en ligne populaire. Inscrivez-vous sur <a href="https://developer.paypal.com" target="_blank">developer.paypal.com</a> pour obtenir vos identifiants API.</p>
                     </div>
+
+                    <div class="provider-info">
+                        <h4>Braintree</h4>
+                        <p>Braintree (une société PayPal) offre des solutions de paiement flexibles. Créez un compte sur <a href="https://www.braintreepayments.com" target="_blank">braintreepayments.com</a>.</p>
+                    </div>
+
+                    <div class="provider-info">
+                        <h4>Adyen <span class="new-tag">NOUVEAU</span></h4>
+                        <p>Adyen est une plateforme de paiement internationale avec support avancé pour les paiements locaux. Inscrivez-vous sur <a href="https://www.adyen.com" target="_blank">adyen.com</a>.</p>
+                    </div>
+
+                    <div class="provider-info">
+                        <h4>Mollie <span class="new-tag">NOUVEAU</span></h4>
+                        <p>Mollie est une solution de paiement européenne populaire avec une API intuitive. Créez un compte sur <a href="https://www.mollie.com" target="_blank">mollie.com</a>.</p>
+                    </div>
+                </div>
+
+                <div id="abonnements">
+                    <h3>Abonnements</h3>
+                    <p>Le système de paiement inclut une gestion complète des abonnements pour les modèles économiques récurrents:</p>
+
+                    <ul>
+                        <li>Création et gestion de plans d'abonnement</li>
+                        <li>Cycle de facturation (mensuel, annuel, personnalisé)</li>
+                        <li>Périodes d'essai gratuites</li>
+                        <li>Gestion des upgrades/downgrades</li>
+                        <li>Annulations et pauses d'abonnements</li>
+                    </ul>
+
+                    <div class="code-block">
+                        <pre><code>// Exemple de création d'un abonnement
+SubscriptionDTO subscription = subscriptionService.createSubscription(
+    "customer123",
+    "plan_premium_monthly",
+    "pm_card_visa"
+);</code></pre>
+                    </div>
+                </div>
+
+                <div id="factures">
+                    <h3>Factures</h3>
+                    <p>La fonctionnalité de facturation permet de:</p>
+
+                    <ul>
+                        <li>Générer des factures automatiquement lors d'un paiement</li>
+                        <li>Envoyer des factures par email</li>
+                        <li>Personnaliser le format et le style des factures</li>
+                        <li>Gérer l'historique des factures</li>
+                        <li>Générer des factures multilingues <span class="new-tag">NOUVEAU</span></li>
+                    </ul>
                 </div>
 
                 <div id="remboursements">
                     <h3>Remboursements</h3>
-                    <p>Pour gérer les remboursements, utilisez les fonctionnalités intégrées de votre fournisseur de paiement. Par exemple, Stripe et PayPal offrent des API pour traiter les remboursements.</p>
+                    <p>Le système offre des fonctionnalités complètes pour les remboursements:</p>
+
+                    <ul>
+                        <li>Remboursements complets</li>
+                        <li>Remboursements partiels</li>
+                        <li>Suivi des motifs de remboursement</li>
+                        <li>Historique des remboursements</li>
+                        <li>Remboursements programmés <span class="new-tag">NOUVEAU</span></li>
+                    </ul>
+
+                    <div class="code-block">
+                        <pre><code>// Exemple de remboursement partiel
+RefundDTO refund = refundService.partialRefund(
+    "payment_123",
+    new BigDecimal("30.00"),
+    "Remboursement partiel suite à un problème de livraison"
+);</code></pre>
+                    </div>
                 </div>
 
                 <div id="rapports-financiers">
                     <h3>Rapports financiers</h3>
-                    <p>Générez des rapports financiers détaillés sur les transactions, les remboursements, et les revenus directement depuis le tableau de bord de votre fournisseur de paiement.</p>
+                    <p>Générez des rapports financiers détaillés:</p>
+
+                    <ul>
+                        <li>Rapports de revenus (journaliers, mensuels, annuels)</li>
+                        <li>Rapports de transactions</li>
+                        <li>Rapports clients</li>
+                        <li>Exports en PDF et Excel</li>
+                        <li>Tableaux de bord interactifs <span class="new-tag">NOUVEAU</span></li>
+                        <li>Prévisions de revenus <span class="new-tag">NOUVEAU</span></li>
+                    </ul>
+                </div>
+
+                <div id="international-payment">
+                    <h3>Support international <span class="new-tag">NOUVEAU</span></h3>
+                    <p>La version 1.0.2 ajoute un support complet pour les paiements internationaux:</p>
+
+                    <ul>
+                        <li>Support de plus de 135 devises</li>
+                        <li>Conversion de devise automatique</li>
+                        <li>Méthodes de paiement locales selon les pays</li>
+                        <li>Gestion fiscale internationale (TVA, taxes de vente, etc.)</li>
+                    </ul>
+                </div>
+
+                <div id="paiement-mobile">
+                    <h3>Paiement mobile <span class="new-tag">NOUVEAU</span></h3>
+                    <p>La version 1.0.2 prend en charge les méthodes de paiement mobile modernes:</p>
+
+                    <ul>
+                        <li>Apple Pay avec intégration native</li>
+                        <li>Google Pay avec boutons personnalisables</li>
+                        <li>Paiements par QR code</li>
+                        <li>Optimisation pour les appareils mobiles</li>
+                    </ul>
+                </div>
+
+                <div class="code-block">
+                    <pre><code>// Configuration de Spring dans application.yml
+sfs:
+  payment:
+    provider: stripe
+    webhook-endpoint: /api/webhook/stripe
+    currency: EUR
+    stripe:
+      api-key: ${STRIPE_API_KEY}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET}</code></pre>
+                </div>
+
+                <div class="doc-note">
+                    <p><i class="fas fa-info-circle"></i> Pour une documentation complète sur le système de paiement, consultez la <a href="payment-system-v1.0.2.html">documentation dédiée</a>.</p>
                 </div>
             </section>
-
-            <!-- Les autres sections seraient similaires, avec le contenu approprié -->
 
             <section id="faq" class="doc-section">
                 <h2>FAQ - Questions fréquemment posées</h2>
@@ -482,13 +738,13 @@
                 </div>
 
                 <div class="faq-item">
-                    <h3>Comment ajouter des fonctionnalités à un projet existant ?</h3>
+                    <h3>Comment ajouter le système de paiement à un projet existant ?</h3>
                     <div class="answer">
-                        <p>Utilisez la commande <code>sfs add</code> pour ajouter de nouvelles fonctionnalités à un projet existant :</p>
+                        <p>Pour ajouter le système de paiement à un projet SFS existant, utilisez la commande :</p>
                         <div class="code-block">
-                            <pre><code>cd my-project
-sfs add --feature=websocket</code></pre>
-                            <button class="copy-btn" onclick="copyToClipboard('cd my-project\nsfs add --feature=websocket')">
+                            <pre><code>cd mon-projet
+sfs payment --provider=stripe</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('cd mon-projet\nsfs payment --provider=stripe')">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -516,7 +772,7 @@ sfs add --feature=websocket</code></pre>
         <div class="container">
             <div class="footer-content">
                 <div class="footer-logo">
-                    <img src="images/logo.png" alt="SFS Logo">
+                    <img src="images/logo.svg" alt="SFS Logo">
                     <h3>Spring-Fullstack-Speed</h3>
                     <p>Générateur d'applications Spring Boot fullstack</p>
                 </div>

@@ -1,4 +1,4 @@
-# Module de Paiement - <%= appName %>
+# Module de Paiement - <%= appName %> (v1.0.2)
 
 <% if (paymentProvider === 'stripe') { %>
 ## Configuration du système de paiement avec Stripe
@@ -9,23 +9,99 @@ Ce module implémente une solution complète de gestion de paiements basée sur 
 - Abonnements et plans tarifaires
 - Facturation et reçus
 - Transactions et remboursements
+- Paiements mobiles (Apple Pay, Google Pay) - *Nouveau dans v1.0.2*
+- Support multidevises et international - *Nouveau dans v1.0.2*
+<% } else if (paymentProvider === 'paypal') { %>
+## Configuration du système de paiement avec PayPal
+
+Ce module implémente une solution complète de gestion de paiements basée sur [PayPal](https://paypal.com). Il vous permet de gérer :
+
+- Paiements ponctuels via PayPal Express Checkout
+- Abonnements et plans tarifaires
+- Facturation et reçus
+- Transactions et remboursements
+- Support multidevises et international - *Nouveau dans v1.0.2*
+<% } else if (paymentProvider === 'adyen' || paymentProvider === 'mollie') { %>
+## Configuration du système de paiement avec <%= paymentProvider %>
+
+Ce module implémente une solution de gestion de paiements basée sur <%= paymentProvider %>. Il fournit une intégration complète pour gérer le cycle de vie des paiements dans votre application.
+
+*Nouveau dans v1.0.2:* Support complet pour les paiements internationaux et méthodes de paiement locales.
 <% } else { %>
 ## Configuration du système de paiement avec <%= paymentProvider %>
 
 Ce module implémente une solution de gestion de paiements basée sur <%= paymentProvider %>. Il fournit une intégration complète pour gérer le cycle de vie des paiements dans votre application.
 <% } %>
 
-## Fonctionnalités principales
+## Nouvelles fonctionnalités (v1.0.2)
 
-- **Traitement des paiements** : Capture, autorisation et annulation
-- **Gestion des abonnements** : Création, modification et annulation
-- **Facturation** : Génération automatique des factures et reçus
-- **Tableau de bord administrateur** : Suivi des transactions et des revenus
-- **Rapports financiers** : Exportation en formats PDF et Excel
-- **Webhooks** : Gestion des événements asynchrones
-<% if (withTaxes) { %>
-- **Gestion des taxes** : Support international pour TVA et taxes de vente
+Ce module a été considérablement amélioré dans la version 1.0.2 avec les fonctionnalités suivantes :
+
+<% if (subscriptions) { %>
+### Gestion des abonnements avancée
+- Support pour essais gratuits avec conversion automatique
+- Gestion des upgrades/downgrades de plans
+- Options de facturation flexibles (mensuel, annuel, personnalisé)
+- Notifications automatiques avant renouvellements
 <% } %>
+
+<% if (invoicing) { %>
+### Facturation améliorée
+- Factures multilingues - *Nouveau dans v1.0.2*
+- Modèles personnalisables avec votre logo et détails d'entreprise
+- Envoi automatique par email
+- Historique complet des factures
+<% } %>
+
+<% if (refunds) { %>
+### Système de remboursement
+- Support pour remboursements complets ou partiels
+- Remboursements programmés - *Nouveau dans v1.0.2*
+- Suivi des motifs de remboursement
+- Politiques de remboursement configurables
+<% } %>
+
+<% if (reporting) { %>
+### Rapports financiers avancés
+- Tableaux de bord interactifs - *Nouveau dans v1.0.2*
+- Rapports de revenus (journaliers, hebdomadaires, mensuels, annuels)
+- Exports en PDF et Excel
+- Prévisions et analyses de tendances - *Nouveau dans v1.0.2*
+<% } %>
+
+<% if (mobilePay) { %>
+### Paiement mobile
+- Intégration native d'Apple Pay
+- Support pour Google Pay
+- Paiements par QR code
+- Interface optimisée pour mobile
+<% } %>
+
+<% if (international) { %>
+### Support international
+- Plus de 135 devises supportées
+- Conversion automatique de devises
+- Méthodes de paiement locales selon les pays
+- Gestion fiscale internationale (TVA, taxes de vente, etc.)
+<% } %>
+
+<% if (fraudDetection) { %>
+### Détection de fraude
+- Règles personnalisables de détection de fraude
+- Alertes automatiques pour transactions suspectes
+- Tableau de bord de surveillance en temps réel
+- Rapports d'analyse de risques
+<% } %>
+
+## Sécurité
+
+Le module intègre les dernières normes de sécurité pour les paiements en ligne :
+
+- Authentification 3D Secure 2.0 (conformité PSD2) - *Nouveau dans v1.0.2*
+- Tokenisation complète des données de paiement
+- Conformité PCI DSS
+- Protection contre la fraude
+- Audits de sécurité et journalisation
 
 ## Architecture
 

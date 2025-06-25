@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de Paiement - Spring-Fullstack-Speed v1.0.2</title>
+    <meta name="description" content="Documentation complète sur le système de paiement de Spring-Fullstack-Speed pour intégrer Stripe et PayPal dans votre application Spring Boot.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/documentation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <style>
+        .payment-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        .payment-feature-card {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-top: 4px solid #3949ab;
+        }
+        .payment-feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .payment-feature-card h3 {
+            color: #3949ab;
+            margin-top: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .payment-feature-card i {
+            color: #3949ab;
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+        .payment-feature-card p {
+            color: #616161;
+            line-height: 1.6;
+        }
+        .provider-logos {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 40px 0;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .provider-logo {
+            max-width: 160px;
+            height: auto;
+            filter: grayscale(0.3);
+            transition: all 0.4s ease;
+        }
+        .provider-logo:hover {
+            filter: grayscale(0);
+            transform: scale(1.05);
+        }
+        .code-example {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+        .code-example::before {
+            content: "Java";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #3949ab;
+            color: white;
+            padding: 2px 10px;
+            font-size: 0.8rem;
+            border-radius: 0 8px 0 8px;
+        }
+        .code-title {
+            display: block;
+            font-size: 0.9rem;
+            color: #9e9e9e;
+            margin-bottom: 10px;
+        }
+        .version-badge {
+            background-color: #4caf50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #3949ab 0%, #1a237e 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+            margin-bottom: 40px;
+            border-radius: 0 0 50% 50% / 20px;
+        }
+        .hero-section h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+        }
+        .hero-section p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+        }
+        .demo-image {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            margin: 30px 0;
+            transition: transform 0.3s ease;
+        }
+        .demo-image:hover {
+            transform: scale(1.02);
+        }
+        .report-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 25px 0;
+        }
+        .report-type {
+            flex: 1 1 250px;
+            background-color: #e8f5e9;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #4caf50;
+            transition: all 0.3s ease;
+        }
+        .report-type:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .report-type h4 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .cta-section {
+            background-color: #f5f5f5;
+            border-radius: 12px;
+            padding: 40px;
+            margin: 50px 0;
+            text-align: center;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #3949ab;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(57, 73, 171, 0.3);
+        }
+        .cta-button:hover {
+            background-color: #303f9f;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(57, 73, 171, 0.4);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .feature-item {
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .feature-item:hover {
+            transform: translateY(-5px);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #3949ab;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-size: 2.2rem;
+            color: #303f9f;
+            margin: 60px 0 30px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 80px;
+            height: 4px;
+            background: #3949ab;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header class="documentation-header">
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a href="index.html">
+                        <img src="images/logo.svg" alt="SFS Logo">
+                        <span>Spring-Fullstack-Speed</span>
+                    </a>
+                </div>
+                <div class="nav-links" id="navLinks">
+                    <i class="fas fa-times" onclick="hideMenu()"></i>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="support.html">Support</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
+                    </ul>
+                </div>
+                <i class="fas fa-bars" onclick="showMenu()"></i>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero-section">
+        <div class="container">
+            <h1>Système de Paiement <span class="version-badge">v1.0.2</span></h1>
+            <p>Une solution complète et modulaire pour intégrer des systèmes de paiement dans votre application Spring Boot</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <section>
+            <p class="intro-text">
+                Le module de paiement de Spring-Fullstack-Speed vous permet d'intégrer rapidement des fonctionnalités de paiement
+                complètes dans votre application. La version 1.0.2 introduit une solution de paiement robuste et sécurisée,
+                avec prise en charge de plusieurs fournisseurs et des fonctionnalités avancées comme les abonnements et la facturation.
+            </p>
+
+            <div class="provider-logos">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Stripe_Logo%2C_revised_2016.svg/2560px-Stripe_Logo%2C_revised_2016.svg.png" alt="Stripe" class="provider-logo">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/1200px-PayPal.svg.png" alt="PayPal" class="provider-logo">
+                <img src="https://cdn.worldvectorlogo.com/logos/braintree.svg" alt="Braintree" class="provider-logo">
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">Principales fonctionnalités</h2>
+            <div class="payment-features">
+                <div class="payment-feature-card">
+                    <i class="fas fa-credit-card"></i>
+                    <h3>Paiements simples</h3>
+                    <p>Traitez facilement les paiements par carte de crédit et autres méthodes avec une API simple et cohérente, indépendamment du fournisseur sous-jacent.</p>
+                </div>
+                <div class="payment-feature-card">
+                    <i class="fas fa-sync-alt"></i>
+                    <h3>Abonnements</h3>
+                    <p>Gérez des plans d'abonnement récurrents avec différentes périodes de facturation, essais gratuits et fonctionnalités d'upgrade/downgrade.</p>
+                </div>
+                <div class="payment-feature-card">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <h3>Facturation</h3>
+                    <p>Génération automatique de factures professionnelles avec personnalisation, envoi par email et historique complet des transactions.</p>
+                </div>
+                <div class="payment-feature-card">
+                    <i class="fas fa-undo-alt"></i>
+                    <h3>Remboursements</h3>
+                    <p>Processus complet pour les remboursements totaux ou partiels, avec suivi et reporting intégré pour une gestion transparente.</p>
+                </div>
+                <div class="payment-feature-card">
+                    <i class="fas fa-percentage"></i>
+                    <h3>Taxes</h3>
+                    <p>Calcul automatique des taxes selon les juridictions, avec support pour la TVA, les taxes de vente et autres réglementations fiscales.</p>
+                </div>
+                <div class="payment-feature-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Rapports financiers</h3>
+                    <p>Tableaux de bord et rapports détaillés sur les revenus, transactions et comportements clients pour une visibilité complète.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">Comment l'utiliser</h2>
+            <p>L'intégration du système de paiement est simple grâce à notre générateur de code spécialisé.</p>
+
+            <div class="code-example">
+                <span class="code-title">Commande de base pour générer un système de paiement</span>
+                <code>sfs payment --provider=stripe</code>
+            </div>
+
+            <p>Pour un système de paiement plus complet avec abonnements et facturation:</p>
+
+            <div class="code-example">
+                <span class="code-title">Configuration avancée</span>
+                <code>sfs payment --provider=stripe,paypal --subscription=true --invoicing=true --taxes=true</code>
+            </div>
+
+            <h3>Exemple de code</h3>
+            <p>Voici comment utiliser le système de paiement généré dans votre code:</p>
+
+            <div class="code-example">
+                <span class="code-title">Création d'un paiement simple</span>
+                <code>
+// Création d'une requête de paiement
+PaymentRequestDTO request = new PaymentRequestDTO();
+request.setAmount(new BigDecimal("99.99"));
+request.setCurrency("EUR");
+request.setDescription("Abonnement Premium");
+request.setPaymentMethodId("pm_card_visa");
+
+// Traitement du paiement
+PaymentResponseDTO response = paymentService.processPayment(request);
+                </code>
+            </div>
+
+            <div class="code-example">
+                <span class="code-title">Gestion des abonnements</span>
+                <code>
+// Création d'un abonnement
+SubscriptionRequestDTO subRequest = new SubscriptionRequestDTO();
+subRequest.setPlanId("plan_premium_monthly");
+subRequest.setCustomerId("cust_12345");
+subRequest.setPaymentMethodId("pm_card_visa");
+
+// Activation de l'abonnement
+SubscriptionResponseDTO subscription = subscriptionService.createSubscription(subRequest);
+                </code>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">Rapports financiers</h2>
+            <p>Le module de paiement inclut des fonctionnalités avancées de reporting financier pour suivre vos revenus et transactions.</p>
+
+            <div class="report-types">
+                <div class="report-type">
+                    <h4>Rapports de revenus</h4>
+                    <p>Visualisez vos revenus par jour, semaine, mois ou année avec des graphiques détaillés et des métriques clés.</p>
+                </div>
+                <div class="report-type">
+                    <h4>Rapports de transactions</h4>
+                    <p>Suivez toutes les transactions avec filtres par statut, montant, méthode de paiement et période.</p>
+                </div>
+                <div class="report-type">
+                    <h4>Rapports clients</h4>
+                    <p>Analysez les comportements d'achat, la valeur vie client et les patterns d'abonnement.</p>
+                </div>
+            </div>
+
+            <img src="https://d33wubrfki0l68.cloudfront.net/c760b12750f69aaf0c82505c18c647e2e1f2f6b8/6a0b2/assets/img/stripe-dashboard.png" alt="Exemple de tableau de bord de paiement" class="demo-image">
+        </section>
+
+        <div class="cta-section">
+            <h3>Prêt à implémenter votre système de paiement?</h3>
+            <p>Commencez dès maintenant et gagnez des semaines de développement avec notre générateur de paiement.</p>
+            <a href="documentation.html#payment-generator" class="cta-button">Consulter la documentation complète</a>
+        </div>
+
+        <section>
+            <h2 class="section-title">Nouveautés de la version 1.0.2</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h4>Sécurité renforcée</h4>
+                    <p>Authentification 3D Secure 2.0 et conformité PSD2</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-globe"></i></div>
+                    <h4>Support international</h4>
+                    <p>Plus de 135 devises et méthodes de paiement locales</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                    <h4>Paiement mobile</h4>
+                    <p>Support pour Apple Pay et Google Pay</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon"><i class="fas fa-code"></i></div>
+                    <h4>API améliorée</h4>
+                    <p>Interface plus intuitive et mieux documentée</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="footer-col">
+                    <h4>Spring-Fullstack-Speed</h4>
+                    <p>Un générateur complet pour créer des applications Spring Boot fullstack rapidement et efficacement.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Liens Utiles</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Communauté</h4>
+                    <ul>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed">GitHub</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/issues">Tickets</a></li>
+                        <li><a href="contributing.html">Contribuer</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Nous Suivre</h4>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>© 2025 Spring-Fullstack-Speed. Tous droits réservés.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/documentation.js"></script>
+    <script src="js/analytics.js"></script>
+</body>
+</html>

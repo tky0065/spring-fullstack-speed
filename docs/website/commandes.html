@@ -3,12 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Commandes - Spring-Fullstack-Speed</title>
+    <title>Commandes - Spring-Fullstack-Speed v1.0.2</title>
     <meta name="description" content="Liste complète des commandes disponibles dans Spring-Fullstack-Speed avec exemples et options.">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/commandes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <style>
+        .version-badge {
+            background-color: #4caf50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .new-command {
+            border-left: 4px solid #4caf50;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .new-tag {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+            position: relative;
+            top: -1px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -17,7 +44,7 @@
                 <div class="logo">
                     <a href="index.html">
                         <img src="images/logo.svg" alt="SFS Logo">
-                        <span>Spring-Fullstack-Speed</span>
+                        <span>Spring-Fullstack-Speed <span class="version-badge">v1.0.2</span></span>
                     </a>
                 </div>
                 <div class="nav-links" id="navLinks">
@@ -26,16 +53,17 @@
                         <li><a href="index.html">Accueil</a></li>
                         <li><a href="documentation.html">Documentation</a></li>
                         <li><a href="commandes.html" class="active">Commandes</a></li>
-                        <li><a href="demos.html">Démos</a></li>
+                        <li><a href="payment-system-v1.0.2.html">Paiement</a></li>
                         <li><a href="roadmap.html">Roadmap</a></li>
-                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                        <li><a href="support.html">Support</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
                     </ul>
                 </div>
                 <i class="fas fa-bars" onclick="showMenu()"></i>
             </nav>
 
             <div class="commands-hero">
-                <h1>Commandes SFS</h1>
+                <h1>Commandes SFS <span class="version-badge">v1.0.2</span></h1>
                 <p>Guide complet de toutes les commandes disponibles</p>
             </div>
         </div>
@@ -59,6 +87,7 @@
                     <button class="category-tab" data-category="dev">Développement</button>
                     <button class="category-tab" data-category="deployment">Déploiement</button>
                     <button class="category-tab" data-category="utils">Utilitaires</button>
+                    <button class="category-tab" data-category="business">Business</button>
                 </div>
             </div>
 
@@ -649,6 +678,100 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Payment System Command - NOUVELLE COMMANDE -->
+                <div class="command-card new-command" data-category="business">
+                    <div class="command-header">
+                        <h2>sfs payment <span class="new-tag">NOUVEAU</span></h2>
+                        <div class="command-badges">
+                            <span class="badge primary">Business</span>
+                            <span class="badge">v1.0.2</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Génère un système de paiement complet avec intégration de passerelles de paiement (Stripe, PayPal, etc.).</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs payment</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs payment')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs payment --provider=stripe,paypal --subscription=true --invoicing=true --taxes=true</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs payment --provider=stripe,paypal --subscription=true --invoicing=true --taxes=true')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs payment --provider=stripe --mobile-pay=true --international=true</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs payment --provider=stripe --mobile-pay=true --international=true')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--provider</code></td>
+                                    <td>Fournisseurs de paiement à intégrer</td>
+                                    <td>stripe, paypal, braintree, adyen, mollie</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--subscription</code></td>
+                                    <td>Activer la gestion des abonnements</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--invoicing</code></td>
+                                    <td>Activer le système de facturation</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--taxes</code></td>
+                                    <td>Configurer la gestion des taxes</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--refunds</code></td>
+                                    <td>Implémenter la gestion des remboursements</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--reporting</code></td>
+                                    <td>Générer des rapports financiers</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--mobile-pay</code></td>
+                                    <td>Activer le paiement mobile (Apple Pay, Google Pay)</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--international</code></td>
+                                    <td>Support des devises internationales</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--fraud-detection</code></td>
+                                    <td>Ajouter la détection de fraude</td>
+                                    <td>true, false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -693,4 +816,3 @@
     <script src="js/commands.js"></script>
 </body>
 </html>
-

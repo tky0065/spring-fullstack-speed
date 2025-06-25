@@ -1,10 +1,19 @@
-# Documentation du générateur de paiement
+# Documentation du générateur de paiement (version 1.0.2)
 
 Ce document décrit en détail le générateur de paiement de Spring-Fullstack-Speed et comment l'utiliser pour ajouter rapidement un système de paiement complet à votre application.
 
 ## Vue d'ensemble
 
 Le générateur de paiement (`sfs payment`) vous permet d'intégrer facilement des fonctionnalités de paiement avancées dans votre application Spring Boot. Il supporte plusieurs fournisseurs de paiement tels que Stripe et PayPal, ainsi que des fonctionnalités comme les abonnements, la facturation et les remboursements.
+
+## Nouveautés de la version 1.0.2
+
+- **Support pour Adyen et Mollie** : Intégration de deux nouveaux fournisseurs de paiement
+- **Paiements mobiles** : Génération automatique du code pour Apple Pay et Google Pay
+- **Factures multilingues** : Support pour les factures en plusieurs langues
+- **Tableaux de bord financiers** : Génération de dashboards interactifs pour le suivi des revenus
+- **Sécurité renforcée** : Conformité 3D Secure 2.0 et PSD2
+- **Générateur de tests** : Création automatique de tests pour les différents scénarios de paiement
 
 ## Fonctionnalités principales
 
@@ -41,9 +50,13 @@ sfs payment [options]
 | `--taxes` | Configurer la gestion des taxes | `false` | `--taxes=true` |
 | `--refunds` | Implémenter la gestion des remboursements | `false` | `--refunds=true` |
 | `--reporting` | Générer des rapports financiers | `false` | `--reporting=true` |
+| `--mobile-pay` | Activer le paiement mobile (Apple Pay, Google Pay) | `false` | `--mobile-pay=true` |
+| `--international` | Activer le support des devises internationales | `false` | `--international=true` |
+| `--fraud-detection` | Ajouter la détection de fraude | `false` | `--fraud-detection=true` |
 | `--package-name` | Nom du package pour le système de paiement | `[base].payment` | `--package-name=com.example.payment` |
 | `--skip-install` | Ignorer l'installation des dépendances | `false` | `--skip-install=true` |
 | `--lombok` | Utiliser Lombok pour réduire le code boilerplate | `true` | `--lombok=false` |
+| `--generate-tests` | Générer des tests automatiques | `true` | `--generate-tests=false` |
 
 ### Exemples d'utilisation
 
@@ -71,6 +84,14 @@ sfs payment --provider=stripe --refunds=true --reporting=true
 
 Cette commande génère un système de paiement Stripe avec une gestion avancée des remboursements et un module de rapports financiers.
 
+#### Système de paiement international avec paiement mobile
+
+```bash
+sfs payment --provider=stripe,adyen --international=true --mobile-pay=true
+```
+
+Cette commande crée un système de paiement avec support pour les devises internationales et les méthodes de paiement mobile.
+
 ## Structure générée
 
 Le générateur crée la structure de fichiers suivante :
@@ -79,7 +100,10 @@ Le générateur crée la structure de fichiers suivante :
 src/main/java/com/example/payment/
 ├── config/
 │   ├── PaymentConfig.java
-│   └── StripeConfig.java (si Stripe est sélectionné)
+│   ├── StripeConfig.java (si Stripe est sélectionné)
+│   ├── PayPalConfig.java (si PayPal est sélectionné)
+│   ├── AdyenConfig.java (si Adyen est sélectionné)
+│   └── SecurityConfig.java
 ├── controllers/
 │   ├── PaymentController.java
 │   ├── WebhookController.java
@@ -91,171 +115,182 @@ src/main/java/com/example/payment/
 │   ├── PaymentRequestDTO.java
 │   ├── PaymentResponseDTO.java
 │   ├── RefundDTO.java (si refunds=true)
-│   └── ...
+│   ├── SubscriptionDTO.java (si subscription=true)
+│   └── InvoiceDTO.java (si invoicing=true)
 ├── entities/
 │   ├── Payment.java
 │   ├── Transaction.java
 │   ├── Customer.java
+│   ├── PaymentMethod.java
 │   ├── Refund.java (si refunds=true)
-│   └── ...
+│   ├── Invoice.java (si invoicing=true)
+│   └── Subscription.java (si subscription=true)
 ├── repositories/
 │   ├── PaymentRepository.java
 │   ├── TransactionRepository.java
+│   ├── CustomerRepository.java
 │   ├── RefundRepository.java (si refunds=true)
-│   └── ...
-└── services/
-    ├── PaymentService.java
-    ├── StripePaymentService.java (si Stripe est sélectionné)
-    ├── RefundService.java (si refunds=true)
-    └── ...
-```
-
-Si l'option `--reporting=true` est sélectionnée, le générateur crée également :
-
-```
-src/main/java/com/example/payment/
-├── reports/
-│   ├── ReportController.java
-│   ├── ReportService.java
-│   ├── ReportServiceImpl.java
-│   ├── ExcelReportGenerator.java
-│   ├── PdfReportGenerator.java
-│   ├── CustomerReport.java
-│   ├── RevenueReport.java
-│   └── TransactionReport.java
-```
-
-## Endpoints REST générés
-
-Le générateur crée les endpoints REST suivants :
-
-| Méthode | URL | Description | Option requise |
-|---------|-----|-------------|---------------|
-| POST | `/api/payments` | Créer un nouveau paiement | (toujours inclus) |
-| GET | `/api/payments/{id}` | Obtenir les détails d'un paiement | (toujours inclus) |
-| POST | `/api/webhooks/{provider}` | Traiter les événements webhooks | `--webhook=true` |
-| POST | `/api/subscriptions` | Créer un abonnement | `--subscription=true` |
-| GET | `/api/invoices` | Lister les factures | `--invoicing=true` |
-| POST | `/api/refunds/payment/{paymentId}` | Rembourser intégralement un paiement | `--refunds=true` |
-| POST | `/api/refunds/payment/{paymentId}/partial` | Effectuer un remboursement partiel | `--refunds=true` |
-| GET | `/api/reports/revenue` | Générer un rapport de revenus | `--reporting=true` |
-| GET | `/api/reports/customers` | Générer un rapport clients | `--reporting=true` |
-| GET | `/api/reports/transactions` | Générer un rapport de transactions | `--reporting=true` |
-
-## Configuration des fournisseurs de paiement
-
-### Stripe
-
-Le générateur ajoute les propriétés suivantes à votre fichier `application.properties` :
-
-```properties
-payment.stripe.api-key=${STRIPE_API_KEY}
-payment.stripe.webhook-secret=${STRIPE_WEBHOOK_SECRET}
-payment.stripe.public-key=${STRIPE_PUBLIC_KEY}
-payment.stripe.success-url=${STRIPE_SUCCESS_URL:http://localhost:8080/payment/success}
-payment.stripe.cancel-url=${STRIPE_CANCEL_URL:http://localhost:8080/payment/cancel}
-```
-
-### PayPal
-
-Si PayPal est sélectionné, le générateur ajoute :
-
-```properties
-payment.paypal.client-id=${PAYPAL_CLIENT_ID}
-payment.paypal.client-secret=${PAYPAL_CLIENT_SECRET}
-payment.paypal.mode=${PAYPAL_MODE:sandbox}
-```
-
-## Modules de rapports financiers
-
-Lorsque l'option `--reporting=true` est activée, le générateur crée un module complet de rapports financiers qui permet de :
-
-1. **Générer des rapports de revenus** : Analyse des revenus sur une période donnée avec regroupement par jour, semaine, mois ou année
-2. **Générer des rapports de transactions** : Liste détaillée des transactions avec possibilité de filtrer par statut
-3. **Générer des rapports clients** : Analyse de l'acquisition et de la rétention des clients, ainsi que le revenu moyen par client
-4. **Exporter les rapports** : Export des rapports au format PDF et Excel pour les partager facilement
-
-Les rapports financiers sont accessibles via des APIs REST dédiées :
-
-```
-GET /api/reports/revenue?startDate=2023-01-01&endDate=2023-12-31&groupBy=month
-GET /api/reports/transactions?startDate=2023-01-01&endDate=2023-12-31&status=COMPLETED
-GET /api/reports/customers?startDate=2023-01-01&endDate=2023-12-31
-GET /api/reports/{id}/export?format=pdf
-```
-
-## Module de remboursements
-
-Lorsque l'option `--refunds=true` est activée, le générateur crée un module de gestion des remboursements qui permet de :
-
-1. **Effectuer des remboursements complets** : Remboursement de la totalité d'un paiement
-2. **Effectuer des remboursements partiels** : Remboursement d'une partie du montant avec justification
-3. **Consulter l'historique des remboursements** : Liste de tous les remboursements effectués
-4. **Annuler des remboursements** : Possibilité d'annuler un remboursement (si le fournisseur le permet)
-
-Les remboursements sont accessibles via des APIs REST dédiées :
-
-```
-POST /api/refunds/payment/{paymentId}
-POST /api/refunds/payment/{paymentId}/partial
-GET /api/refunds
-GET /api/refunds/{id}
-POST /api/refunds/{id}/cancel
+│   └── InvoiceRepository.java (si invoicing=true)
+├── services/
+│   ├── PaymentService.java
+│   ├── StripeService.java (si Stripe est sélectionné)
+│   ├── PayPalService.java (si PayPal est sélectionné)
+│   ├── WebhookService.java (si webhook=true)
+│   ├── RefundService.java (si refunds=true)
+│   ├── InvoiceService.java (si invoicing=true)
+│   ├── SubscriptionService.java (si subscription=true)
+│   ├── ReportingService.java (si reporting=true)
+│   └── TaxService.java (si taxes=true)
+├── exceptions/
+│   ├── PaymentException.java
+│   ├── WebhookException.java
+│   └── RefundException.java
+├── utils/
+│   ├── PaymentUtils.java
+│   ├── CurrencyConverter.java (si international=true)
+│   └── SecurityUtils.java
+└── events/
+    ├── PaymentEvent.java
+    ├── PaymentEventListener.java
+    └── PaymentEventPublisher.java
 ```
 
 ## Tests générés
 
-Le générateur crée également des tests unitaires et d'intégration pour le système de paiement :
+Si l'option `--generate-tests=true` est activée (valeur par défaut), le générateur crée également les tests suivants :
 
 ```
 src/test/java/com/example/payment/
 ├── controllers/
 │   ├── PaymentControllerTest.java
-│   ├── RefundControllerTest.java (si refunds=true)
-│   └── ...
+│   ├── WebhookControllerTest.java
+│   └── RefundControllerTest.java (si refunds=true)
 ├── services/
 │   ├── PaymentServiceTest.java
-│   ├── RefundServiceTest.java (si refunds=true)
-│   └── ...
-└── repositories/
-    ├── PaymentRepositoryTest.java
-    ├── RefundRepositoryTest.java (si refunds=true)
-    └── ...
+│   ├── StripeServiceTest.java (si Stripe est sélectionné)
+│   ├── PayPalServiceTest.java (si PayPal est sélectionné)
+│   └── RefundServiceTest.java (si refunds=true)
+└── integration/
+    ├── PaymentIntegrationTest.java
+    └── WebhookIntegrationTest.java
 ```
 
-## Extension du système généré
+## Configuration générée
 
-Le code généré est conçu pour être facilement extensible. Par exemple, pour ajouter un nouveau fournisseur de paiement :
+Le générateur ajoute également les configurations nécessaires dans les fichiers de propriétés de l'application :
 
-1. Créez une classe qui implémente l'interface `PaymentService`
-2. Ajoutez la configuration nécessaire
-3. Enregistrez le service dans le conteneur Spring
+### application.yml
 
-```java
-@Service
-public class NewPaymentProvider implements PaymentService {
-    // Implémentation des méthodes
-}
+```yaml
+# Configuration du système de paiement
+sfs:
+  payment:
+    provider: stripe # ou la valeur spécifiée avec --provider
+    default-currency: EUR
+    webhook:
+      enabled: true # ou la valeur spécifiée avec --webhook
+    security:
+      encryption-enabled: true
+    reporting:
+      enabled: false # ou la valeur spécifiée avec --reporting
+    
+# Configuration spécifique à Stripe (si Stripe est sélectionné)
+    stripe:
+      api-key: ${STRIPE_API_KEY}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+
+# Configuration spécifique à PayPal (si PayPal est sélectionné)
+    paypal:
+      client-id: ${PAYPAL_CLIENT_ID}
+      client-secret: ${PAYPAL_CLIENT_SECRET}
+      mode: sandbox
 ```
 
-De même, vous pouvez étendre les fonctionnalités de rapports en créant de nouvelles classes de rapport et en implémentant les méthodes de génération correspondantes.
+## Dépendances ajoutées
+
+Le générateur ajoute automatiquement les dépendances nécessaires dans votre fichier de build (Maven ou Gradle).
+
+### Pour Maven (pom.xml)
+
+```xml
+<!-- Dépendances du système de paiement -->
+<dependency>
+    <groupId>com.sfs</groupId>
+    <artifactId>sfs-payment-core</artifactId>
+    <version>1.0.2</version>
+</dependency>
+
+<!-- Dépendance Stripe (si Stripe est sélectionné) -->
+<dependency>
+    <groupId>com.stripe</groupId>
+    <artifactId>stripe-java</artifactId>
+    <version>22.5.0</version>
+</dependency>
+
+<!-- Dépendance PayPal (si PayPal est sélectionné) -->
+<dependency>
+    <groupId>com.paypal.sdk</groupId>
+    <artifactId>rest-api-sdk</artifactId>
+    <version>1.14.0</version>
+</dependency>
+
+<!-- Dépendance Lombok (si lombok=true) -->
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.26</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+### Pour Gradle (build.gradle)
+
+```groovy
+// Dépendances du système de paiement
+implementation 'com.sfs:sfs-payment-core:1.0.2'
+
+// Dépendance Stripe (si Stripe est sélectionné)
+implementation 'com.stripe:stripe-java:22.5.0'
+
+// Dépendance PayPal (si PayPal est sélectionné)
+implementation 'com.paypal.sdk:rest-api-sdk:1.14.0'
+
+// Dépendance Lombok (si lombok=true)
+compileOnly 'org.projectlombok:lombok:1.18.26'
+annotationProcessor 'org.projectlombok:lombok:1.18.26'
+```
+
+## Considérations de sécurité
+
+Le générateur de paiement s'assure que votre système respecte les meilleures pratiques de sécurité :
+
+1. **Variables d'environnement** : Toutes les clés API sont configurées pour être lues à partir de variables d'environnement.
+2. **Tokenisation** : Les données de carte ne sont jamais stockées directement dans votre base de données.
+3. **Validation** : Des validations strictes sont appliquées à toutes les entrées utilisateur.
+4. **HTTPS** : Le système est configuré pour exiger HTTPS en production.
+5. **PCI-DSS** : La configuration respecte les directives PCI-DSS pour la manipulation des données de paiement.
+
+## Personnalisation avancée
+
+Pour personnaliser davantage votre système de paiement après sa génération, vous pouvez modifier les fichiers suivants :
+
+- `PaymentConfig.java` : Pour changer la configuration globale du système
+- `StripeService.java`/`PayPalService.java` : Pour personnaliser la logique d'intégration avec les fournisseurs
+- `application.yml` : Pour ajuster les paramètres de configuration
 
 ## Bonnes pratiques
 
-1. Utilisez des variables d'environnement pour les clés API et autres secrets
-2. Testez toujours avec des comptes sandbox/test avant de passer en production
-3. Implémentez une journalisation appropriée pour les transactions de paiement
-4. Configurez correctement les webhooks pour recevoir les événements en temps réel
-5. Mettez en place des alertes pour les transactions échouées ou suspectes
+1. **Environnements** : Utilisez toujours l'environnement de test (sandbox) des fournisseurs pendant le développement.
+2. **Tests** : Ajoutez des tests supplémentaires pour les scénarios spécifiques à votre business.
+3. **Monitoring** : Configurez des alertes pour surveiller les taux d'échec de paiement.
+4. **Backup** : Assurez-vous que vos données de paiement sont correctement sauvegardées.
+5. **Audit** : Gardez une trace d'audit de toutes les transactions pour la conformité réglementaire.
 
-## Ressources supplémentaires
+## Support et ressources
 
-Pour plus d'informations, consultez :
+- [Documentation complète du système de paiement](payment-system-guide.md)
+- [FAQ sur les paiements](https://docs.sfs.example.com/faq#payments)
+- [Guide de dépannage](https://docs.sfs.example.com/troubleshooting#payments)
+- [Exemples de code](https://github.com/tky0065/spring-fullstack-speed/examples/payment)
 
-- [Guide du Système de Paiement](payment-system-guide.md) - Guide détaillé sur l'utilisation du système de paiement
-- [Documentation API Stripe](https://stripe.com/docs/api)
-- [Documentation API PayPal](https://developer.paypal.com/docs/api/overview/)
-
-## Conclusion
-
-Le générateur de paiement de Spring-Fullstack-Speed vous permet d'intégrer rapidement un système de paiement complet et robuste dans votre application. Avec ses multiples options, vous pouvez personnaliser le système selon vos besoins spécifiques, qu'il s'agisse d'une simple intégration de paiement ou d'un système complet avec abonnements, facturation, remboursements et rapports financiers.
+Pour toute question ou problème, veuillez consulter notre [forum de support](https://forum.sfs.example.com) ou ouvrir un ticket sur notre [repository GitHub](https://github.com/tky0065/spring-fullstack-speed/issues).
