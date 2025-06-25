@@ -1,0 +1,66 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.Report;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Repository pour gérer la persistance des rapports financiers.
+ */
+@Repository
+public interface ReportRepository extends JpaRepository<Report, Long> {
+
+    /**
+     * Trouve un rapport par son identifiant unique.
+     *
+     * @param reportId l'identifiant unique du rapport
+     * @return le rapport correspondant
+     */
+    Report findByReportId(String reportId);
+
+    /**
+     * Recherche des rapports par type.
+     *
+     * @param reportType le type de rapport
+     * @return la liste des rapports du type spécifié
+     */
+    List<Report> findByReportType(String reportType);
+
+    /**
+     * Recherche des rapports générés entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des rapports dans l'intervalle de dates
+     */
+    List<Report> findByGeneratedDateBetween(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Récupère les rapports les plus récents, triés par date de génération décroissante.
+     *
+     * @param limit le nombre maximum de rapports à récupérer
+     * @return la liste des rapports les plus récents
+     */
+    @Query(value = "SELECT r FROM Report r ORDER BY r.generatedDate DESC")
+    List<Report> findRecentReports(int limit);
+
+    /**
+     * Trouve les rapports par utilisateur.
+     *
+     * @param userId l'identifiant de l'utilisateur
+     * @return la liste des rapports générés pour l'utilisateur
+     */
+    List<Report> findByUserId(Long userId);
+
+    /**
+     * Trouve les rapports par statut.
+     *
+     * @param status le statut du rapport (e.g., "COMPLETED", "PROCESSING", "ERROR")
+     * @return la liste des rapports avec le statut spécifié
+     */
+    List<Report> findByStatus(String status);
+}

@@ -1,0 +1,116 @@
+package <%= packageName %>;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import javax.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+/**
+ * Entité représentant un rapport financier.
+ * Cette classe stocke les informations sur les rapports générés
+ * pour l'analyse financière et le reporting.
+ */
+@Entity
+@Table(name = "payment_report")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Report {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String reportId;
+
+    @Column(name = "report_type", nullable = false)
+    private String reportType; // REVENUE, TRANSACTION, SUBSCRIPTION, etc.
+
+    @Column(name = "report_title")
+    private String title;
+
+    @Column(name = "report_description", length = 2000)
+    private String description;
+
+    @Column(name = "file_path")
+    private String filePath;
+
+    @Column(name = "file_format")
+    private String fileFormat; // PDF, EXCEL, CSV, etc.
+
+    @Column(name = "generated_date")
+    private LocalDate generatedDate;
+
+    @Column(name = "generated_time")
+    private LocalDateTime generatedTime;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "username")
+    private String username;
+
+    @Column(name = "report_parameters", length = 1000)
+    private String parameters; // JSON string avec les paramètres utilisés pour générer le rapport
+
+    @Column(name = "status")
+    private String status; // PROCESSING, COMPLETED, ERROR
+
+    @Column(name = "total_amount")
+    private BigDecimal totalAmount;
+
+    @Column(name = "total_transactions")
+    private Integer totalTransactions;
+
+    @Column(name = "total_customers")
+    private Integer totalCustomers;
+
+    @Column(name = "average_transaction_value")
+    private BigDecimal averageTransactionValue;
+
+    @PrePersist
+    protected void onCreate() {
+        if (reportId == null) {
+            reportId = "REP_" + System.currentTimeMillis();
+        }
+
+        if (generatedTime == null) {
+            generatedTime = LocalDateTime.now();
+        }
+
+        if (generatedDate == null) {
+            generatedDate = generatedTime.toLocalDate();
+        }
+
+        if (status == null) {
+            status = "COMPLETED";
+        }
+    }
+
+    /**
+     * Calcule le nombre de jours couverts par le rapport.
+     *
+     * @return le nombre de jours entre la date de début et de fin
+     */
+    @Transient
+    public long getDurationInDays() {
+        if (startDate != null && endDate != null) {
+            return java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1; // +1 pour inclure le jour de fin
+        }
+        return 0;
+    }
+}

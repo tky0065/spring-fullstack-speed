@@ -1,0 +1,198 @@
+<%_
+// Template pour le service de gestion des taxes
+_%>
+package <%= packageName %>;
+
+import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Service responsable de la gestion des taxes pour les paiements.
+ * Offre des fonctionnalités pour calculer les taxes selon différentes juridictions.
+ */
+@Service
+public class TaxService {
+
+    // Map contenant les taux de TVA par pays (codes ISO)
+    private final Map<String, BigDecimal> vatRates = new HashMap<>();
+
+    // Map contenant les taux de taxe de vente par état/province
+    private final Map<String, BigDecimal> salesTaxRates = new HashMap<>();
+
+    /**
+     * Initialise les taux de taxe par défaut
+     */
+    public TaxService() {
+        initializeDefaultVatRates();
+        initializeDefaultSalesTaxRates();
+    }
+
+    /**
+     * Calcule le montant de la taxe pour un montant donné et une juridiction spécifiée
+     *
+     * @param amount le montant hors taxe
+     * @param countryCode le code pays ISO (ex: "FR", "US")
+     * @param regionCode le code région/état/province (optionnel, utilisé pour US/CA)
+     * @return le montant de la taxe calculé
+     */
+    public BigDecimal calculateTax(BigDecimal amount, String countryCode, String regionCode) {
+        BigDecimal taxRate = getTaxRate(countryCode, regionCode);
+        return amount.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Calcule le montant total incluant les taxes
+     *
+     * @param amount le montant hors taxe
+     * @param countryCode le code pays ISO
+     * @param regionCode le code région/état/province (optionnel)
+     * @return le montant total (montant + taxe)
+     */
+    public BigDecimal calculateTotalWithTax(BigDecimal amount, String countryCode, String regionCode) {
+        BigDecimal tax = calculateTax(amount, countryCode, regionCode);
+        return amount.add(tax).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Récupère le taux de taxe applicable pour une juridiction donnée
+     *
+     * @param countryCode le code pays ISO
+     * @param regionCode le code région/état/province (optionnel)
+     * @return le taux de taxe applicable (ex: 0.20 pour 20%)
+     */
+    public BigDecimal getTaxRate(String countryCode, String regionCode) {
+        // Pour les États-Unis et le Canada, on utilise les taxes de vente par état/province
+        if ("US".equals(countryCode) || "CA".equals(countryCode)) {
+            return Optional.ofNullable(regionCode)
+                    .map(salesTaxRates::get)
+                    .orElse(BigDecimal.ZERO);
+        }
+        // Pour les autres pays, on utilise la TVA
+        else {
+            return Optional.ofNullable(countryCode)
+                    .map(vatRates::get)
+                    .orElse(BigDecimal.ZERO);
+        }
+    }
+
+    /**
+     * Ajoute ou met à jour un taux de TVA pour un pays
+     *
+     * @param countryCode le code pays ISO
+     * @param rate le taux de TVA (ex: 0.20 pour 20%)
+     */
+    public void setVatRate(String countryCode, BigDecimal rate) {
+        vatRates.put(countryCode, rate);
+    }
+
+    /**
+     * Ajoute ou met à jour un taux de taxe de vente pour un état/province
+     *
+     * @param regionCode le code région/état/province
+     * @param rate le taux de taxe de vente
+     */
+    public void setSalesTaxRate(String regionCode, BigDecimal rate) {
+        salesTaxRates.put(regionCode, rate);
+    }
+
+    /**
+     * Détermine si un pays est assujetti à la TVA
+     *
+     * @param countryCode le code pays ISO
+     * @return true si le pays a un taux de TVA configuré
+     */
+    public boolean isVatApplicable(String countryCode) {
+        return vatRates.containsKey(countryCode);
+    }
+
+    /**
+     * Initialise les taux de TVA par défaut pour les pays européens et autres
+     */
+    private void initializeDefaultVatRates() {
+        // Union Européenne
+        vatRates.put("FR", new BigDecimal("0.20")); // France: 20%
+        vatRates.put("DE", new BigDecimal("0.19")); // Allemagne: 19%
+        vatRates.put("IT", new BigDecimal("0.22")); // Italie: 22%
+        vatRates.put("ES", new BigDecimal("0.21")); // Espagne: 21%
+        vatRates.put("UK", new BigDecimal("0.20")); // Royaume-Uni: 20%
+        vatRates.put("BE", new BigDecimal("0.21")); // Belgique: 21%
+        vatRates.put("NL", new BigDecimal("0.21")); // Pays-Bas: 21%
+        vatRates.put("LU", new BigDecimal("0.17")); // Luxembourg: 17%
+        vatRates.put("AT", new BigDecimal("0.20")); // Autriche: 20%
+        vatRates.put("IE", new BigDecimal("0.23")); // Irlande: 23%
+
+        // Autres pays avec TVA
+        vatRates.put("CH", new BigDecimal("0.077")); // Suisse: 7.7%
+        vatRates.put("AU", new BigDecimal("0.10"));  // Australie: 10%
+        vatRates.put("NZ", new BigDecimal("0.15"));  // Nouvelle-Zélande: 15%
+        vatRates.put("JP", new BigDecimal("0.10"));  // Japon: 10%
+    }
+
+    /**
+     * Initialise les taux de taxe de vente par défaut pour les états américains et provinces canadiennes
+     */
+    private void initializeDefaultSalesTaxRates() {
+        // Quelques états américains
+        salesTaxRates.put("CA", new BigDecimal("0.0725")); // Californie: 7.25%
+        salesTaxRates.put("NY", new BigDecimal("0.04"));   // New York: 4% (hors NYC)
+        salesTaxRates.put("TX", new BigDecimal("0.0625")); // Texas: 6.25%
+        salesTaxRates.put("FL", new BigDecimal("0.06"));   // Floride: 6%
+        salesTaxRates.put("WA", new BigDecimal("0.065"));  // Washington: 6.5%
+
+        // Quelques provinces canadiennes
+        salesTaxRates.put("ON", new BigDecimal("0.13"));   // Ontario: 13% (HST)
+        salesTaxRates.put("BC", new BigDecimal("0.12"));   // Colombie-Britannique: 12% (PST+GST)
+        salesTaxRates.put("QC", new BigDecimal("0.14975"));// Québec: 14.975% (GST+QST)
+        salesTaxRates.put("AB", new BigDecimal("0.05"));   // Alberta: 5% (GST seulement)
+    }
+
+    /**
+     * Calcule le montant hors taxe à partir d'un montant TTC
+     *
+     * @param totalAmount le montant TTC
+     * @param countryCode le code pays ISO
+     * @param regionCode le code région/état/province (optionnel)
+     * @return le montant hors taxe
+     */
+    public BigDecimal calculateAmountWithoutTax(BigDecimal totalAmount, String countryCode, String regionCode) {
+        BigDecimal taxRate = getTaxRate(countryCode, regionCode);
+        return totalAmount.divide(BigDecimal.ONE.add(taxRate), 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Extrait le montant de la taxe d'un montant TTC
+     *
+     * @param totalAmount le montant TTC
+     * @param countryCode le code pays ISO
+     * @param regionCode le code région/état/province (optionnel)
+     * @return le montant de la taxe
+     */
+    public BigDecimal extractTaxFromTotal(BigDecimal totalAmount, String countryCode, String regionCode) {
+        BigDecimal amountWithoutTax = calculateAmountWithoutTax(totalAmount, countryCode, regionCode);
+        return totalAmount.subtract(amountWithoutTax).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Vérifie si une adresse est exemptée de taxe
+     *
+     * @param countryCode le code pays ISO
+     * @param taxExemptionCode code d'exemption de taxe (si applicable)
+     * @return true si l'adresse est exemptée de taxe
+     */
+    public boolean isTaxExempt(String countryCode, String taxExemptionCode) {
+        // Implémentation simplifiée - à adapter selon les besoins spécifiques
+        if (taxExemptionCode != null && !taxExemptionCode.isEmpty()) {
+            // Logique de validation du code d'exemption
+            return true;
+        }
+
+        // Certains pays peuvent être exemptés par défaut
+        return "AE".equals(countryCode) || "BH".equals(countryCode) ||
+               "KW".equals(countryCode) || "OM".equals(countryCode) ||
+               "QA".equals(countryCode) || "SA".equals(countryCode);
+    }
+}

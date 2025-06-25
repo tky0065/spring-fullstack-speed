@@ -1,0 +1,56 @@
+package <%= packageName %>;
+
+import <%= entityPackageName %>.Tax;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository pour gérer les opérations de persistance des taxes.
+ */
+@Repository
+public interface TaxRepository extends JpaRepository<Tax, Long> {
+
+    /**
+     * Trouve une taxe par son identifiant unique.
+     *
+     * @param taxId l'identifiant unique de la taxe
+     * @return un Optional contenant la taxe si trouvée, sinon vide
+     */
+    Optional<Tax> findByTaxId(String taxId);
+
+    /**
+     * Trouve les taxes actives pour un pays donné.
+     *
+     * @param countryCode le code ISO du pays
+     * @return la liste des taxes actives pour ce pays
+     */
+    List<Tax> findByCountryCodeAndIsActiveTrue(String countryCode);
+
+    /**
+     * Trouve les taxes actives pour une région spécifique dans un pays.
+     *
+     * @param countryCode le code ISO du pays
+     * @param region la région (état, province, etc.)
+     * @return la liste des taxes actives pour cette région
+     */
+    List<Tax> findByCountryCodeAndRegionAndIsActiveTrue(String countryCode, String region);
+
+    /**
+     * Trouve les taxes par type.
+     *
+     * @param taxType le type de taxe (ex: VAT, GST, SALES_TAX)
+     * @return la liste des taxes du type spécifié
+     */
+    List<Tax> findByTaxType(String taxType);
+
+    /**
+     * Vérifie si une taxe avec l'identifiant donné existe.
+     *
+     * @param taxId l'identifiant unique de la taxe
+     * @return true si la taxe existe, false sinon
+     */
+    boolean existsByTaxId(String taxId);
+}

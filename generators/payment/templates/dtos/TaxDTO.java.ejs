@@ -1,0 +1,60 @@
+package <%= packageName %>.dto;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+/**
+ * DTO pour représenter une taxe dans les opérations API.
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class TaxDTO {
+
+    private Long id;
+    private String taxId;
+    private String name;
+    private String description;
+    private BigDecimal rate;
+    private boolean isActive;
+    private String taxType;
+    private String countryCode;
+    private String region;
+    private String postalCode;
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    /**
+     * Méthode utilitaire pour calculer le montant de taxe pour un prix donné.
+     *
+     * @param amount Le montant avant taxe
+     * @return Le montant de la taxe
+     */
+    public BigDecimal calculateTaxAmount(BigDecimal amount) {
+        if (amount == null || rate == null) {
+            return BigDecimal.ZERO;
+        }
+        return amount.multiply(rate.divide(new BigDecimal("100")));
+    }
+
+    /**
+     * Méthode utilitaire pour calculer le montant total incluant la taxe.
+     *
+     * @param amount Le montant avant taxe
+     * @return Le montant total incluant la taxe
+     */
+    public BigDecimal calculateTotalWithTax(BigDecimal amount) {
+        if (amount == null) {
+            return BigDecimal.ZERO;
+        }
+        return amount.add(calculateTaxAmount(amount));
+    }
+}

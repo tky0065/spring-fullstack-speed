@@ -1,0 +1,157 @@
+<%_
+// Template pour le service de génération de rapports financiers
+_%>
+package <%= packageName %>;
+
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import <%= repositoryPackageName %>.*;
+import <%= entityPackageName %>.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.io.ByteArrayOutputStream;
+
+/**
+ * Service responsable de la génération des rapports financiers.
+ * Ce service centralise les fonctionnalités de reporting pour les paiements,
+ * transactions, revenus et analyses clients.
+ */
+@Service
+public class ReportingService {
+
+    // Injecter les repositories nécessaires
+    private final ReportRepository reportRepository;
+
+    /**
+     * Constructeur pour l'injection de dépendances
+     */
+    @Autowired
+    public ReportingService(
+        ReportRepository reportRepository
+    ) {
+        this.reportRepository = reportRepository;
+    }
+
+    /**
+     * Génère un rapport financier pour une période donnée
+     *
+     * @param startDate date de début de la période
+     * @param endDate date de fin de la période
+     * @param reportType type de rapport à générer
+     * @return l'identifiant du rapport généré
+     */
+    public Report generateFinancialReport(LocalDate startDate, LocalDate endDate, String reportType) {
+        // Créer un nouveau rapport
+        Report report = new Report();
+        report.setReportType(reportType);
+        report.setTitle("Rapport financier " + reportType);
+        report.setDescription("Rapport financier pour la période du " + startDate + " au " + endDate);
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        report.setGeneratedDate(LocalDate.now());
+        report.setGeneratedTime(LocalDateTime.now());
+        report.setStatus("PROCESSING");
+
+        // Sauvegarder d'abord le rapport vide
+        Report savedReport = reportRepository.save(report);
+
+        try {
+            // Logique de génération du rapport selon le type
+            switch (reportType.toUpperCase()) {
+                case "REVENUE":
+                    generateRevenueReport(savedReport);
+                    break;
+
+                case "TRANSACTION":
+                    generateTransactionReport(savedReport);
+                    break;
+
+                case "CUSTOMER":
+                    generateCustomerReport(savedReport);
+                    break;
+
+                case "SUBSCRIPTION":
+                    generateSubscriptionReport(savedReport);
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Type de rapport non supporté: " + reportType);
+            }
+
+            // Mettre à jour le statut du rapport
+            savedReport.setStatus("COMPLETED");
+            return reportRepository.save(savedReport);
+
+        } catch (Exception e) {
+            // En cas d'erreur, mettre à jour le statut
+            savedReport.setStatus("ERROR");
+            reportRepository.save(savedReport);
+            throw new RuntimeException("Erreur lors de la génération du rapport: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Génère un rapport de revenus
+     */
+    private void generateRevenueReport(Report report) {
+        // Ici, implémentez la logique de génération du rapport de revenus
+        // Par exemple : calculer les revenus totaux, moyens, par catégorie, etc.
+        report.setDescription(report.getDescription() + " - Analyse des revenus");
+    }
+
+    /**
+     * Génère un rapport de transactions
+     */
+    private void generateTransactionReport(Report report) {
+        // Implémentez la logique de génération du rapport de transactions
+        report.setDescription(report.getDescription() + " - Analyse des transactions");
+    }
+
+    /**
+     * Génère un rapport client
+     */
+    private void generateCustomerReport(Report report) {
+        // Implémentez la logique de génération du rapport client
+        report.setDescription(report.getDescription() + " - Analyse des clients");
+    }
+
+    /**
+     * Génère un rapport d'abonnements
+     */
+    private void generateSubscriptionReport(Report report) {
+        // Implémentez la logique de génération du rapport d'abonnements
+        report.setDescription(report.getDescription() + " - Analyse des abonnements");
+    }
+
+    /**
+     * Récupère un rapport par son ID
+     */
+    public Optional<Report> getReportById(Long id) {
+        return reportRepository.findById(id);
+    }
+
+    /**
+     * Liste tous les rapports disponibles
+     */
+    public List<Report> getAllReports() {
+        return reportRepository.findAll();
+    }
+
+    /**
+     * Récupère les rapports récents
+     */
+    public List<Report> getRecentReports(int limit) {
+        return reportRepository.findRecentReports(limit);
+    }
+
+    /**
+     * Recherche des rapports par période
+     */
+    public List<Report> getReportsByPeriod(LocalDate startDate, LocalDate endDate) {
+        return reportRepository.findByGeneratedDateBetween(startDate, endDate);
+    }
+}

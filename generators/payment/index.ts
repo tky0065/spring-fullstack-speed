@@ -1,6 +1,18 @@
+// Correction du générateur de paiement
 import { BaseGenerator } from "../base-generator.js";
 import chalk from "chalk";
 import * as fs from 'fs';
+import path from 'path';
+
+// Styles visuels constants
+const STEP_PREFIX = chalk.bold.blue("➤ ");
+const SECTION_DIVIDER = chalk.gray("────────────────────────────────────────────");
+const INFO_COLOR = chalk.yellow;
+const SUCCESS_COLOR = chalk.green;
+const ERROR_COLOR = chalk.red;
+
+// Valeur par défaut pour le package
+const DEFAULT_PACKAGE = "com.dev.app";
 
 // Interface pour typer les options du générateur de paiement
 interface PaymentGeneratorOptions {
@@ -20,10 +32,9 @@ interface PaymentGeneratorOptions {
  */
 export default class PaymentGenerator extends BaseGenerator {
   declare answers: any;
-  declare paymentOptions: any;
-  declare packageDir: string;
+  declare paymentOptions: PaymentGeneratorOptions;
+  packageName: string = "";
   declare appConfig: any;
-  declare options: any;
 
   constructor(args: string | string[], options: any) {
     super(args, options);
@@ -80,1243 +91,1210 @@ export default class PaymentGenerator extends BaseGenerator {
 
   // Initialiser le générateur
   async initializing() {
-    this.log(chalk.green('Initialisation du générateur de système de paiement...'));
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.green('Initialisation du générateur de système de paiement...'));
+    this.log(SECTION_DIVIDER);
 
-    // Vérifier que l'application existe déjà
-    if (!fs.existsSync(this.destinationPath('pom.xml')) && !fs.existsSync(this.destinationPath('build.gradle'))) {
-      this.log(chalk.red('Aucun projet Spring Boot détecté. Veuillez exécuter le générateur app en premier.'));
-      process.exit(1);
-    }
+    try {
+      // Tenter de charger la configuration existante depuis .yo-rc.json s'il existe
+      const configPath = this.destinationPath('.yo-rc.json');
+      if (fs.existsSync(configPath)) {
+        try {
+          const configFile = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          if (configFile['generator-spring-fullstack-speed']) {
+            this.appConfig = configFile['generator-spring-fullstack-speed'];
+            this.log(SUCCESS_COLOR('✅ Configuration existante chargée.'));
+          }
+        } catch (error) {
+          this.log(INFO_COLOR('⚠️ Impossible de charger la configuration existante. Utilisation des valeurs par défaut.'));
+        }
+      }
 
-    // Lire les configurations existantes depuis appConfig
-    const packageDir = this.appConfig && this.appConfig.packageDir;
-    if (packageDir) {
-      this.packageDir = packageDir;
-    } else {
-      this.log(chalk.yellow('Package directory non trouvé dans la configuration. Utilisation de la valeur par défaut.'));
-      this.packageDir = 'com/example/app';
+      // Vérifier la présence du projet Spring Boot de façon plus flexible
+      const isPomExists = fs.existsSync(this.destinationPath('pom.xml'));
+      const isGradleExists = fs.existsSync(this.destinationPath('build.gradle'));
+      const isSrcFolderExists = fs.existsSync(this.destinationPath('src/main/java'));
+
+      if (!isPomExists && !isGradleExists) {
+        this.log(INFO_COLOR('⚠️ Attention: Aucun fichier pom.xml ou build.gradle détecté. Le générateur va continuer, mais il est recommandé d\'avoir un projet Spring Boot existant.'));
+      }
+
+      // Même sans pom.xml ou build.gradle, on continue si un dossier src/main/java existe
+      if (!isPomExists && !isGradleExists && !isSrcFolderExists) {
+        this.log(INFO_COLOR('⚠️ Aucune structure de projet Java standard détectée. Le générateur va créer les fichiers nécessaires.'));
+      }
+
+      // Détecter le package de base
+      this.packageName = this.findBasePackageName();
+
+      this.log(SUCCESS_COLOR(`✅ Configuration initialisée avec succès. Package détecté: ${this.packageName}`));
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'initialisation: ${error}`));
+      // Définir des valeurs par défaut pour éviter les erreurs plus tard
+      this.packageName = DEFAULT_PACKAGE;
     }
   }
 
-  // Poser les questions à l'utilisateur
   async prompting() {
-    this.log(chalk.green('Configuration du système de paiement...'));
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.green('Configuration du système de paiement'));
+    this.log(SECTION_DIVIDER);
 
-    const answers = await this.prompt([
+    // Utiliser as any pour éviter les erreurs TypeScript lors de l'accès aux propriétés
+    const opts = this.options as any;
+
+    // Récupérer les options du générateur
+    const defaultProvider = Array.isArray(opts.provider) ? opts.provider : ['stripe'];
+
+    const prompts: any = [
       {
         type: 'checkbox',
         name: 'provider',
-        message: 'Quels providers de paiement voulez-vous intégrer?',
+        message: 'Quels providers de paiement souhaitez-vous intégrer?',
         choices: [
-          { name: 'Stripe API', value: 'stripe', checked: true },
-          { name: 'PayPal SDK', value: 'paypal' },
-          { name: 'Braintree', value: 'braintree' },
-          { name: 'Adyen', value: 'adyen' },
-          { name: 'Mollie', value: 'mollie' }
+          { name: 'Stripe', value: 'stripe', checked: defaultProvider.includes('stripe') },
+          { name: 'PayPal', value: 'paypal', checked: defaultProvider.includes('paypal') },
+          { name: 'Braintree', value: 'braintree', checked: defaultProvider.includes('braintree') },
+          { name: 'Adyen', value: 'adyen', checked: defaultProvider.includes('adyen') },
         ],
-        validate: (input) => input.length > 0 ? true : 'Vous devez sélectionner au moins un provider'
+        validate: (input: string[]) => {
+          if (!input || input.length === 0) {
+            return 'Vous devez sélectionner au moins un provider de paiement.';
+          }
+          return true;
+        }
       },
       {
         type: 'confirm',
         name: 'subscription',
-        message: 'Voulez-vous implémenter la gestion des abonnements?',
-        default: this.options.subscription
+        message: 'Voulez-vous intégrer le support des abonnements?',
+        default: opts.subscription || false
       },
       {
         type: 'confirm',
         name: 'webhook',
         message: 'Voulez-vous configurer les webhooks pour les événements de paiement?',
-        default: this.options.webhook
+        default: opts.webhook !== undefined ? opts.webhook : true
       },
       {
         type: 'confirm',
         name: 'invoicing',
-        message: 'Voulez-vous ajouter le système de facturation?',
-        default: this.options.invoicing
+        message: 'Voulez-vous ajouter un système de facturation?',
+        default: opts.invoicing || false
       },
       {
         type: 'confirm',
         name: 'taxes',
         message: 'Voulez-vous configurer la gestion des taxes?',
-        default: this.options.taxes
+        default: opts.taxes || false
       },
       {
         type: 'confirm',
         name: 'refunds',
         message: 'Voulez-vous implémenter la gestion des remboursements?',
-        default: this.options.refunds
+        default: opts.refunds || false
       },
       {
         type: 'confirm',
         name: 'reporting',
         message: 'Voulez-vous générer des rapports financiers?',
-        default: this.options.reporting
-      },
-      {
-        type: 'input',
-        name: 'packageName',
-        message: 'Quel nom de package voulez-vous utiliser pour le système de paiement?',
-        default: `${this.appConfig && this.appConfig.packageName || 'com.example'}.payment`,
-        validate: (input) => /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+[0-9a-z_]$/.test(input) ? true : 'Veuillez entrer un nom de package Java valide'
+        default: opts.reporting || false
       }
-    ]);
+    ];
 
-    // Stocker les réponses
+    // Si nous avons détecté un package, demander à l'utilisateur s'il souhaite l'utiliser
+    const packagePrompt: any = [{
+      type: "input",
+      name: "customPackage",
+      message: "Quel package souhaitez-vous utiliser pour le système de paiement?",
+      default: this.packageName,
+      validate: (input: string) => {
+        if (!input || input.trim() === "") {
+          return "Le package est obligatoire.";
+        }
+        return true;
+      },
+    }];
+
+    // Demander à l'utilisateur les options désirées
+    this.answers = await this.prompt(prompts);
+
+    // Demander à l'utilisateur de confirmer ou de modifier le package
+    const packageAnswer = await this.prompt(packagePrompt);
+    this.packageName = packageAnswer.customPackage;
+
+    // Stocker les options pour une utilisation ultérieure
     this.paymentOptions = {
-      provider: answers.provider || this.options.provider,
-      subscription: answers.subscription,
-      webhook: answers.webhook,
-      invoicing: answers.invoicing,
-      taxes: answers.taxes,
-      refunds: answers.refunds,
-      reporting: answers.reporting,
-      packageName: answers.packageName
+      provider: this.answers.provider,
+      subscription: this.answers.subscription,
+      webhook: this.answers.webhook,
+      invoicing: this.answers.invoicing,
+      taxes: this.answers.taxes,
+      refunds: this.answers.refunds,
+      reporting: this.answers.reporting,
+      skipInstall: (opts.skipInstall as boolean) || false
     };
 
-    // Calculer le chemin du package
-    this.packageDir = this.paymentOptions.packageName.replace(/\./g, '/');
+    this.log(SUCCESS_COLOR('✅ Configuration du système de paiement terminée.'));
   }
 
-  // Configurer le générateur
   configuring() {
-    this.log(chalk.green('Configuration des dépendances de paiement...'));
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.green('Configuration des dépendances...'));
+    this.log(SECTION_DIVIDER);
 
-    // Déterminer les dépendances à ajouter en fonction des providers sélectionnés
-    const dependencies:any = [];
+    // Ajouter les dépendances nécessaires au pom.xml, build.gradle ou build.gradle.kts
+    if (fs.existsSync(this.destinationPath('pom.xml'))) {
+      this._addMavenDependencies();
+    } else if (fs.existsSync(this.destinationPath('build.gradle'))) {
+      this._addGradleDependencies('build.gradle', false);
+    } else if (fs.existsSync(this.destinationPath('build.gradle.kts'))) {
+      this._addGradleDependencies('build.gradle.kts', true);
+    } else {
+      this.log(INFO_COLOR('⚠️ Aucun fichier pom.xml, build.gradle ou build.gradle.kts trouvé. Les dépendances devront être ajoutées manuellement.'));
+    }
+  }
 
-    if (this.paymentOptions.provider.includes('stripe')) {
-      dependencies.push({
-        groupId: 'com.stripe',
-        artifactId: 'stripe-java',
-        version: '24.5.0' // Mise à jour vers la dernière version
-      });
+  writing() {
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.green('Génération des fichiers pour le système de paiement...'));
+    this.log(SECTION_DIVIDER);
 
-      // Ajouter la dépendance Stripe Checkout pour une intégration plus simple
-      dependencies.push({
-        groupId: 'com.stripe',
-        artifactId: 'stripe-checkout-java',
-        version: '1.2.0'
-      });
+    const { provider, subscription, webhook, invoicing, taxes, refunds, reporting } = this.paymentOptions;
+
+    // Créer la structure de dossiers
+    this._createDirectories();
+
+    // Générer les fichiers de base pour le système de paiement
+    this._generatePaymentConfig();
+    this._generateBasePaymentService();
+    this._generatePaymentController();
+
+    // Générer les fichiers spécifiques au provider
+    if (provider.includes('stripe')) {
+      this._generateStripeImplementation();
     }
 
-    // Ajouter JTE pour les templates dynamiques
-    dependencies.push({
-      groupId: 'gg.jte',
-      artifactId: 'jte',
-      version: '3.1.0'
-    });
+    if (provider.includes('paypal')) {
+      this._generatePayPalImplementation();
+    }
 
-    // Ajouter l'intégration Spring pour JTE
-    dependencies.push({
-      groupId: 'gg.jte',
-      artifactId: 'jte-spring-boot-starter-3',
-      version: '3.1.0'
-    });
+    if (provider.includes('braintree')) {
+      this._generateBraintreeImplementation();
+    }
+
+    if (provider.includes('adyen')) {
+      this._generateAdyenImplementation();
+    }
+
+    // Générer les fonctionnalités supplémentaires si demandées
+    if (subscription) {
+      this._generateSubscriptionSupport();
+    }
+
+    if (webhook) {
+      this._generateWebhookSupport();
+    }
+
+    if (invoicing) {
+      this._generateInvoicingSystem();
+    }
+
+    if (taxes) {
+      this._generateTaxManagement();
+    }
+
+    if (refunds) {
+      this._generateRefundManagement();
+    }
+
+    if (reporting) {
+      this._generateFinancialReporting();
+    }
+
+    // Générer les exemples d'utilisation et la documentation
+    this._generateSampleUsageAndDocs();
+
+    this.log(SUCCESS_COLOR('✅ Génération des fichiers terminée avec succès.'));
+  }
+
+  /**
+   * Trouve le package de base du projet
+   */
+  findBasePackageName(): string {
+    try {
+      // Rechercher le package dans l'application principale
+      const mainAppDir = "src/main/java";
+      if (fs.existsSync(mainAppDir)) {
+        // Parcourir récursivement pour trouver un fichier Java contenant "package"
+        const findPackageInDir = (dir: string): string | null => {
+          const files = fs.readdirSync(dir);
+
+          for (const file of files) {
+            const fullPath = path.join(dir, file);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isDirectory()) {
+              const result = findPackageInDir(fullPath);
+              if (result) return result;
+            }
+            else if (file.endsWith('.java')) {
+              try {
+                const content = fs.readFileSync(fullPath, 'utf8');
+                const packageMatch = content.match(/package\s+([^;]+);/);
+                if (packageMatch && packageMatch.length > 1) {
+                  const pkg = packageMatch[1].trim();
+
+                  // Chercher d'abord le package d'application principal
+                  if (file.endsWith('Application.java')) {
+                    return pkg.split('.').slice(0, -1).join('.');
+                  }
+
+                  // Si on trouve un package "payment", c'est probablement ce qu'on veut
+                  if (pkg.includes('.payment')) {
+                    return pkg;
+                  }
+                }
+              } catch (e) {
+                // Ignorer les erreurs de lecture de fichier
+              }
+            }
+          }
+          return null;
+        };
+
+        // Essayer d'abord de trouver le fichier Application.java
+        const foundPackage = findPackageInDir(mainAppDir);
+        if (foundPackage) {
+          return foundPackage;
+        }
+      }
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de la recherche du package de base: ${error}`));
+    }
+
+    // Utiliser le package par défaut défini en constante
+    return DEFAULT_PACKAGE;
+  }
+
+  /**
+   * Construire un sous-package pour un composant spécifique
+   * Cette méthode utilise maintenant les packages standards existants dans le projet
+   */
+  _constructSubPackage(basePackage: string, componentType: string): string {
+    if (!basePackage) {
+      return `com.example.fullstack.${componentType}`;
+    }
+
+    // Mapper le type de composant vers les noms de dossiers standards
+    const standardFolders: Record<string, string> = {
+      'entities': 'entity',
+      'entity': 'entity',
+      'services': 'service',
+      'service': 'service',
+      'controllers': 'controller',
+      'controller': 'controller',
+      'dtos': 'dto',
+      'dto': 'dto',
+      'config': 'config',
+      'repositories': 'repository',
+      'repository': 'repository',
+      'exceptions': 'exception',
+      'exception': 'exception',
+      'utils': 'util',
+      'util': 'util'
+    };
+
+    // Si le type de composant est mappé à un dossier standard, utiliser ce dossier
+    const standardFolder = standardFolders[componentType];
+    if (standardFolder) {
+      return `${basePackage.split('.payment')[0]}.${standardFolder}`;
+    }
+
+    // Pour les autres types (subscription, webhook, etc.), utiliser le package de base
+    return `${basePackage.split('.payment')[0]}.${componentType}`;
+  }
+
+  /**
+   * Création des répertoires nécessaires avec une organisation claire par type de composant
+   */
+  _createDirectories() {
+    // On ne crée pas de sous-dossier payment, on utilise les dossiers standards existants
+    const javaDir = path.join(process.cwd(), 'src/main/java');
+
+    // Récupérer le package de base sans le .payment (qui pourrait exister)
+    const basePackage = this.packageName.split('.payment')[0];
+    const baseDir = path.join(javaDir, basePackage.replace(/\./g, '/'));
+
+    // Liste des dossiers standards dans un projet Spring Boot
+    const standardFolders = [
+      'entity',
+      'dto',
+      'repository',
+      'service',
+      'controller',
+      'config'
+    ];
+
+    // Vérifier que les dossiers standards existent
+    for (const folder of standardFolders) {
+      const folderPath = path.join(baseDir, folder);
+      this._createDirectoryIfNotExists(folderPath);
+    }
+
+    // Aucun message de log ici car on ne crée pas de structure pour le payment spécifiquement
+  }
+
+  /**
+   * Utilitaire pour créer un répertoire s'il n'existe pas
+   */
+  _createDirectoryIfNotExists(dir: string) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+
+  /**
+   * Ajouter les dépendances Maven nécessaires
+   */
+  _addMavenDependencies() {
+    // Charger le contenu du pom.xml
+    const pomPath = this.destinationPath('pom.xml');
+    if (!fs.existsSync(pomPath)) {
+      return;
+    }
+
+    try {
+      let pomContent = fs.readFileSync(pomPath, 'utf8');
+      const dependenciesSection = this._getMavenDependenciesBasedOnOptions();
+
+      // Vérifier si la section des dépendances existe déjà
+      if (pomContent.includes('</dependencies>')) {
+        // Insérer les dépendances juste avant la fermeture du tag </dependencies>
+        pomContent = pomContent.replace('</dependencies>', `${dependenciesSection}\n</dependencies>`);
+      } else {
+        // Créer une nouvelle section de dépendances juste avant </project>
+        pomContent = pomContent.replace('</project>', `<dependencies>\n${dependenciesSection}\n</dependencies>\n</project>`);
+      }
+
+      // Écrire le contenu modifié
+      fs.writeFileSync(pomPath, pomContent);
+      this.log(SUCCESS_COLOR('✅ Dépendances Maven ajoutées avec succès.'));
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'ajout des dépendances Maven: ${error}`));
+    }
+  }
+
+  /**
+   * Ajouter les dépendances Gradle nécessaires
+   */
+  _addGradleDependencies(gradleFile: string, isKts: boolean) {
+    // Charger le contenu du build.gradle ou build.gradle.kts
+    const gradlePath = this.destinationPath(gradleFile);
+    if (!fs.existsSync(gradlePath)) {
+      return;
+    }
+
+    try {
+      let gradleContent = fs.readFileSync(gradlePath, 'utf8');
+      const dependenciesSection = this._getGradleDependenciesBasedOnOptions();
+
+      // Vérifier si la section des dépendances existe déjà
+      if (gradleContent.includes('dependencies {')) {
+        // Insérer les dépendances juste après l'ouverture du bloc dependencies
+        gradleContent = gradleContent.replace('dependencies {', `dependencies {\n${dependenciesSection}`);
+      } else {
+        // Ajouter une nouvelle section de dépendances à la fin du fichier
+        gradleContent += `\ndependencies {\n${dependenciesSection}\n}`;
+      }
+
+      // Écrire le contenu modifié
+      fs.writeFileSync(gradlePath, gradleContent);
+      this.log(SUCCESS_COLOR('✅ Dépendances Gradle ajoutées avec succès.'));
+    } catch (error) {
+      this.log(ERROR_COLOR(`❌ Erreur lors de l'ajout des dépendances Gradle: ${error}`));
+    }
+  }
+
+  /**
+   * Obtenir les dépendances Maven en fonction des options sélectionnées
+   */
+  _getMavenDependenciesBasedOnOptions(): string {
+    let dependencies = '';
+
+    // Dépendances communes à tous les providers
+    dependencies += `    <!-- Dépendances pour le système de paiement -->\n`;
+    dependencies += `    <dependency>\n`;
+    dependencies += `        <groupId>org.springframework.boot</groupId>\n`;
+    dependencies += `        <artifactId>spring-boot-starter-web</artifactId>\n`;
+    dependencies += `    </dependency>\n`;
+    dependencies += `    <dependency>\n`;
+    dependencies += `        <groupId>org.springframework.boot</groupId>\n`;
+    dependencies += `        <artifactId>spring-boot-starter-validation</artifactId>\n`;
+    dependencies += `    </dependency>\n`;
+
+    // Dépendances spécifiques au provider
+    if (this.paymentOptions.provider.includes('stripe')) {
+      dependencies += `    <dependency>\n`;
+      dependencies += `        <groupId>com.stripe</groupId>\n`;
+      dependencies += `        <artifactId>stripe-java</artifactId>\n`;
+      dependencies += `        <version>22.0.0</version>\n`;
+      dependencies += `    </dependency>\n`;
+    }
 
     if (this.paymentOptions.provider.includes('paypal')) {
-      dependencies.push({
-        groupId: 'com.paypal.sdk',
-        artifactId: 'rest-api-sdk',
-        version: '1.14.0'
-      });
-      dependencies.push({
-        groupId: 'com.paypal.sdk',
-        artifactId: 'checkout-sdk',
-        version: '2.0.0'
-      });
+      dependencies += `    <dependency>\n`;
+      dependencies += `        <groupId>com.paypal.sdk</groupId>\n`;
+      dependencies += `        <artifactId>rest-api-sdk</artifactId>\n`;
+      dependencies += `        <version>1.14.0</version>\n`;
+      dependencies += `    </dependency>\n`;
     }
 
     if (this.paymentOptions.provider.includes('braintree')) {
-      dependencies.push({
-        groupId: 'com.braintreepayments.gateway',
-        artifactId: 'braintree-java',
-        version: '3.18.0'
-      });
+      dependencies += `    <dependency>\n`;
+      dependencies += `        <groupId>com.braintreepayments.gateway</groupId>\n`;
+      dependencies += `        <artifactId>braintree-java</artifactId>\n`;
+      dependencies += `        <version>3.16.0</version>\n`;
+      dependencies += `    </dependency>\n`;
     }
 
     if (this.paymentOptions.provider.includes('adyen')) {
-      dependencies.push({
-        groupId: 'com.adyen',
-        artifactId: 'adyen-java-api-library',
-        version: '18.1.0'
-      });
+      dependencies += `    <dependency>\n`;
+      dependencies += `        <groupId>com.adyen</groupId>\n`;
+      dependencies += `        <artifactId>adyen-java-api-library</artifactId>\n`;
+      dependencies += `        <version>18.1.2</version>\n`;
+      dependencies += `    </dependency>\n`;
     }
 
-    if (this.paymentOptions.provider.includes('mollie')) {
-      dependencies.push({
-        groupId: 'com.mollie',
-        artifactId: 'mollie-api-java',
-        version: '3.9.0'
-      });
-    }
-
-    // Ajouter la dépendance pour la gestion des factures PDF si nécessaire
-    if (this.paymentOptions.invoicing) {
-      dependencies.push({
-        groupId: 'com.itextpdf',
-        artifactId: 'itext7-core',
-        version: '7.2.5'
-      });
-    }
-
-    // Ajouter les dépendances au projet
-    if (fs.existsSync(this.destinationPath('pom.xml'))) {
-      this.addMavenDependencies(dependencies);
-    } else if (fs.existsSync(this.destinationPath('build.gradle'))) {
-      this.addGradleDependencies(dependencies);
-    }
+    return dependencies;
   }
 
-  // Écrire les fichiers
-  writing() {
-    this.log(chalk.green('Génération des fichiers du système de paiement...'));
+  /**
+   * Obtenir les dépendances Gradle en fonction des options sélectionnées
+   */
+  _getGradleDependenciesBasedOnOptions(): string {
+    let dependencies = '';
 
-    // Créer le contexte pour les templates
-    const context = {
-      basePackage: this.appConfig && this.appConfig.packageName || 'com.example',
-      packageName: this.paymentOptions.packageName,
-      packageDir: this.packageDir,
-      providers: this.paymentOptions.provider,
-      subscription: this.paymentOptions.subscription,
-      webhook: this.paymentOptions.webhook,
-      invoicing: this.paymentOptions.invoicing,
-      taxes: this.paymentOptions.taxes,
-      refunds: this.paymentOptions.refunds,
-      reporting: this.paymentOptions.reporting
-    };
+    // Dépendances communes à tous les providers
+    dependencies += `    // Dépendances pour le système de paiement\n`;
+    dependencies += `    implementation 'org.springframework.boot:spring-boot-starter-web'\n`;
+    dependencies += `    implementation 'org.springframework.boot:spring-boot-starter-validation'\n`;
 
-    // Générer les entités
-    this._generateEntities(context);
-
-    // Générer les repositories
-    this._generateRepositories(context);
-
-    // Générer les services
-    this._generateServices(context);
-
-    // Générer les controllers
-    this._generateControllers(context);
-
-    // Générer les DTOs
-    this._generateDtos(context);
-
-    // Générer les configurations
-    this._generateConfigurations(context);
-
-    // Générer les webhooks si nécessaire
-    if (this.paymentOptions.webhook) {
-      this._generateWebhooks(context);
-    }
-
-    // Générer le système d'abonnement si nécessaire
-    if (this.paymentOptions.subscription) {
-      this._generateSubscriptions(context);
-    }
-
-    // Générer le système de facturation si nécessaire
-    if (this.paymentOptions.invoicing) {
-      this._generateInvoicing(context);
-    }
-
-    // Générer la gestion des taxes si nécessaire
-    if (this.paymentOptions.taxes) {
-      this._generateTaxes(context);
-    }
-
-    // Générer la gestion des remboursements si nécessaire
-    if (this.paymentOptions.refunds) {
-      this._generateRefunds(context);
-    }
-
-    // Générer les rapports financiers si nécessaire
-    if (this.paymentOptions.reporting) {
-      this._generateReports(context);
-    }
-
-    // Générer les tests
-    this._generateTests(context);
-
-    // Mettre à jour les fichiers de configuration
-    this._updateConfigurations(context);
-  }
-
-  // Installation des dépendances
-  install() {
-    if (!this.options.skipInstall) {
-      this.log(chalk.green('Installation des dépendances...'));
-      if (fs.existsSync(this.destinationPath('pom.xml'))) {
-        this.spawnSync('mvn', ['install', '-DskipTests']);
-      } else if (fs.existsSync(this.destinationPath('build.gradle'))) {
-        this.spawnSync('./gradlew', ['build', '-x', 'test']);
-      }
-    }
-  }
-
-  // Finalisation
-  end() {
-    this.log(chalk.green('Le système de paiement a été généré avec succès!'));
-    this.log(chalk.yellow('Pour finir la configuration, veuillez:'));
-    this.log('1. Définir vos clés API dans src/main/resources/application.yml');
-
-    if (this.paymentOptions.webhook) {
-      this.log('2. Configurer les webhooks dans vos dashboards Stripe/PayPal');
-    }
-
-    this.log(chalk.yellow('\nDocumentation:'));
-
+    // Dépendances spécifiques au provider
     if (this.paymentOptions.provider.includes('stripe')) {
-      this.log('- Stripe API: https://stripe.com/docs/api');
+      dependencies += `    implementation 'com.stripe:stripe-java:22.0.0'\n`;
     }
 
     if (this.paymentOptions.provider.includes('paypal')) {
-      this.log('- PayPal SDK: https://developer.paypal.com/docs/api/overview/');
+      dependencies += `    implementation 'com.paypal.sdk:rest-api-sdk:1.14.0'\n`;
     }
+
+    if (this.paymentOptions.provider.includes('braintree')) {
+      dependencies += `    implementation 'com.braintreepayments.gateway:braintree-java:3.16.0'\n`;
+    }
+
+    if (this.paymentOptions.provider.includes('adyen')) {
+      dependencies += `    implementation 'com.adyen:adyen-java-api-library:18.1.2'\n`;
+    }
+
+    return dependencies;
   }
 
-  // Méthode utilitaire pour vérifier si un template existe et le rendre
-  private renderTemplateIfExists(templatePath: string, outputPath: string, context: any) {
-    const fullTemplatePath = this.templatePath(templatePath);
+  /**
+   * Générer la configuration du système de paiement
+   */
+  _generatePaymentConfig() {
+    const packageName = this._constructSubPackage(this.packageName, 'config');
+    const filePath = path.join(process.cwd(), 'src/main/java', packageName.replace(/\./g, '/'), 'PaymentConfig.java');
 
-    // Vérifier si le fichier template existe
-    if (fs.existsSync(fullTemplatePath)) {
-      this.renderTemplate(
-        templatePath,
-        outputPath,
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('config/PaymentConfig.java.ejs', filePath, {
+        packageName,
+        providers: this.paymentOptions.provider
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier PaymentConfig.java généré avec succès.`));
     } else {
-      this.log(chalk.yellow(`Template ${templatePath} n'a pas été trouvé. Génération ignorée.`));
+      this.log(INFO_COLOR(`⚠️ Le fichier PaymentConfig.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les entités
-  private _generateEntities(context: any) {
-    this.log(chalk.blue('Génération des entités de paiement...'));
+  /**
+   * Générer le service de base pour le paiement
+   */
+  _generateBasePaymentService() {
+    const packageName = this._constructSubPackage(this.packageName, 'services');
 
-    // Générer l'entité Payment
-    this.renderTemplate(
-      this.templatePath('entities/Payment.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/Payment.java`),
-      context
-    );
+    // Interface du service
+    const interfacePath = path.join(process.cwd(), 'src/main/java', packageName.replace(/\./g, '/'), 'PaymentService.java');
 
-    // Générer l'entité PaymentMethod
-    this.renderTemplate(
-      this.templatePath('entities/PaymentMethod.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/PaymentMethod.java`),
-      context
-    );
-
-    // Générer l'entité Transaction
-    this.renderTemplate(
-      this.templatePath('entities/Transaction.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/Transaction.java`),
-      context
-    );
-
-    // Générer l'entité Customer
-    this.renderTemplate(
-      this.templatePath('entities/Customer.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/Customer.java`),
-      context
-    );
-
-    if (context.subscription) {
-      // Générer l'entité Subscription
-      this.renderTemplate(
-        this.templatePath('entities/Subscription.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/domain/Subscription.java`),
-        context
-      );
-
-      // Générer l'entité Plan
-      this.renderTemplate(
-        this.templatePath('entities/Plan.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/domain/Plan.java`),
-        context
-      );
-    }
-
-    if (context.invoicing) {
-      // Générer l'entité Invoice
-      this.renderTemplate(
-        this.templatePath('entities/Invoice.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/domain/Invoice.java`),
-        context
-      );
-
-      // Générer l'entité InvoiceItem
-      this.renderTemplate(
-        this.templatePath('entities/InvoiceItem.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/domain/InvoiceItem.java`),
-        context
-      );
+    if (!fs.existsSync(interfacePath)) {
+      this.renderEjsTemplate('services/PaymentService.java.ejs', interfacePath, {
+        packageName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier PaymentService.java (interface) généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier PaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les repositories
-  private _generateRepositories(context: any) {
-    this.log(chalk.blue('Génération des repositories de paiement...'));
+  /**
+   * Générer le contrôleur de paiement
+   */
+  _generatePaymentController() {
+    const packageName = this._constructSubPackage(this.packageName, 'controllers');
+    const serviceName = this._constructSubPackage(this.packageName, 'services');
+    const filePath = path.join(process.cwd(), 'src/main/java', packageName.replace(/\./g, '/'), 'PaymentController.java');
 
-    // Générer le repository Payment
-    this.renderTemplate(
-      this.templatePath('repositories/PaymentRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/PaymentRepository.java`),
-      context
-    );
-
-    // Générer le repository PaymentMethod
-    this.renderTemplate(
-      this.templatePath('repositories/PaymentMethodRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/PaymentMethodRepository.java`),
-      context
-    );
-
-    // Générer le repository Transaction
-    this.renderTemplate(
-      this.templatePath('repositories/TransactionRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/TransactionRepository.java`),
-      context
-    );
-
-    // Générer le repository Customer
-    this.renderTemplate(
-      this.templatePath('repositories/CustomerRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/CustomerRepository.java`),
-      context
-    );
-
-    if (context.subscription) {
-      // Générer le repository Subscription
-      this.renderTemplate(
-        this.templatePath('repositories/SubscriptionRepository.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/repository/SubscriptionRepository.java`),
-        context
-      );
-
-      // Générer le repository Plan
-      this.renderTemplate(
-        this.templatePath('repositories/PlanRepository.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/repository/PlanRepository.java`),
-        context
-      );
-    }
-
-    if (context.invoicing) {
-      // Générer le repository Invoice
-      this.renderTemplate(
-        this.templatePath('repositories/InvoiceRepository.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/repository/InvoiceRepository.java`),
-        context
-      );
-
-      // Générer le repository InvoiceItem
-      this.renderTemplate(
-        this.templatePath('repositories/InvoiceItemRepository.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/repository/InvoiceItemRepository.java`),
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('controllers/PaymentController.java.ejs', filePath, {
+        packageName,
+        serviceName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier PaymentController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier PaymentController.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les services
-  private _generateServices(context: any) {
-    this.log(chalk.blue('Génération des services de paiement...'));
+  /**
+   * Générer l'implémentation pour Stripe
+   */
+  _generateStripeImplementation() {
+    // Configuration Stripe dans le dossier config
+    const configPackageName = this._constructSubPackage(this.packageName, 'config');
+    const configFilePath = path.join(process.cwd(), 'src/main/java', configPackageName.replace(/\./g, '/'), 'StripeConfig.java');
 
-    // Générer les interfaces de service
-    this.renderTemplate(
-      this.templatePath('services/PaymentService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/PaymentService.java`),
-      context
-    );
-
-    // Générer les implémentations de services spécifiques à chaque provider
-    for (const provider of context.providers) {
-      this.renderTemplate(
-        this.templatePath(`services/${this._capitalize(provider)}PaymentService.java.ejs`),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/${this._capitalize(provider)}PaymentService.java`),
-        context
-      );
+    if (!fs.existsSync(configFilePath)) {
+      this.renderEjsTemplate('config/StripeConfig.java.ejs', configFilePath, {
+        packageName: configPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier StripeConfig.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier StripeConfig.java existe déjà et n'a pas été écrasé.`));
     }
 
-    // Générer le service générique
-    this.renderTemplate(
-      this.templatePath('services/PaymentServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/PaymentServiceImpl.java`),
-      context
-    );
+    // Service Stripe dans le dossier services (correction)
+    const servicesPackageName = this._constructSubPackage(this.packageName, 'services');
+    const filePath = path.join(process.cwd(), 'src/main/java', servicesPackageName.replace(/\./g, '/'), 'StripePaymentService.java');
 
-    // Générer le service de gestion des méthodes de paiement
-    this.renderTemplate(
-      this.templatePath('services/PaymentMethodService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/PaymentMethodService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('services/PaymentMethodServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/PaymentMethodServiceImpl.java`),
-      context
-    );
-
-    // Générer le service de gestion des clients
-    this.renderTemplate(
-      this.templatePath('services/CustomerService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/CustomerService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('services/CustomerServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/CustomerServiceImpl.java`),
-      context
-    );
-
-    // Générer le service de transactions
-    this.renderTemplate(
-      this.templatePath('services/TransactionService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/TransactionService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('services/TransactionServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/TransactionServiceImpl.java`),
-      context
-    );
-
-    if (context.subscription) {
-      // Générer les services d'abonnement
-      this.renderTemplate(
-        this.templatePath('services/SubscriptionService.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/SubscriptionService.java`),
-        context
-      );
-
-      this.renderTemplate(
-        this.templatePath('services/SubscriptionServiceImpl.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/SubscriptionServiceImpl.java`),
-        context
-      );
-
-      // Générer les services de plan
-      this.renderTemplate(
-        this.templatePath('services/PlanService.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/PlanService.java`),
-        context
-      );
-
-      this.renderTemplate(
-        this.templatePath('services/PlanServiceImpl.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/PlanServiceImpl.java`),
-        context
-      );
-    }
-
-    if (context.invoicing) {
-      // Générer les services de facturation
-      this.renderTemplate(
-        this.templatePath('services/InvoiceService.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/InvoiceService.java`),
-        context
-      );
-
-      this.renderTemplate(
-        this.templatePath('services/InvoiceServiceImpl.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/InvoiceServiceImpl.java`),
-        context
-      );
-
-      // Service pour la génération de PDF
-      this.renderTemplate(
-        this.templatePath('services/PdfService.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/PdfService.java`),
-        context
-      );
-
-      this.renderTemplate(
-        this.templatePath('services/PdfServiceImpl.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/PdfServiceImpl.java`),
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('services/StripePaymentService.java.ejs', filePath, {
+        packageName: servicesPackageName,
+        entityPackageName: this._constructSubPackage(this.packageName, 'entities'),
+        configPackageName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds,
+        webhook: this.paymentOptions.webhook
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier StripePaymentService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier StripePaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les controllers
-  private _generateControllers(context: any) {
-    this.log(chalk.blue('Génération des controllers de paiement...'));
+  /**
+   * Générer l'implémentation pour PayPal
+   */
+  _generatePayPalImplementation() {
+    // Configuration PayPal dans le dossier config
+    const configPackageName = this._constructSubPackage(this.packageName, 'config');
+    const configFilePath = path.join(process.cwd(), 'src/main/java', configPackageName.replace(/\./g, '/'), 'PayPalConfig.java');
 
-    // Générer le controller principal de paiement
-    this.renderTemplate(
-      this.templatePath('controllers/PaymentController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/PaymentController.java`),
-      context
-    );
-
-    // Générer le controller pour les méthodes de paiement
-    this.renderTemplate(
-      this.templatePath('controllers/PaymentMethodController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/PaymentMethodController.java`),
-      context
-    );
-
-    // Générer le controller pour les clients
-    this.renderTemplate(
-      this.templatePath('controllers/CustomerController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/CustomerController.java`),
-      context
-    );
-
-    // Générer le controller pour les transactions
-    this.renderTemplate(
-      this.templatePath('controllers/TransactionController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/TransactionController.java`),
-      context
-    );
-
-    if (context.subscription) {
-      // Générer le controller pour les abonnements
-      this.renderTemplate(
-        this.templatePath('controllers/SubscriptionController.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/web/rest/SubscriptionController.java`),
-        context
-      );
-
-      // Générer le controller pour les plans
-      this.renderTemplate(
-        this.templatePath('controllers/PlanController.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/web/rest/PlanController.java`),
-        context
-      );
+    if (fs.existsSync(path.join(this.templatePath(), 'config/PayPalConfig.java.ejs')) && !fs.existsSync(configFilePath)) {
+      this.renderEjsTemplate('config/PayPalConfig.java.ejs', configFilePath, {
+        packageName: configPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier PayPalConfig.java généré avec succès.`));
     }
 
-    if (context.invoicing) {
-      // Générer le controller pour les factures
-      this.renderTemplate(
-        this.templatePath('controllers/InvoiceController.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/web/rest/InvoiceController.java`),
-        context
-      );
-    }
+    // Service PayPal dans le dossier services (correction)
+    const servicesPackageName = this._constructSubPackage(this.packageName, 'services');
+    const filePath = path.join(process.cwd(), 'src/main/java', servicesPackageName.replace(/\./g, '/'), 'PayPalPaymentService.java');
 
-    if (context.webhook) {
-      // Générer les controllers pour les webhooks
-      this.renderTemplate(
-        this.templatePath('controllers/WebhookController.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/web/rest/WebhookController.java`),
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('services/PayPalPaymentService.java.ejs', filePath, {
+        packageName: servicesPackageName,
+        entityPackageName: this._constructSubPackage(this.packageName, 'entities'),
+        configPackageName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier PayPalPaymentService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier PayPalPaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les DTOs
-  private _generateDtos(context: any) {
-    this.log(chalk.blue('Génération des DTOs de paiement...'));
+  /**
+   * Générer l'implémentation pour Braintree
+   */
+  _generateBraintreeImplementation() {
+    // Configuration Braintree dans le dossier config
+    const configPackageName = this._constructSubPackage(this.packageName, 'config');
+    const configFilePath = path.join(process.cwd(), 'src/main/java', configPackageName.replace(/\./g, '/'), 'BraintreeConfig.java');
 
-    // Créer le dossier des DTOs
-    const dtoPath = this.destinationPath(`src/main/java/${context.packageDir}/service/dto`);
-    fs.mkdirSync(dtoPath, { recursive: true });
-
-    // Générer les DTOs de base
-    this.renderTemplate(
-      this.templatePath('dtos/PaymentDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/PaymentDTO.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('dtos/PaymentMethodDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/PaymentMethodDTO.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('dtos/CustomerDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/CustomerDTO.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('dtos/TransactionDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/TransactionDTO.java`),
-      context
-    );
-
-    // Générer les DTOs de requête
-    this.renderTemplate(
-      this.templatePath('dtos/PaymentRequestDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/PaymentRequestDTO.java`),
-      context
-    );
-
-    // Générer les DTOs de réponse
-    this.renderTemplate(
-      this.templatePath('dtos/PaymentResponseDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/PaymentResponseDTO.java`),
-      context
-    );
-
-    if (context.subscription) {
-      // Générer les DTOs pour les abonnements
-      this.renderTemplate(
-        this.templatePath('dtos/SubscriptionDTO.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/dto/SubscriptionDTO.java`),
-        context
-      );
-
-      this.renderTemplate(
-        this.templatePath('dtos/PlanDTO.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/dto/PlanDTO.java`),
-        context
-      );
+    if (fs.existsSync(path.join(this.templatePath(), 'config/BraintreeConfig.java.ejs')) && !fs.existsSync(configFilePath)) {
+      this.renderEjsTemplate('config/BraintreeConfig.java.ejs', configFilePath, {
+        packageName: configPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier BraintreeConfig.java généré avec succès.`));
     }
 
-    if (context.invoicing) {
-      // Générer les DTOs pour la facturation
-      this.renderTemplate(
-        this.templatePath('dtos/InvoiceDTO.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/dto/InvoiceDTO.java`),
-        context
-      );
+    // Service Braintree dans le dossier services (correction)
+    const servicesPackageName = this._constructSubPackage(this.packageName, 'services');
+    const filePath = path.join(process.cwd(), 'src/main/java', servicesPackageName.replace(/\./g, '/'), 'BraintreePaymentService.java');
 
-      this.renderTemplate(
-        this.templatePath('dtos/InvoiceItemDTO.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/dto/InvoiceItemDTO.java`),
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('services/BraintreePaymentService.java.ejs', filePath, {
+        packageName: servicesPackageName,
+        entityPackageName: this._constructSubPackage(this.packageName, 'entities'),
+        configPackageName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier BraintreePaymentService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier BraintreePaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les configurations
-  private _generateConfigurations(context: any) {
-    this.log(chalk.blue('Génération des configurations de paiement...'));
+  /**
+   * Générer l'implémentation pour Adyen
+   */
+  _generateAdyenImplementation() {
+    // Configuration Adyen
+    const configPackageName = this._constructSubPackage(this.packageName, 'config');
+    const configFilePath = path.join(process.cwd(), 'src/main/java', configPackageName.replace(/\./g, '/'), 'AdyenConfig.java');
 
-    // Générer la configuration générale du système de paiement
-    this.renderTemplate(
-      this.templatePath('config/PaymentConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/config/PaymentConfig.java`),
-      context
-    );
-
-    // Générer les fichiers de configuration pour chaque provider
-    for (const provider of context.providers) {
-      this.renderTemplate(
-        this.templatePath(`config/${this._capitalize(provider)}Config.java.ejs`),
-        this.destinationPath(`src/main/java/${context.packageDir}/config/${this._capitalize(provider)}Config.java`),
-        context
-      );
+    if (fs.existsSync(path.join(this.templatePath(), 'config/AdyenConfig.java.ejs')) && !fs.existsSync(configFilePath)) {
+      this.renderEjsTemplate('config/AdyenConfig.java.ejs', configFilePath, {
+        packageName: configPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier AdyenConfig.java généré avec succès.`));
     }
 
-    // Générer la configuration de sécurité pour les paiements
-    this.renderTemplate(
-      this.templatePath('config/PaymentSecurityConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/config/PaymentSecurityConfig.java`),
-      context
-    );
-  }
+    // Service Adyen
+    const packageName = this._constructSubPackage(this.packageName, 'service');
+    const filePath = path.join(process.cwd(), 'src/main/java', packageName.replace(/\./g, '/'), 'AdyenPaymentService.java');
 
-  // Méthode privée pour générer les webhooks
-  private _generateWebhooks(context: any) {
-    this.log(chalk.blue('Génération des webhooks de paiement...'));
-
-    // Générer le service de gestion des webhooks
-    this.renderTemplate(
-      this.templatePath('webhooks/WebhookService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/WebhookService.java`),
-      context
-    );
-
-    // Générer les implémentations de webhooks pour chaque provider
-    for (const provider of context.providers) {
-      this.renderTemplate(
-        this.templatePath(`webhooks/${this._capitalize(provider)}WebhookService.java.ejs`),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/${this._capitalize(provider)}WebhookService.java`),
-        context
-      );
-    }
-
-    // Générer les handlers d'événements
-    this.renderTemplate(
-      this.templatePath('webhooks/WebhookEventHandler.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/WebhookEventHandler.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('webhooks/WebhookEventHandlerImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/WebhookEventHandlerImpl.java`),
-      context
-    );
-  }
-
-  // Méthode privée pour générer le système d'abonnement
-  private _generateSubscriptions(context: any) {
-    this.log(chalk.blue('Génération du système d\'abonnement...'));
-
-    // Générer les utilitaires d'abonnement
-    this.renderTemplate(
-      this.templatePath('subscription/SubscriptionUtils.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/util/SubscriptionUtils.java`),
-      context
-    );
-
-    // Générer les services de gestion du cycle de vie des abonnements
-    this.renderTemplate(
-      this.templatePath('subscription/SubscriptionLifecycleService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/SubscriptionLifecycleService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('subscription/SubscriptionLifecycleServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/SubscriptionLifecycleServiceImpl.java`),
-      context
-    );
-
-    // Générer les tâches planifiées pour la gestion des abonnements
-    this.renderTemplate(
-      this.templatePath('subscription/SubscriptionScheduledTasks.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/scheduled/SubscriptionScheduledTasks.java`),
-      context
-    );
-  }
-
-  // Méthode privée pour générer le système de facturation
-  private _generateInvoicing(context: any) {
-    this.log(chalk.blue('Génération du système de facturation...'));
-
-    // Créer les dossiers pour les templates JTE
-    const jteTemplatesDir = this.destinationPath(`src/main/jte`);
-    fs.mkdirSync(jteTemplatesDir, { recursive: true });
-
-    const jteInvoicesDir = this.destinationPath(`src/main/jte/invoices`);
-    fs.mkdirSync(jteInvoicesDir, { recursive: true });
-
-    const jteLayoutsDir = this.destinationPath(`src/main/jte/layouts`);
-    fs.mkdirSync(jteLayoutsDir, { recursive: true });
-
-    // Générer les templates JTE de facture
-    this.renderTemplate(
-      this.templatePath('invoicing/invoice.jte.ejs'),
-      this.destinationPath(`src/main/jte/invoices/invoice.jte`),
-      context
-    );
-
-    // Générer un template JTE pour le layout commun
-    this.renderTemplate(
-      this.templatePath('invoicing/layout.jte.ejs'),
-      this.destinationPath(`src/main/jte/layouts/invoice-layout.jte`),
-      context
-    );
-
-    // Générér un template JTE pour les reçus
-    this.renderTemplate(
-      this.templatePath('invoicing/receipt.jte.ejs'),
-      this.destinationPath(`src/main/jte/invoices/receipt.jte`),
-      context
-    );
-
-    // Générer la configuration JTE
-    this.renderTemplate(
-      this.templatePath('invoicing/JteConfig.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/config/JteConfig.java`),
-      context
-    );
-
-    // Générer les styles CSS pour les factures (toujours utile pour le rendu PDF)
-    this.renderTemplate(
-      this.templatePath('invoicing/invoice-styles.css.ejs'),
-      this.destinationPath(`src/main/resources/static/css/invoice-styles.css`),
-      context
-    );
-
-    // Générer le service de génération de factures avec JTE
-    this.renderTemplate(
-      this.templatePath('invoicing/InvoiceGenerationService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/InvoiceGenerationService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('invoicing/InvoiceGenerationServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/InvoiceGenerationServiceImpl.java`),
-      context
-    );
-
-    // Générer les classes de modèle pour les templates JTE
-    this.renderTemplate(
-      this.templatePath('invoicing/InvoiceTemplateModel.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/model/InvoiceTemplateModel.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('invoicing/ReceiptTemplateModel.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/model/ReceiptTemplateModel.java`),
-      context
-    );
-
-    // Générer les utilitaires de facturation
-    this.renderTemplate(
-      this.templatePath('invoicing/InvoiceUtils.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/util/InvoiceUtils.java`),
-      context
-    );
-  }
-
-  // Méthode privée pour générer la gestion des taxes
-  private _generateTaxes(context: any) {
-    this.log(chalk.blue('Génération de la gestion des taxes...'));
-
-    // Générer les entités de taxe
-    this.renderTemplate(
-      this.templatePath('taxes/Tax.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/Tax.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('taxes/TaxRate.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/TaxRate.java`),
-      context
-    );
-
-    // Générer les repositories de taxe
-    this.renderTemplate(
-      this.templatePath('taxes/TaxRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/TaxRepository.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('taxes/TaxRateRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/TaxRateRepository.java`),
-      context
-    );
-
-    // Générer les services de taxe
-    this.renderTemplate(
-      this.templatePath('taxes/TaxService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/TaxService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('taxes/TaxServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/TaxServiceImpl.java`),
-      context
-    );
-
-    // Générer le controller de taxe
-    this.renderTemplate(
-      this.templatePath('taxes/TaxController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/TaxController.java`),
-      context
-    );
-
-    // Générer les DTOs de taxe
-    this.renderTemplate(
-      this.templatePath('taxes/TaxDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/TaxDTO.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('taxes/TaxRateDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/TaxRateDTO.java`),
-      context
-    );
-
-    // Intégration avec API externe de taxe (par exemple TaxJar)
-    if (context.providers.includes('stripe')) {
-      this.renderTemplate(
-        this.templatePath('taxes/StripeTaxService.java.ejs'),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/StripeTaxService.java`),
-        context
-      );
+    if (!fs.existsSync(filePath)) {
+      this.renderEjsTemplate('services/AdyenPaymentService.java.ejs', filePath, {
+        packageName,
+        entityPackageName: this._constructSubPackage(this.packageName, 'entity'),
+        configPackageName,
+        subscription: this.paymentOptions.subscription,
+        refunds: this.paymentOptions.refunds
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier AdyenPaymentService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier AdyenPaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer la gestion des remboursements
-  private _generateRefunds(context: any) {
-    this.log(chalk.blue('Génération de la gestion des remboursements...'));
+  /**
+   * Générer le support des abonnements
+   */
+  _generateSubscriptionSupport() {
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+    const entityPackageName = this._constructSubPackage(this.packageName, 'entity');
+    const repositoryPackageName = this._constructSubPackage(this.packageName, 'repository');
+
+    const controllerPath = path.join(process.cwd(), 'src/main/java', controllerPackageName.replace(/\./g, '/'), 'SubscriptionController.java');
+    const servicePath = path.join(process.cwd(), 'src/main/java', servicePackageName.replace(/\./g, '/'), 'SubscriptionService.java');
+    const entityPath = path.join(process.cwd(), 'src/main/java', entityPackageName.replace(/\./g, '/'), 'Subscription.java');
+    const repositoryPath = path.join(process.cwd(), 'src/main/java', repositoryPackageName.replace(/\./g, '/'), 'SubscriptionRepository.java');
+
+    // Générer le controller des abonnements
+    if (!fs.existsSync(controllerPath)) {
+      this.renderEjsTemplate('controllers/SubscriptionController.java.ejs', controllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le service des abonnements
+    if (!fs.existsSync(servicePath)) {
+      this.renderEjsTemplate('services/SubscriptionService.java.ejs', servicePath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionService.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer l'entité des abonnements
+    if (!fs.existsSync(entityPath)) {
+      this.renderEjsTemplate('entities/Subscription.java.ejs', entityPath, {
+        packageName: entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier Subscription.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier Subscription.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le repository des abonnements
+    if (!fs.existsSync(repositoryPath)) {
+      this.renderEjsTemplate('repositories/SubscriptionRepository.java.ejs', repositoryPath, {
+        packageName: repositoryPackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionRepository.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionRepository.java existe déjà et n'a pas été écrasé.`));
+    }
+  }
+
+  /**
+   * Générer le support des webhooks
+   */
+  _generateWebhookSupport() {
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+
+    const controllerPath = path.join(process.cwd(), 'src/main/java', controllerPackageName.replace(/\./g, '/'), 'WebhookController.java');
+    const servicePath = path.join(process.cwd(), 'src/main/java', servicePackageName.replace(/\./g, '/'), 'WebhookService.java');
+
+    // Générer le contrôleur pour les webhooks
+    if (!fs.existsSync(controllerPath)) {
+      this.renderEjsTemplate('controllers/WebhookController.java.ejs', controllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        providers: this.paymentOptions.provider
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier WebhookController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier WebhookController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le service pour les webhooks
+    if (!fs.existsSync(servicePath)) {
+      this.renderEjsTemplate('services/WebhookService.java.ejs', servicePath, {
+        packageName: servicePackageName,
+        providers: this.paymentOptions.provider
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier WebhookService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier WebhookService.java existe déjà et n'a pas été écrasé.`));
+    }
+  }
+
+  /**
+   * Générer le système de facturation
+   */
+  _generateInvoicingSystem() {
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+    const entityPackageName = this._constructSubPackage(this.packageName, 'entity');
+    const repositoryPackageName = this._constructSubPackage(this.packageName, 'repository');
+
+    const controllerPath = path.join(process.cwd(), 'src/main/java', controllerPackageName.replace(/\./g, '/'), 'InvoiceController.java');
+    const servicePath = path.join(process.cwd(), 'src/main/java', servicePackageName.replace(/\./g, '/'), 'InvoiceService.java');
+    const entityPath = path.join(process.cwd(), 'src/main/java', entityPackageName.replace(/\./g, '/'), 'Invoice.java');
+    const repositoryPath = path.join(process.cwd(), 'src/main/java', repositoryPackageName.replace(/\./g, '/'), 'InvoiceRepository.java');
+
+    // Générer le controller des factures
+    if (!fs.existsSync(controllerPath)) {
+      this.renderEjsTemplate('controllers/InvoiceController.java.ejs', controllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier InvoiceController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le service des factures
+    if (!fs.existsSync(servicePath)) {
+      this.renderEjsTemplate('services/InvoiceService.java.ejs', servicePath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier InvoiceService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceService.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer l'entité des factures
+    if (!fs.existsSync(entityPath)) {
+      this.renderEjsTemplate('entities/Invoice.java.ejs', entityPath, {
+        packageName: entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier Invoice.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier Invoice.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le repository des factures
+    if (!fs.existsSync(repositoryPath)) {
+      this.renderEjsTemplate('repositories/InvoiceRepository.java.ejs', repositoryPath, {
+        packageName: repositoryPackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier InvoiceRepository.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceRepository.java existe déjà et n'a pas été écrasé.`));
+    }
+  }
+
+  /**
+   * Générer la gestion des taxes
+   */
+  _generateTaxManagement() {
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+    const entityPackageName = this._constructSubPackage(this.packageName, 'entity');
+    const repositoryPackageName = this._constructSubPackage(this.packageName, 'repository');
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const dtoPackageName = this._constructSubPackage(this.packageName, 'dto');
+
+    const servicePath = path.join(process.cwd(), 'src/main/java', servicePackageName.replace(/\./g, '/'), 'TaxService.java');
+    const entityPath = path.join(process.cwd(), 'src/main/java', entityPackageName.replace(/\./g, '/'), 'Tax.java');
+    const repositoryPath = path.join(process.cwd(), 'src/main/java', repositoryPackageName.replace(/\./g, '/'), 'TaxRepository.java');
+    const controllerPath = path.join(process.cwd(), 'src/main/java', controllerPackageName.replace(/\./g, '/'), 'TaxController.java');
+    const dtoPath = path.join(process.cwd(), 'src/main/java', dtoPackageName.replace(/\./g, '/'), 'TaxDTO.java');
+
+    // Générer le service des taxes
+    if (!fs.existsSync(servicePath)) {
+      this.renderEjsTemplate('services/TaxService.java.ejs', servicePath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier TaxService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier TaxService.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer l'entité Tax
+    if (!fs.existsSync(entityPath)) {
+      this.renderEjsTemplate('entities/Tax.java.ejs', entityPath, {
+        packageName: entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier Tax.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier Tax.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le repository des taxes
+    if (!fs.existsSync(repositoryPath)) {
+      this.renderEjsTemplate('repositories/TaxRepository.java.ejs', repositoryPath, {
+        packageName: repositoryPackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier TaxRepository.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier TaxRepository.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le controller des taxes
+    if (!fs.existsSync(controllerPath)) {
+      this.renderEjsTemplate('controllers/TaxController.java.ejs', controllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier TaxController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier TaxController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le DTO des taxes
+    if (!fs.existsSync(dtoPath)) {
+      this.renderEjsTemplate('dtos/TaxDTO.java.ejs', dtoPath, {
+        packageName: dtoPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier TaxDTO.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier TaxDTO.java existe déjà et n'a pas été écrasé.`));
+    }
+  }
+
+  /**
+   * Générer la gestion des remboursements
+   */
+  _generateRefundManagement() {
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+    const entityPackageName = this._constructSubPackage(this.packageName, 'entity');
+    const repositoryPackageName = this._constructSubPackage(this.packageName, 'repository');
+
+    const controllerPath = path.join(process.cwd(), 'src/main/java', controllerPackageName.replace(/\./g, '/'), 'RefundController.java');
+    const servicePath = path.join(process.cwd(), 'src/main/java', servicePackageName.replace(/\./g, '/'), 'RefundService.java');
+    const entityPath = path.join(process.cwd(), 'src/main/java', entityPackageName.replace(/\./g, '/'), 'Refund.java');
+    const repositoryPath = path.join(process.cwd(), 'src/main/java', repositoryPackageName.replace(/\./g, '/'), 'RefundRepository.java');
+
+    // Générer le controller des remboursements
+    if (!fs.existsSync(controllerPath)) {
+      this.renderEjsTemplate('controllers/RefundController.java.ejs', controllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier RefundController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier RefundController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le service des remboursements
+    if (!fs.existsSync(servicePath)) {
+      this.renderEjsTemplate('services/RefundService.java.ejs', servicePath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier RefundService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier RefundService.java existe déjà et n'a pas été écrasé.`));
+    }
 
     // Générer l'entité Refund
-    this.renderTemplate(
-      this.templatePath('refunds/Refund.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/domain/Refund.java`),
-      context
-    );
+    if (!fs.existsSync(entityPath)) {
+      this.renderEjsTemplate('entities/Refund.java.ejs', entityPath, {
+        packageName: entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier Refund.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier Refund.java existe déjà et n'a pas été écrasé.`));
+    }
 
-    // Générer le repository Refund
-    this.renderTemplate(
-      this.templatePath('refunds/RefundRepository.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/repository/RefundRepository.java`),
-      context
-    );
-
-    // Générer le service de remboursement
-    this.renderTemplate(
-      this.templatePath('refunds/RefundService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/RefundService.java`),
-      context
-    );
-
-    this.renderTemplate(
-      this.templatePath('refunds/RefundServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/RefundServiceImpl.java`),
-      context
-    );
-
-    // Générer le controller de remboursement
-    this.renderTemplate(
-      this.templatePath('refunds/RefundController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/RefundController.java`),
-      context
-    );
-
-    // Générer le DTO de remboursement
-    this.renderTemplate(
-      this.templatePath('refunds/RefundDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/RefundDTO.java`),
-      context
-    );
-
-    // Implémentations spécifiques pour chaque provider
-    for (const provider of context.providers) {
-      this.renderTemplate(
-        this.templatePath(`refunds/${this._capitalize(provider)}RefundService.java.ejs`),
-        this.destinationPath(`src/main/java/${context.packageDir}/service/impl/${this._capitalize(provider)}RefundService.java`),
-        context
-      );
+    // Générer le repository des remboursements
+    if (!fs.existsSync(repositoryPath)) {
+      this.renderEjsTemplate('repositories/RefundRepository.java.ejs', repositoryPath, {
+        packageName: repositoryPackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier RefundRepository.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier RefundRepository.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour générer les rapports financiers
-  private _generateReports(context: any) {
-    this.log(chalk.blue('Génération des rapports financiers...'));
+  /**
+   * Générer le reporting financier
+   */
+  _generateFinancialReporting() {
+    // Définir les packages pour chaque type de composant
+    const servicePackageName = this._constructSubPackage(this.packageName, 'service');
+    const controllerPackageName = this._constructSubPackage(this.packageName, 'controller');
+    const dtoPackageName = this._constructSubPackage(this.packageName, 'dto');
+    const entityPackageName = this._constructSubPackage(this.packageName, 'entity');
+    const repositoryPackageName = this._constructSubPackage(this.packageName, 'repository');
 
-    // Générer le service de rapport
-    this.renderTemplate(
-      this.templatePath('reports/ReportService.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/ReportService.java`),
-      context
+    const javaMainDir = path.join(process.cwd(), 'src/main/java');
+
+    // Générer l'entité pour les rapports
+    const reportEntityPath = path.join(
+      javaMainDir,
+      entityPackageName.replace(/\./g, '/'),
+      'Report.java'
     );
 
-    this.renderTemplate(
-      this.templatePath('reports/ReportServiceImpl.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/impl/ReportServiceImpl.java`),
-      context
+    if (!fs.existsSync(reportEntityPath)) {
+      this.renderEjsTemplate('entities/Report.java.ejs', reportEntityPath, {
+        packageName: entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier Report.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier Report.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer le repository pour les rapports
+    const reportRepositoryPath = path.join(
+      javaMainDir,
+      repositoryPackageName.replace(/\./g, '/'),
+      'ReportRepository.java'
     );
 
-    // Générer les types de rapports
-    this.renderTemplate(
-      this.templatePath('reports/RevenueReport.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/report/RevenueReport.java`),
-      context
+    if (!fs.existsSync(reportRepositoryPath)) {
+      this.renderEjsTemplate('repositories/ReportRepository.java.ejs', reportRepositoryPath, {
+        packageName: repositoryPackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportRepository.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportRepository.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Générer les services de reporting
+    const reportingServicePath = path.join(
+      javaMainDir,
+      servicePackageName.replace(/\./g, '/'),
+      'ReportingService.java'
     );
 
-    this.renderTemplate(
-      this.templatePath('reports/TransactionReport.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/report/TransactionReport.java`),
-      context
+    if (!fs.existsSync(reportingServicePath)) {
+      this.renderEjsTemplate('services/ReportingService.java.ejs', reportingServicePath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportingService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportingService.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Interface du service de reporting
+    const reportServicePath = path.join(
+      javaMainDir,
+      servicePackageName.replace(/\./g, '/'),
+      'ReportService.java'
     );
 
-    this.renderTemplate(
-      this.templatePath('reports/CustomerReport.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/report/CustomerReport.java`),
-      context
+    if (!fs.existsSync(reportServicePath)) {
+      this.renderEjsTemplate('services/ReportService.java.ejs', reportServicePath, {
+        packageName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportService.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportService.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Implémentation du service de reporting
+    const reportServiceImplPath = path.join(
+      javaMainDir,
+      servicePackageName.replace(/\./g, '/'),
+      'ReportServiceImpl.java'
     );
 
-    // Générer le controller de rapport
-    this.renderTemplate(
-      this.templatePath('reports/ReportController.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/web/rest/ReportController.java`),
-      context
+    if (!fs.existsSync(reportServiceImplPath)) {
+      this.renderEjsTemplate('services/ReportServiceImpl.java.ejs', reportServiceImplPath, {
+        packageName: servicePackageName,
+        entityPackageName,
+        repositoryPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportServiceImpl.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportServiceImpl.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // Contrôleur pour les rapports
+    const reportControllerPath = path.join(
+      javaMainDir,
+      controllerPackageName.replace(/\./g, '/'),
+      'ReportController.java'
     );
 
-    // Générer les DTOs de rapport
-    this.renderTemplate(
-      this.templatePath('reports/ReportDTO.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/dto/ReportDTO.java`),
-      context
+    if (!fs.existsSync(reportControllerPath)) {
+      this.renderEjsTemplate('controllers/ReportController.java.ejs', reportControllerPath, {
+        packageName: controllerPackageName,
+        serviceName: servicePackageName,
+        entityPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportController.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportController.java existe déjà et n'a pas été écrasé.`));
+    }
+
+    // DTO pour les rapports
+    const reportDtoPath = path.join(
+      javaMainDir,
+      dtoPackageName.replace(/\./g, '/'),
+      'ReportDTO.java'
     );
 
-    // Gén��rer le générateur de rapports Excel
-    this.renderTemplate(
-      this.templatePath('reports/ExcelReportGenerator.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/util/ExcelReportGenerator.java`),
-      context
-    );
+    // S'assurer que le dossier existe
+    const reportDtoDir = path.dirname(reportDtoPath);
+    if (!fs.existsSync(reportDtoDir)) {
+      fs.mkdirSync(reportDtoDir, { recursive: true });
+    }
 
-    // Générer le générateur de rapports PDF
-    this.renderTemplate(
-      this.templatePath('reports/PdfReportGenerator.java.ejs'),
-      this.destinationPath(`src/main/java/${context.packageDir}/service/util/PdfReportGenerator.java`),
-      context
-    );
-  }
-
-  // Méthode privée pour générer les tests
-  private _generateTests(context: any) {
-    this.log(chalk.blue('Génération des tests de paiement...'));
-
-    // Générer les tests unitaires
-    this.renderTemplate(
-      this.templatePath('tests/PaymentServiceTest.java.ejs'),
-      this.destinationPath(`src/test/java/${context.packageDir}/service/PaymentServiceTest.java`),
-      context
-    );
-
-    // Générer les tests d'intégration
-    this.renderTemplate(
-      this.templatePath('tests/PaymentControllerIT.java.ejs'),
-      this.destinationPath(`src/test/java/${context.packageDir}/web/rest/PaymentControllerIT.java`),
-      context
-    );
-
-    // Générer les mocks pour les providers externes
-    for (const provider of context.providers) {
-      this.renderTemplate(
-        this.templatePath(`tests/${this._capitalize(provider)}MockConfig.java.ejs`),
-        this.destinationPath(`src/test/java/${context.packageDir}/config/${this._capitalize(provider)}MockConfig.java`),
-        context
-      );
+    if (!fs.existsSync(reportDtoPath)) {
+      this.renderEjsTemplate('dtos/ReportDTO.java.ejs', reportDtoPath, {
+        packageName: dtoPackageName
+      });
+      this.log(SUCCESS_COLOR(`✅ Fichier ReportDTO.java généré avec succès.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier ReportDTO.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode privée pour mettre à jour les fichiers de configuration
-  private _updateConfigurations(context: any) {
-    this.log(chalk.blue('Mise à jour des fichiers de configuration...'));
+  /**
+   * Générer les exemples d'utilisation et la documentation
+   */
+  _generateSampleUsageAndDocs() {
+    // Générer un README pour le système de paiement
+    const readmePath = path.join(process.cwd(), 'payment-system-README.md');
 
-    // Ajouter les propriétés de configuration dans application.yml
-    const applicationYmlPath = this.destinationPath('src/main/resources/application.yml');
-    let applicationYml = this.fs.exists(applicationYmlPath) ? this.fs.read(applicationYmlPath) : '';
+    if (!fs.existsSync(readmePath)) {
+      // Essayer de trouver le template dans plusieurs emplacements possibles
+      let readmeTemplate;
+      const possibleTemplatePaths = [
+        path.join(this.templatePath(), 'payment-README.md.ejs'),
+        path.join(this.templatePath(), '../docs/payment-README.md.ejs'),
+        path.join(this.templatePath(), 'docs/payment-README.md.ejs')
+      ];
 
-    // Vérifier si la section de paiement existe déjà
-    if (!applicationYml?.includes('payment:')) {
-      // Construire la configuration pour chaque provider
-      let paymentConfig = '\n# Configuration du système de paiement\npayment:\n';
-
-      if (context.providers.includes('stripe')) {
-        paymentConfig += '  stripe:\n';
-        paymentConfig += '    api-key: ${STRIPE_API_KEY:your-stripe-api-key}\n';
-        paymentConfig += '    webhook-secret: ${STRIPE_WEBHOOK_SECRET:your-stripe-webhook-secret}\n';
-        paymentConfig += '    success-url: ${STRIPE_SUCCESS_URL:http://localhost:8080/payment/success}\n';
-        paymentConfig += '    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:8080/payment/cancel}\n';
+      for (const templatePath of possibleTemplatePaths) {
+        if (fs.existsSync(templatePath)) {
+          const relativePath = path.relative(this.templatePath(), templatePath);
+          readmeTemplate = relativePath.replace(/\\/g, '/'); // Normaliser les chemins pour Windows
+          break;
+        }
       }
 
-      if (context.providers.includes('paypal')) {
-        paymentConfig += '  paypal:\n';
-        paymentConfig += '    client-id: ${PAYPAL_CLIENT_ID:your-paypal-client-id}\n';
-        paymentConfig += '    client-secret: ${PAYPAL_CLIENT_SECRET:your-paypal-client-secret}\n';
-        paymentConfig += '    mode: ${PAYPAL_MODE:sandbox}\n';  // sandbox ou live
-        paymentConfig += '    success-url: ${PAYPAL_SUCCESS_URL:http://localhost:8080/payment/success}\n';
-        paymentConfig += '    cancel-url: ${PAYPAL_CANCEL_URL:http://localhost:8080/payment/cancel}\n';
+      // Si aucun template n'est trouvé, utiliser un chemin par défaut
+      if (!readmeTemplate) {
+        readmeTemplate = 'payment-README.md.ejs';
+        this.log(INFO_COLOR(`⚠️ Utilisation du template par défaut: ${readmeTemplate}`));
+      } else {
+        this.log(SUCCESS_COLOR(`✅ Template README trouvé: ${readmeTemplate}`));
       }
 
-      // Ajouter la configuration commune
-      paymentConfig += '  default-provider: ${DEFAULT_PAYMENT_PROVIDER:' + context.providers[0] + '}\n';
-      paymentConfig += '  currency: ${DEFAULT_CURRENCY:EUR}\n';
-
-      // Ajouter au fichier
-      applicationYml += paymentConfig;
-      this.fs.write(applicationYmlPath, applicationYml? applicationYml : '');
+      this.renderEjsTemplate(readmeTemplate, readmePath, {
+        packageName: this.packageName,
+        providers: this.paymentOptions.provider,
+        features: {
+          subscription: this.paymentOptions.subscription,
+          webhook: this.paymentOptions.webhook,
+          invoicing: this.paymentOptions.invoicing,
+          taxes: this.paymentOptions.taxes,
+          refunds: this.paymentOptions.refunds,
+          reporting: this.paymentOptions.reporting
+        }
+      });
+      this.log(SUCCESS_COLOR(`✅ Documentation README générée avec succès dans ${readmePath}.`));
+    } else {
+      this.log(INFO_COLOR(`⚠️ Le fichier README existe déjà et n'a pas été écrasé.`));
     }
   }
 
-  // Méthode d'aide pour ajouter des dépendances Maven
-  private addMavenDependencies(dependencies: any[]) {
-    const pomPath = this.destinationPath('pom.xml');
+  /**
+   * Méthode appelée à la fin du processus de génération
+   */
+  end() {
+    this.log(SECTION_DIVIDER);
+    this.log(STEP_PREFIX + chalk.green('Système de paiement généré avec succès!'));
+    this.log(SECTION_DIVIDER);
 
-    if (!this.fs.exists(pomPath)) {
-      this.log(chalk.red('pom.xml not found!'));
-      return;
+    this.log(INFO_COLOR(`📌 Providers de paiement configurés: ${this.paymentOptions.provider.join(', ')}`));
+
+    // Afficher les fonctionnalités activées
+    const enabledFeatures:any = [];
+    if (this.paymentOptions.subscription) enabledFeatures.push('Abonnements');
+    if (this.paymentOptions.webhook) enabledFeatures.push('Webhooks');
+    if (this.paymentOptions.invoicing) enabledFeatures.push('Facturation');
+    if (this.paymentOptions.taxes) enabledFeatures.push('Gestion des taxes');
+    if (this.paymentOptions.refunds) enabledFeatures.push('Gestion des remboursements');
+    if (this.paymentOptions.reporting) enabledFeatures.push('Reporting financier');
+
+    if (enabledFeatures.length > 0) {
+      this.log(INFO_COLOR(`📌 Fonctionnalités activées: ${enabledFeatures.join(', ')}`));
     }
 
-    let pomXml = this.fs.read(pomPath);
-
-    // Rechercher la section des dépendances
-    const dependenciesStart = pomXml?.indexOf('<dependencies>');
-    const dependenciesEnd = pomXml?.indexOf('</dependencies>', dependenciesStart);
-
-    if (dependenciesStart === -1 || dependenciesEnd === -1) {
-      this.log(chalk.red('Could not find dependencies section in pom.xml'));
-      return;
-    }
-
-    // Construire les nouvelles dépendances
-    let newDependencies = '';
-    for (const dep of dependencies) {
-      // Vérifier si la dépendance existe déjà
-      if (pomXml?.includes(`<artifactId>${dep.artifactId}</artifactId>`)) {
-        continue;
-      }
-
-      newDependencies += `\n    <dependency>\n`;
-      newDependencies += `        <groupId>${dep.groupId}</groupId>\n`;
-      newDependencies += `        <artifactId>${dep.artifactId}</artifactId>\n`;
-      if (dep.version) {
-        newDependencies += `        <version>${dep.version}</version>\n`;
-      }
-      if (dep.scope) {
-        newDependencies += `        <scope>${dep.scope}</scope>\n`;
-      }
-      newDependencies += `    </dependency>`;
-    }
-
-    // Insérer les nouvelles dépendances avant la fin de la section
-    if (newDependencies) {
-      if (dependenciesEnd != null) {
-        pomXml = pomXml?.substring(0, dependenciesEnd) + newDependencies + pomXml?.substring(dependenciesEnd);
-      }
-      this.fs.write(pomPath, pomXml? pomXml : '');
-    }
-  }
-
-  // Méthode d'aide pour ajouter des dépendances Gradle
-  private addGradleDependencies(dependencies: any[]) {
-    const gradlePath = this.destinationPath('build.gradle');
-
-    if (!this.fs.exists(gradlePath)) {
-      this.log(chalk.red('build.gradle not found!'));
-      return;
-    }
-
-    let gradleFile = this.fs.read(gradlePath);
-
-    // Rechercher la section des dépendances
-    const dependenciesStart = gradleFile?.indexOf('dependencies {');
-    const dependenciesEnd = gradleFile?.indexOf('}', dependenciesStart);
-
-    if (dependenciesStart === -1 || dependenciesEnd === -1) {
-      this.log(chalk.red('Could not find dependencies section in build.gradle'));
-      return;
-    }
-
-    // Construire les nouvelles dépendances
-    let newDependencies = '';
-    for (const dep of dependencies) {
-      // Vérifier si la dépendance existe déjà
-      const depString = `${dep.groupId}:${dep.artifactId}`;
-      if (gradleFile?.includes(depString)) {
-        continue;
-      }
-
-      newDependencies += `\n    implementation '${dep.groupId}:${dep.artifactId}:${dep.version}'`;
-    }
-
-    // Insérer les nouvelles dépendances avant la fin de la section
-    if (newDependencies) {
-      if (dependenciesEnd != null) {
-        gradleFile = gradleFile?.substring(0, dependenciesEnd) + newDependencies + gradleFile?.substring(dependenciesEnd);
-      }
-      this.fs.write(gradlePath, gradleFile? gradleFile : '');
-    }
-  }
-
-  // Méthode d'aide pour mettre en majuscule la première lettre d'une chaîne
-  private _capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    this.log(SUCCESS_COLOR(`✅ Le système de paiement a été généré dans le package: ${this.packageName}`));
+    this.log(SUCCESS_COLOR(`✅ Consultez le fichier payment-system-README.md pour plus d'informations sur l'utilisation du système de paiement.`));
   }
 }

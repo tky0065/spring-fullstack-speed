@@ -1,0 +1,330 @@
+package <%= packageName %>;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+<% if (providers.includes('stripe')) { %>
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.StripeObject;
+import com.stripe.model.Subscription;
+import com.stripe.net.Webhook;
+<% } %>
+
+<% if (providers.includes('paypal')) { %>
+import com.paypal.api.payments.Event;
+import com.paypal.base.rest.APIContext;
+<% } %>
+
+<% if (providers.includes('braintree')) { %>
+import com.braintreepayments.gateway.BraintreeGateway;
+import com.braintreepayments.gateway.WebhookNotification;
+<% } %>
+
+<% if (providers.includes('adyen')) { %>
+import com.adyen.model.notification.NotificationRequest;
+import com.adyen.model.notification.NotificationRequestItem;
+import com.adyen.util.HMACValidator;
+<% } %>
+
+import java.util.Map;
+
+/**
+ * Service pour gérer les webhooks des différents fournisseurs de paiement.
+ * Ce service traite les événements envoyés par les fournisseurs de paiement comme
+ * les paiements réussis, les abonnements annulés, etc.
+ */
+@Service
+@Transactional
+public class WebhookService {
+
+    private static final Logger log = LoggerFactory.getLogger(WebhookService.class);
+
+    <% if (providers.includes('stripe')) { %>
+    private final String stripeWebhookSecret;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private final APIContext paypalApiContext;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private final BraintreeGateway braintreeGateway;
+    <% } %>
+
+    <% if (providers.includes('adyen')) { %>
+    private final String adyenHmacKey;
+    <% } %>
+
+    @Autowired
+    public WebhookService(
+        <% if (providers.includes('stripe')) { %>
+        @org.springframework.beans.factory.annotation.Value("${payment.stripe.webhook-secret}") String stripeWebhookSecret
+        <% } %>
+        <% if (providers.includes('stripe') && providers.some(p => p !== 'stripe' && ['paypal', 'braintree', 'adyen'].includes(p))) { %>,<% } %>
+        <% if (providers.includes('paypal')) { %>
+        APIContext paypalApiContext
+        <% } %>
+        <% if (providers.includes('paypal') && providers.some(p => p !== 'stripe' && p !== 'paypal' && ['braintree', 'adyen'].includes(p))) { %>,<% } %>
+        <% if (providers.includes('braintree')) { %>
+        BraintreeGateway braintreeGateway
+        <% } %>
+        <% if (providers.includes('braintree') && providers.includes('adyen')) { %>,<% } %>
+        <% if (providers.includes('adyen')) { %>
+        @org.springframework.beans.factory.annotation.Value("${payment.adyen.hmac-key}") String adyenHmacKey
+        <% } %>
+    ) {
+        <% if (providers.includes('stripe')) { %>
+        this.stripeWebhookSecret = stripeWebhookSecret;
+        <% } %>
+        <% if (providers.includes('paypal')) { %>
+        this.paypalApiContext = paypalApiContext;
+        <% } %>
+        <% if (providers.includes('braintree')) { %>
+        this.braintreeGateway = braintreeGateway;
+        <% } %>
+        <% if (providers.includes('adyen')) { %>
+        this.adyenHmacKey = adyenHmacKey;
+        <% } %>
+    }
+
+    <% if (providers.includes('stripe')) { %>
+    /**
+     * Traite les événements webhook de Stripe.
+     *
+     * @param payload Le contenu JSON de l'événement
+     * @param sigHeader L'en-tête de signature Stripe
+     * @return Une description de l'événement traité
+     */
+    public String handleStripeWebhook(String payload, String sigHeader) {
+        Event event;
+
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, stripeWebhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("Échec de la vérification de signature Stripe", e);
+            throw new IllegalArgumentException("Signature Stripe invalide");
+        }
+
+        log.info("Événement Stripe reçu: {}", event.getType());
+
+        // Désérialiser l'objet de données de l'événement
+        EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = null;
+
+        if (dataObjectDeserializer.getObject().isPresent()) {
+            stripeObject = dataObjectDeserializer.getObject().get();
+        } else {
+            log.error("Impossible de désérialiser l'événement Stripe");
+            return "Impossible de traiter l'événement";
+        }
+
+        // Traiter différents types d'événements
+        switch (event.getType()) {
+            case "payment_intent.succeeded":
+                // Gérer le paiement réussi
+                log.info("Paiement réussi: {}", stripeObject.toString());
+                break;
+
+            case "payment_intent.payment_failed":
+                // Gérer l'échec du paiement
+                log.warn("Échec du paiement: {}", stripeObject.toString());
+                break;
+
+            case "customer.subscription.created":
+                // Gérer la création d'abonnement
+                if (stripeObject instanceof Subscription) {
+                    Subscription subscription = (Subscription) stripeObject;
+                    log.info("Abonnement créé: {}", subscription.getId());
+                    // Logique pour enregistrer l'abonnement dans votre base de données
+                }
+                break;
+
+            case "customer.subscription.updated":
+                // Gérer la mise à jour d'abonnement
+                if (stripeObject instanceof Subscription) {
+                    Subscription subscription = (Subscription) stripeObject;
+                    log.info("Abonnement mis à jour: {}", subscription.getId());
+                    // Logique pour mettre à jour l'abonnement dans votre base de données
+                }
+                break;
+
+            case "customer.subscription.deleted":
+                // Gérer la suppression d'abonnement
+                if (stripeObject instanceof Subscription) {
+                    Subscription subscription = (Subscription) stripeObject;
+                    log.info("Abonnement supprimé: {}", subscription.getId());
+                    // Logique pour marquer l'abonnement comme annulé dans votre base de données
+                }
+                break;
+
+            case "invoice.payment_succeeded":
+                // Gérer le paiement de facture réussi
+                log.info("Paiement de facture réussi");
+                break;
+
+            case "invoice.payment_failed":
+                // Gérer l'échec de paiement de facture
+                log.warn("Échec de paiement de facture");
+                break;
+
+            default:
+                log.info("Type d'événement Stripe non traité: {}", event.getType());
+                break;
+        }
+
+        return "Événement Stripe traité: " + event.getType();
+    }
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    /**
+     * Traite les événements webhook de PayPal.
+     *
+     * @param payload Le contenu JSON de l'événement
+     * @return Une description de l'événement traité
+     */
+    public String handlePaypalWebhook(String payload) {
+        try {
+            // Convertir le JSON en objet Event
+            Event event = Event.fromJson(payload);
+            String eventType = event.getEventType();
+
+            log.info("Événement PayPal reçu: {}", eventType);
+
+            // Traiter différents types d'événements PayPal
+            switch (eventType) {
+                case "PAYMENT.SALE.COMPLETED":
+                    // Traiter le paiement complété
+                    log.info("Paiement PayPal complété");
+                    break;
+
+                case "BILLING.SUBSCRIPTION.CREATED":
+                    // Traiter la création d'abonnement
+                    log.info("Abonnement PayPal créé");
+                    break;
+
+                case "BILLING.SUBSCRIPTION.CANCELLED":
+                    // Traiter l'annulation d'abonnement
+                    log.warn("Abonnement PayPal annulé");
+                    break;
+
+                default:
+                    log.info("Type d'événement PayPal non traité: {}", eventType);
+                    break;
+            }
+
+            return "Événement PayPal traité: " + eventType;
+        } catch (Exception e) {
+            log.error("Erreur lors du traitement de l'événement PayPal", e);
+            throw new IllegalArgumentException("Impossible de traiter l'événement PayPal");
+        }
+    }
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    /**
+     * Traite les événements webhook de Braintree.
+     *
+     * @param signature La signature de la notification
+     * @param payload Le contenu XML/BT_XML de l'événement
+     * @return Une description de l'événement traité
+     */
+    public String handleBraintreeWebhook(String signature, String payload) {
+        try {
+            WebhookNotification notification = braintreeGateway.webhookNotification().parse(signature, payload);
+            WebhookNotification.Kind kind = notification.getKind();
+
+            log.info("Événement Braintree reçu: {}", kind);
+
+            // Traiter différents types d'événements Braintree
+            switch (kind) {
+                case SUBSCRIPTION_WENT_ACTIVE:
+                    log.info("Abonnement Braintree activé");
+                    break;
+
+                case SUBSCRIPTION_CANCELED:
+                    log.warn("Abonnement Braintree annulé");
+                    break;
+
+                case SUBSCRIPTION_CHARGED_SUCCESSFULLY:
+                    log.info("Abonnement Braintree facturé avec succès");
+                    break;
+
+                case SUBSCRIPTION_CHARGED_UNSUCCESSFULLY:
+                    log.warn("Échec de facturation d'abonnement Braintree");
+                    break;
+
+                default:
+                    log.info("Type d'événement Braintree non traité: {}", kind);
+                    break;
+            }
+
+            return "Événement Braintree traité: " + kind;
+        } catch (Exception e) {
+            log.error("Erreur lors du traitement de l'événement Braintree", e);
+            throw new IllegalArgumentException("Impossible de traiter l'événement Braintree");
+        }
+    }
+    <% } %>
+
+    <% if (providers.includes('adyen')) { %>
+    /**
+     * Traite les événements webhook d'Adyen.
+     *
+     * @param request La requête de notification d'Adyen
+     * @return Une description de l'événement traité
+     */
+    public String handleAdyenWebhook(NotificationRequest request) {
+        try {
+            // Vérifier la validité de la notification avec la clé HMAC
+            HMACValidator hmacValidator = new HMACValidator();
+
+            for (NotificationRequestItem item : request.getNotificationItems()) {
+                if (hmacValidator.validateHMAC(item, adyenHmacKey)) {
+                    log.info("Événement Adyen reçu: {}", item.getEventCode());
+
+                    // Traiter différents types d'événements Adyen
+                    switch (item.getEventCode()) {
+                        case "AUTHORISATION":
+                            if ("true".equals(item.getSuccess())) {
+                                log.info("Autorisation Adyen réussie");
+                            } else {
+                                log.warn("Autorisation Adyen échouée");
+                            }
+                            break;
+
+                        case "CAPTURE":
+                            if ("true".equals(item.getSuccess())) {
+                                log.info("Capture Adyen réussie");
+                            } else {
+                                log.warn("Capture Adyen échouée");
+                            }
+                            break;
+
+                        case "RECURRING_CONTRACT":
+                            log.info("Contrat récurrent Adyen créé");
+                            break;
+
+                        default:
+                            log.info("Type d'événement Adyen non traité: {}", item.getEventCode());
+                            break;
+                    }
+                } else {
+                    log.error("Validation HMAC échouée pour la notification Adyen");
+                    throw new IllegalArgumentException("Signature Adyen invalide");
+                }
+            }
+
+            return "Événements Adyen traités: " + request.getNotificationItems().size();
+        } catch (Exception e) {
+            log.error("Erreur lors du traitement de l'événement Adyen", e);
+            throw new IllegalArgumentException("Impossible de traiter l'événement Adyen");
+        }
+    }
+    <% } %>
+}

@@ -1,0 +1,146 @@
+
+package <%= packageName %>;
+
+import <%= serviceName %>.TaxService;
+import <%= entityPackageName %>.Tax;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST Controller pour gérer les opérations liées aux taxes.
+ */
+@RestController
+@RequestMapping("/api/taxes")
+public class TaxController {
+
+    private final TaxService taxService;
+
+    public TaxController(TaxService taxService) {
+        this.taxService = taxService;
+    }
+
+    /**
+     * Récupère toutes les taxes.
+     *
+     * @return liste des taxes
+     */
+    @GetMapping
+    public List<Tax> getAllTaxes() {
+        return taxService.findAllTaxes();
+    }
+
+    /**
+     * Récupère une taxe par son ID.
+     *
+     * @param id l'ID de la taxe
+     * @return la taxe si trouvée
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<Tax> getTaxById(@PathVariable Long id) {
+        Optional<Tax> tax = taxService.findTaxById(id);
+        return tax.map(ResponseEntity::ok)
+    }
+                .orElse(ResponseEntity.notFound().build());
+    /**
+     * Récupère une taxe par son identifiant unique.
+     *
+     * @param taxId l'identifiant unique de la taxe
+     * @return la taxe si trouvée
+     */
+    @GetMapping("/by-tax-id/{taxId}")
+    public ResponseEntity<Tax> getTaxByTaxId(@PathVariable String taxId) {
+        Optional<Tax> tax = taxService.findTaxByTaxId(taxId);
+        return tax.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Récupère les taxes pour un pays spécifique.
+     *
+     * @param countryCode le code ISO du pays
+     * @return liste des taxes pour ce pays
+     */
+    @GetMapping("/by-country/{countryCode}")
+    public List<Tax> getTaxesByCountry(@PathVariable String countryCode) {
+        return taxService.findTaxesByCountry(countryCode);
+    }
+
+    /**
+     * Récupère les taxes pour une région spécifique.
+     *
+     * @param countryCode le code ISO du pays
+     * @param region la région
+     * @return liste des taxes pour cette région
+     */
+    @GetMapping("/by-region/{countryCode}/{region}")
+    public List<Tax> getTaxesByRegion(
+            @PathVariable String countryCode,
+            @PathVariable String region) {
+        return taxService.findTaxesByRegion(countryCode, region);
+    }
+
+    /**
+     * Crée une nouvelle taxe.
+     *
+     * @param tax la taxe à créer
+     * @return la taxe créée
+     */
+    @PostMapping
+    public ResponseEntity<Tax> createTax(@Valid @RequestBody Tax tax) {
+        Tax createdTax = taxService.createTax(tax);
+        return ResponseEntity.ok(createdTax);
+    }
+
+    /**
+     * Met à jour une taxe existante.
+     *
+     * @param id l'ID de la taxe
+     * @param tax les nouvelles données de la taxe
+     * @return la taxe mise à jour
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<Tax> updateTax(@PathVariable Long id, @Valid @RequestBody Tax tax) {
+        Optional<Tax> updatedTax = taxService.updateTax(id, tax);
+        return updatedTax.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Supprime une taxe.
+     *
+     * @param id l'ID de la taxe à supprimer
+     * @return réponse sans contenu
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTax(@PathVariable Long id) {
+        boolean deleted = taxService.deleteTax(id);
+
+        if (deleted) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Calcule le montant de taxe pour un prix donné.
+     *
+     * @param countryCode le code pays
+     * @param amount le montant avant taxes
+     * @return le montant de taxe calculé
+     */
+    @GetMapping("/calculate")
+    public ResponseEntity<Double> calculateTax(
+            @RequestParam String countryCode,
+            @RequestParam Double amount,
+            @RequestParam(required = false) String region) {
+
+        Double taxAmount = taxService.calculateTax(countryCode, amount, region);
+        return ResponseEntity.ok(taxAmount);
+    }
+}
+

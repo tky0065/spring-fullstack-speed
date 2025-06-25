@@ -1,0 +1,192 @@
+# Module de Paiement - <%= packageName %>
+
+<% if (providers === 'stripe') { %>
+## Configuration du système de paiement avec Stripe
+
+Ce module implémente une solution complète de gestion de paiements basée sur [Stripe](https://stripe.com). Il vous permet de gérer :
+
+- Paiements ponctuels
+- Abonnements et plans tarifaires
+- Facturation et reçus
+- Transactions et remboursements
+<% } else { %>
+## Configuration du système de paiement avec <%= providers %>
+
+Ce module implémente une solution de gestion de paiements basée sur <%= providers %>. Il fournit une intégration complète pour gérer le cycle de vie des paiements dans votre application.
+<% } %>
+
+## Fonctionnalités principales
+
+- **Traitement des paiements** : Capture, autorisation et annulation
+<% if (features.subscription) { %>
+- **Gestion des abonnements** : Création, modification et annulation
+<% } %>
+<% if (features.invoicing) { %>
+- **Facturation** : Génération automatique des factures et reçus
+<% } %>
+- **Tableau de bord administrateur** : Suivi des transactions et des revenus
+- **Rapports financiers** : Exportation en formats PDF et Excel
+<% if (features.webhook) { %>
+- **Webhooks** : Gestion des événements asynchrones
+<% } %>
+<% if (features.taxes) { %>
+- **Gestion des taxes** : Support international pour TVA et taxes de vente
+<% } %>
+
+## Architecture
+
+Le module de paiement s'intègre au reste de l'application en suivant l'architecture en couches standard :
+
+```
+Controller → Service → Repository → Entity
+```
+
+### Structure des composants
+
+- **Controllers** : Points d'entrée API pour toutes les opérations de paiement
+- **Services** : Logique métier pour le traitement des paiements
+- **Repositories** : Accès aux données pour la persistance
+- **Entities** : Modèles de données pour les paiements, abonnements, etc.
+- **DTOs** : Objets de transfert pour les requêtes et réponses API
+
+## Guide de démarrage rapide
+
+### 1. Configuration
+
+Ajoutez vos clés API dans le fichier `application.properties` :
+
+```properties
+<% if (providers === 'stripe') { %>
+stripe.api.key=sk_test_VOTRE_CLE_SECRETE
+stripe.public.key=pk_test_VOTRE_CLE_PUBLIQUE
+stripe.webhook.secret=whsec_VOTRE_SECRET_WEBHOOK
+<% } else { %>
+<%= providers %>.api.key=VOTRE_CLE_API
+<%= providers %>.api.secret=VOTRE_SECRET_API
+<% } %>
+```
+
+### 2. Traitement d'un paiement simple
+
+```java
+@Autowired
+private PaymentService paymentService;
+
+// Exemple de traitement de paiement
+PaymentRequestDTO request = new PaymentRequestDTO();
+request.setAmount(2500L); // 25.00 €
+request.setCurrency("EUR");
+request.setPaymentMethodId("pm_card_visa");
+request.setDescription("Achat produit ABC");
+
+PaymentResponseDTO response = paymentService.processPayment(request);
+```
+
+<% if (features.subscription) { %>
+### 3. Création d'un abonnement
+
+```java
+@Autowired
+private SubscriptionService subscriptionService;
+
+// Création d'un abonnement
+SubscriptionDTO subscriptionRequest = new SubscriptionDTO();
+subscriptionRequest.setCustomerId("cus_12345");
+subscriptionRequest.setPlanId("plan_monthly");
+subscriptionRequest.setPaymentMethodId("pm_card_visa");
+
+SubscriptionDTO subscription = subscriptionService.createSubscription(subscriptionRequest);
+```
+<% } %>
+
+## Endpoints API
+
+| Méthode | URL                                  | Description                        |
+|---------|--------------------------------------|------------------------------------|
+| POST    | /api/payments                        | Traiter un nouveau paiement        |
+| GET     | /api/payments/{id}                   | Récupérer un paiement              |
+| POST    | /api/payments/{id}/capture           | Capturer un paiement autorisé      |
+| POST    | /api/payments/{id}/refund            | Rembourser un paiement             |
+| GET     | /api/customers/{id}/payment-methods  | Lister les méthodes de paiement    |
+<% if (features.subscription) { %>
+| POST    | /api/subscriptions                   | Créer un abonnement                |
+| PUT     | /api/subscriptions/{id}              | Mettre à jour un abonnement        |
+| DELETE  | /api/subscriptions/{id}              | Annuler un abonnement              |
+<% } %>
+<% if (features.invoicing) { %>
+| GET     | /api/invoices                        | Lister les factures                |
+<% } %>
+<% if (features.reports) { %>
+| GET     | /api/reports/revenue                 | Générer un rapport de revenus      |
+<% } %>
+
+<% if (features.reports) { %>
+## Rapports et analyses
+
+Le module inclut un système de génération de rapports pour vos données de paiement :
+
+- **Rapports de revenus** : Analyse des revenus par période
+- **Rapports de transactions** : Liste détaillée des transactions
+- **Rapports clients** : Analyse des comportements d'achat
+
+Pour générer un rapport :
+
+```java
+@Autowired
+private ReportService reportService;
+
+ReportDTO reportRequest = new ReportDTO();
+reportRequest.setReportType("REVENUE");
+reportRequest.setStartDate(LocalDate.now().minusMonths(1));
+reportRequest.setEndDate(LocalDate.now());
+reportRequest.setFormat("PDF");
+
+byte[] pdfReport = reportService.generateReport(reportRequest);
+```
+<% } %>
+
+<% if (features.webhook) { %>
+## Configuration des Webhooks
+
+Pour recevoir les événements de paiement en temps réel, configurez l'URL de webhook dans votre dashboard <% if (providers === 'stripe') { %>Stripe<% } else { %><%= providers %><% } %> :
+
+```
+https://votre-domaine.com/api/webhooks/<%= providers %>
+```
+
+Assurez-vous que votre application est accessible depuis Internet pour recevoir les webhooks.
+<% } %>
+
+## Sécurité
+
+Le module implémente les meilleures pratiques de sécurité pour les paiements :
+
+- Chiffrement des données sensibles
+- Validation stricte des entrées
+- Conformité PCI-DSS (pour le stockage minimal des données)
+- Journalisation des événements sensibles
+
+## Environnements
+
+- **Développement** : Utilisez les clés API de test
+- **Production** : Utilisez les clés API de production
+
+## Dépannage
+
+### Problèmes courants
+
+1. **Webhook non reçu** : Vérifiez que votre serveur est accessible et que l'URL est correctement configurée
+2. **Erreur de paiement** : Consultez les logs pour les détails de l'erreur retournée par l'API
+3. **Problèmes de devise** : Vérifiez que la devise est supportée par votre compte
+
+### Support
+
+Pour toute question sur ce module, consultez la [documentation complète](docs/payment-system-guide.md) ou contactez l'équipe de développement.
+
+---
+
+<% if (providers === 'stripe') { %>
+*Ce module utilise l'[API Stripe](https://stripe.com/docs/api) pour le traitement des paiements. Assurez-vous de respecter les [conditions d'utilisation](https://stripe.com/legal) de Stripe.*
+<% } else { %>
+*Ce module utilise l'API <%= providers %> pour le traitement des paiements. Consultez leur documentation officielle pour plus d'informations.*
+<% } %>
