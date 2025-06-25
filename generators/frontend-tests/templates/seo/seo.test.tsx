@@ -42,7 +42,7 @@ describe('Tests SEO', () => {
     expect(metaTags['robots']).toBe('index, follow');
     expect(metaTags['og:title']).toBe('<%= appName %> | Accueil');
     expect(metaTags['og:description']).toContain('Description pour les réseaux sociaux');
-    expect(metaTags['og:type']).toBe('website');
+    expect(metaTags['og:type']).toBe('learn');
     expect(metaTags['twitter:card']).toBe('summary_large_image');
   });
 

@@ -107,7 +107,7 @@ function generateBetaChangelog(version) {
   }
 
   // Créer un fichier markdown spécifique pour les notes de version beta
-  const betaNotesPath = path.join(rootDir, 'website/press/notes-beta.md');
+  const betaNotesPath = path.join(rootDir, 'learn/press/notes-beta.md');
   const betaNotes = `# Spring-Fullstack-Speed ${version} - Notes de version Beta
 
 Date: ${new Date().toISOString().split('T')[0]}
@@ -154,7 +154,7 @@ Un grand merci à tous nos beta-testeurs pour leur précieuse contribution à l'
 function createBetaAnnouncement() {
   console.log('\n🔔 Création de l\'annonce beta pour le site web...');
 
-  const betaPagePath = path.join(rootDir, 'website/beta.html');
+  const betaPagePath = path.join(rootDir, 'learn/beta.html');
   const betaPageContent = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -449,7 +449,7 @@ sfs kubernetes</code></pre>
   console.log(`${colors.green}✅ Page beta créée dans ${betaPagePath}${colors.reset}`);
 
   // Créer le CSS pour la page beta
-  const betaCssPath = path.join(rootDir, 'website/css/beta.css');
+  const betaCssPath = path.join(rootDir, 'learn/css/beta.css');
   const betaCssContent = `/* Beta page styles */
 .beta-hero {
   text-align: center;
@@ -719,7 +719,7 @@ sfs kubernetes</code></pre>
   console.log(`${colors.green}✅ Styles CSS pour la page beta créés dans ${betaCssPath}${colors.reset}`);
 
   // Créer le JavaScript pour la page beta
-  const betaJsPath = path.join(rootDir, 'website/js/beta.js');
+  const betaJsPath = path.join(rootDir, 'learn/js/beta.js');
   const betaJsContent = `// Script for beta page
 document.addEventListener('DOMContentLoaded', function() {
     // Accordion functionality
