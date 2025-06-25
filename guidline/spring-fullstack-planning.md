@@ -523,7 +523,7 @@ Architecture Générale
 - [x] Créer les demos en ligne
 - [x] Configurer le support utilisateur
 - [x] Préparer la roadmap publique
-- [ ] Lancer la beta
+- [x] Lancer la beta
 - [ ] Publier la version 1.0
 
 
