@@ -614,7 +614,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier PaymentConfig.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier PaymentConfig.java existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier PaymentConfig.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -635,7 +635,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier PaymentService.java (interface) généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier PaymentService.java existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier PaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -656,7 +656,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier PaymentController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier PaymentController.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier PaymentController.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -674,7 +674,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier StripeConfig.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier StripeConfig.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier StripeConfig.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Service Stripe dans le dossier services (correction)
@@ -692,7 +692,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier StripePaymentService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier StripePaymentService.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier StripePaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -725,7 +725,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier PayPalPaymentService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier PayPalPaymentService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier PayPalPaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -758,7 +758,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier BraintreePaymentService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier BraintreePaymentService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier BraintreePaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -791,7 +791,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier AdyenPaymentService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier AdyenPaymentService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier AdyenPaymentService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -818,7 +818,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionController.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le service des abonnements
@@ -830,7 +830,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionService.java existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer l'entité des abonnements
@@ -840,7 +840,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier Subscription.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier Subscription.java existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier Subscription.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le repository des abonnements
@@ -851,7 +851,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier SubscriptionRepository.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionRepository.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier SubscriptionRepository.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -874,7 +874,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier WebhookController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier WebhookController.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier WebhookController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le service pour les webhooks
@@ -885,7 +885,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier WebhookService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier WebhookService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier WebhookService.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -912,7 +912,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier InvoiceController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceController.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier InvoiceController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le service des factures
@@ -924,7 +924,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier InvoiceService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier InvoiceService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer l'entité des factures
@@ -934,7 +934,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier Invoice.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier Invoice.java existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier Invoice.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le repository des factures
@@ -945,7 +945,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier InvoiceRepository.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier InvoiceRepository.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier InvoiceRepository.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -974,7 +974,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier TaxService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier TaxService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier TaxService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer l'entité Tax
@@ -984,7 +984,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier Tax.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier Tax.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier Tax.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le repository des taxes
@@ -995,7 +995,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier TaxRepository.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier TaxRepository.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier TaxRepository.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le controller des taxes
@@ -1007,7 +1007,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier TaxController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier TaxController.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier TaxController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le DTO des taxes
@@ -1017,7 +1017,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier TaxDTO.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier TaxDTO.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier TaxDTO.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -1044,7 +1044,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier RefundController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier RefundController.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier RefundController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le service des remboursements
@@ -1056,7 +1056,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier RefundService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier RefundService.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier RefundService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer l'entité Refund
@@ -1066,7 +1066,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier Refund.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier Refund.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier Refund.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le repository des remboursements
@@ -1077,7 +1077,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier RefundRepository.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier RefundRepository.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier RefundRepository.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -1107,7 +1107,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier Report.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier Report.java existe déjà et n'a pas été écrasé.`));
+   //   this.log(INFO_COLOR(`⚠️ Le fichier Report.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer le repository pour les rapports
@@ -1124,7 +1124,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportRepository.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportRepository.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier ReportRepository.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Générer les services de reporting
@@ -1142,7 +1142,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportingService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportingService.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier ReportingService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Interface du service de reporting
@@ -1159,7 +1159,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportService.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportService.java existe déjà et n'a pas été écrasé.`));
+      //this.log(INFO_COLOR(`⚠️ Le fichier ReportService.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Implémentation du service de reporting
@@ -1177,7 +1177,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportServiceImpl.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportServiceImpl.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier ReportServiceImpl.java existe déjà et n'a pas été écrasé.`));
     }
 
     // Contrôleur pour les rapports
@@ -1195,7 +1195,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportController.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportController.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier ReportController.java existe déjà et n'a pas été écrasé.`));
     }
 
     // DTO pour les rapports
@@ -1217,7 +1217,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Fichier ReportDTO.java généré avec succès.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier ReportDTO.java existe déjà et n'a pas été écrasé.`));
+     // this.log(INFO_COLOR(`⚠️ Le fichier ReportDTO.java existe déjà et n'a pas été écrasé.`));
     }
   }
 
@@ -1267,7 +1267,7 @@ export default class PaymentGenerator extends BaseGenerator {
       });
       this.log(SUCCESS_COLOR(`✅ Documentation README générée avec succès dans ${readmePath}.`));
     } else {
-      this.log(INFO_COLOR(`⚠️ Le fichier README existe déjà et n'a pas été écrasé.`));
+    //  this.log(INFO_COLOR(`⚠️ Le fichier README existe déjà et n'a pas été écrasé.`));
     }
   }
 
