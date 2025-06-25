@@ -93,11 +93,13 @@ build/
 spring-boot-*.pid
 
 p
-guidline
+guidline/
 errors.txt
-test-folder-for-cleanup
+
 
 
 
 .tmp-test-generation/
 enokdev-spring-fullstack-speed-1.0.0.tgz
+/guidline/
+/guidline/**
