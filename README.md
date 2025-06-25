@@ -17,8 +17,6 @@ SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapide
 - **Système de paiement complet** : Intégration facile avec Stripe, PayPal et autres passerelles de paiement
 - **Gestion des abonnements** : Support pour les plans d'abonnement et paiements récurrents
 - **Support international** : Plus de 135 devises et méthodes de paiement locales
-- **Sécurité renforcée** : Authentification 3D Secure 2.0 et conformité PSD2
-- **Paiement mobile** : Support pour Apple Pay et Google Pay
 
 ## 📋 Table des matières
 

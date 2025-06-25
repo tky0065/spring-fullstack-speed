@@ -1,4 +1,4 @@
-# Présentation de Spring-Fullstack-Speed 1.0 : Développez des applications Spring Boot fullstack en un temps record
+# Présentation de Spring-Fullstack-Speed 1.0.2: Développez des applications Spring Boot fullstack en un temps record
 
 *Publié le 25 juin 2025 par l'équipe Spring-Fullstack-Speed*
 
