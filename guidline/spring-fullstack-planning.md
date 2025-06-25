@@ -499,32 +499,50 @@ Architecture Générale
 - [ ] Tester toute la documentation
 
 ### Module 11.2 : Documentation Développeur
-- [ ] Documenter l'architecture
-- [ ] Créer les guides de contribution
-- [ ] Documenter l'API interne
-- [ ] Créer les guides de développement
-- [ ] Documenter les templates
-- [ ] Créer les guides d'extension
-- [ ] Documenter les hooks
-- [ ] Créer les guides de débogage
-- [ ] Documenter les tests
-- [ ] Créer les guides de déploiement
-- [ ] Générer la documentation technique
-- [ ] Valider avec l'équipe
+- [x] Documenter l'architecture
+- [x] Créer les guides de contribution
+- [x] Documenter l'API interne
+- [x] Créer les guides de développement
+- [x] Documenter les templates
+- [x] Créer les guides d'extension
+- [x] Documenter les hooks
+- [x] Créer les guides de débogage
+- [x] Documenter les tests
+- [x] Créer les guides de déploiement
+- [x] Générer la documentation technique
+- [x] Valider avec l'équipe
 
 ### Module 11.3 : Publication & Distribution
-- [ ] Préparer le package NPM
-- [ ] Configurer la publication automatique
-- [ ] Créer les releases GitHub
-- [ ] Configurer les badges
-- [ ] Créer le site web du projet
-- [ ] Configurer les analytics
-- [ ] Préparer les communiqués
-- [ ] Créer les demos en ligne
-- [ ] Configurer le support utilisateur
-- [ ] Préparer la roadmap publique
+- [x] Préparer le package NPM
+- [x] Configurer la publication automatique
+- [x] Créer les releases GitHub
+- [x] Configurer les badges
+- [x] Créer le site web du projet
+- [x] Configurer les analytics
+- [x] Préparer les communiqués
+- [x] Créer les demos en ligne
+- [x] Configurer le support utilisateur
+- [x] Préparer la roadmap publique
 - [ ] Lancer la beta
 - [ ] Publier la version 1.0
+
+
+## Support pour Kotlin  
+
+- [ ] Créer les templates Kotlin pour Spring Boot
+- [ ] Configurer les dépendances Kotlin
+- [ ] Générer les classes de base en Kotlin
+- [ ] Implémenter les extensions Kotlin
+- [ ] Créer les services et repositories en Kotlin
+- [ ] Configurer les tests en Kotlin
+- [ ] Documenter les spécificités Kotlin
+- [ ] Tester l'intégration Kotlin
+- [ ] Ajouter des exemples de code Kotlin
+- [ ] Mettre à jour la documentation pour inclure Kotlin
+- [ ] Créer des templates de migration pour Kotlin
+-  [ ] Implémenter les bonnes pratiques Kotlin
+- [ ] Configurer les outils de build pour Kotlin (Gradle/Maven)
+- 
 
 ---
 

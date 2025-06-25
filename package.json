@@ -1,6 +1,6 @@
 {
   "name": "@enokdev/spring-fullstack-speed",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Générateur pour créer rapidement des applications Spring Boot avec frontend (Vue, React, Angular)",
   "main": "index.js",
   "type": "module",
@@ -19,7 +19,10 @@
     "prebuild": "npm run clean",
     "postbuild": "node scripts/copy-templates.js",
     "copy-templates": "node scripts/copy-templates.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "publish:auto": "node scripts/auto-publish.js",
+    "release": "node scripts/auto-publish.js",
+    "changelog": "node scripts/generate-changelog.js"
   },
   "repository": {
     "type": "git",

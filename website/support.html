@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Utilisateur - Spring-Fullstack-Speed</title>
+    <meta name="description" content="Obtenez de l'aide et du support pour Spring-Fullstack-Speed. Consultez la FAQ, posez vos questions ou signalez un bug.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/support.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a href="index.html">
+                        <img src="images/logo.svg" alt="SFS Logo">
+                        <span>Spring-Fullstack-Speed</span>
+                    </a>
+                </div>
+                <div class="nav-links" id="navLinks">
+                    <i class="fas fa-times" onclick="hideMenu()"></i>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="demos.html">Démos</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="support.html" class="active">Support</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <i class="fas fa-bars" onclick="showMenu()"></i>
+            </nav>
+
+            <div class="support-hero">
+                <h1>Support Utilisateur</h1>
+                <p>Nous sommes là pour vous aider à tirer le meilleur parti de Spring-Fullstack-Speed</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="support-options">
+        <div class="container">
+            <div class="support-grid">
+                <div class="support-card">
+                    <div class="support-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h2>Documentation</h2>
+                    <p>Consultez notre documentation complète pour apprendre à utiliser toutes les fonctionnalités.</p>
+                    <a href="documentation.html" class="btn btn-primary">Voir la documentation</a>
+                </div>
+
+                <div class="support-card">
+                    <div class="support-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <h2>FAQ</h2>
+                    <p>Trouvez des réponses aux questions les plus fréquemment posées.</p>
+                    <a href="#faq" class="btn btn-primary">Consulter la FAQ</a>
+                </div>
+
+                <div class="support-card">
+                    <div class="support-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h2>Signaler un bug</h2>
+                    <p>Vous avez trouvé un bug? Signalez-le pour nous aider à améliorer le projet.</p>
+                    <a href="https://github.com/tky0065/spring-fullstack-speed/issues/new?template=bug_report.md" target="_blank" class="btn btn-primary">Signaler un bug</a>
+                </div>
+
+                <div class="support-card">
+                    <div class="support-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <h2>Contact direct</h2>
+                    <p>Une question spécifique? Utilisez notre formulaire de contact ci-dessous.</p>
+                    <a href="#contact-form" class="btn btn-primary">Contacter l'équipe</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="faq-section">
+        <div class="container">
+            <h2 class="section-title">Questions fréquentes</h2>
+
+            <div class="accordion">
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Comment installer Spring-Fullstack-Speed?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Vous pouvez installer Spring-Fullstack-Speed globalement via npm:</p>
+                        <div class="code-block">
+                            <pre><code>npm install -g @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npm install -g @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p>Ou l'utiliser directement avec npx:</p>
+                        <div class="code-block">
+                            <pre><code>npx @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npx @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Quels sont les prérequis pour utiliser SFS?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Pour utiliser Spring-Fullstack-Speed, vous aurez besoin de:</p>
+                        <ul>
+                            <li>Node.js v18.0.0 ou supérieure</li>
+                            <li>npm v8.0.0 ou supérieure</li>
+                            <li>Java JDK 17 ou supérieure</li>
+                            <li>Maven ou Gradle (pour la compilation des projets Spring Boot)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Comment mettre à jour SFS vers la dernière version?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Pour mettre à jour Spring-Fullstack-Speed vers la dernière version, utilisez la commande npm update:</p>
+                        <div class="code-block">
+                            <pre><code>npm update -g @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npm update -g @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Comment générer une nouvelle entité avec des relations?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Pour générer une entité avec des relations, utilisez la commande <code>sfs entity</code> avec l'option <code>--relations</code>:</p>
+                        <div class="code-block">
+                            <pre><code>sfs entity --name=Product --fields=name:string,price:double --relations=many-to-one:Category:category</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs entity --name=Product --fields=name:string,price:double --relations=many-to-one:Category:category')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p>Les types de relations disponibles sont: <code>one-to-one</code>, <code>one-to-many</code>, <code>many-to-one</code> et <code>many-to-many</code>.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Comment personnaliser les templates générés?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Vous pouvez personnaliser les templates en créant un dossier <code>~/.sfs/templates/</code> et en y copiant les templates que vous souhaitez modifier. SFS utilisera automatiquement vos templates personnalisés.</p>
+                        <p>Par exemple, pour personnaliser le template d'entité:</p>
+                        <ol>
+                            <li>Créez le dossier: <code>mkdir -p ~/.sfs/templates/entity</code></li>
+                            <li>Copiez le template original: <code>cp node_modules/@enokdev/spring-fullstack-speed/generators/entity/templates/Entity.java.ejs ~/.sfs/templates/entity/</code></li>
+                            <li>Modifiez le template selon vos besoins</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Mon application ne se lance pas, comment résoudre ce problème?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Si votre application générée ne se lance pas, voici quelques étapes de dépannage:</p>
+                        <ol>
+                            <li>Vérifiez les logs d'erreur dans <code>target/spring.log</code></li>
+                            <li>Assurez-vous que votre base de données est en cours d'exécution et accessible</li>
+                            <li>Vérifiez que les informations de connexion à la base de données dans <code>application.yml</code> sont correctes</li>
+                            <li>Utilisez la commande <code>sfs doctor</code> pour diagnostiquer les problèmes courants</li>
+                        </ol>
+                        <p>Si le problème persiste, n'hésitez pas à ouvrir une issue sur GitHub ou à nous contacter via le formulaire ci-dessous.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <h3>Comment contribuer au projet Spring-Fullstack-Speed?</h3>
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <p>Nous sommes ravis que vous souhaitiez contribuer! Voici les étapes:</p>
+                        <ol>
+                            <li>Forkez le dépôt sur GitHub</li>
+                            <li>Clonez votre fork localement</li>
+                            <li>Créez une branche pour votre contribution</li>
+                            <li>Faites vos modifications</li>
+                            <li>Exécutez les tests</li>
+                            <li>Soumettez une Pull Request</li>
+                        </ol>
+                        <p>Pour plus de détails, consultez notre <a href="https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md" target="_blank">guide de contribution</a>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact-form" class="contact-section">
+        <div class="container">
+            <h2 class="section-title">Contactez-nous</h2>
+            <p class="contact-intro">Vous avez une question ou un problème spécifique? Utilisez le formulaire ci-dessous pour nous contacter directement.</p>
+
+            <form id="supportForm" class="support-form">
+                <div class="form-group">
+                    <label for="name">Nom</label>
+                    <input type="text" id="name" name="name" placeholder="Votre nom" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Votre adresse email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Sujet</label>
+                    <select id="subject" name="subject" required>
+                        <option value="">Sélectionnez un sujet</option>
+                        <option value="question">Question générale</option>
+                        <option value="bug">Signaler un bug</option>
+                        <option value="feature">Suggestion de fonctionnalité</option>
+                        <option value="other">Autre</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" rows="6" placeholder="Détaillez votre question ou problème..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="sfsVersion">Version de SFS</label>
+                    <input type="text" id="sfsVersion" name="sfsVersion" placeholder="Ex: 1.0.1">
+                    <small>Si applicable, vous pouvez vérifier la version avec <code>sfs --version</code></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="environment">Environnement</label>
+                    <input type="text" id="environment" name="environment" placeholder="Ex: Node.js v18.0.0, Windows 11">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Envoyer</button>
+            </form>
+
+            <div id="formSuccess" class="form-success" style="display: none;">
+                <i class="fas fa-check-circle"></i>
+                <h3>Message envoyé!</h3>
+                <p>Merci de nous avoir contactés. Nous vous répondrons dans les plus brefs délais.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="community-support">
+        <div class="container">
+            <h2 class="section-title">Support communautaire</h2>
+            <p class="community-intro">Rejoignez notre communauté pour obtenir de l'aide d'autres utilisateurs et rester informé des dernières nouveautés.</p>
+
+            <div class="community-channels">
+                <a href="https://github.com/tky0065/spring-fullstack-speed/discussions" target="_blank" class="community-channel">
+                    <i class="fab fa-github"></i>
+                    <h3>GitHub Discussions</h3>
+                    <p>Posez des questions et participez aux discussions avec la communauté</p>
+                </a>
+
+                <a href="https://stackoverflow.com/questions/tagged/spring-fullstack-speed" target="_blank" class="community-channel">
+                    <i class="fab fa-stack-overflow"></i>
+                    <h3>Stack Overflow</h3>
+                    <p>Posez des questions techniques avec le tag spring-fullstack-speed</p>
+                </a>
+
+                <a href="#" target="_blank" class="community-channel">
+                    <i class="fab fa-discord"></i>
+                    <h3>Discord</h3>
+                    <p>Rejoignez notre serveur Discord pour discuter en temps réel</p>
+                </a>
+
+                <a href="#" target="_blank" class="community-channel">
+                    <i class="fab fa-twitter"></i>
+                    <h3>Twitter</h3>
+                    <p>Suivez-nous pour les dernières nouvelles et mises à jour</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="images/logo.svg" alt="SFS Logo">
+                    <h3>Spring-Fullstack-Speed</h3>
+                    <p>Générateur d'applications Spring Boot fullstack</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Liens rapides</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="support.html">Support</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-community">
+                    <h4>Communauté</h4>
+                    <ul>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/issues" target="_blank">Signaler un bug</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md" target="_blank">Comment contribuer</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Spring-Fullstack-Speed. Sous licence MIT.</p>
+                <div class="social-icons">
+                    <a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i></a>
+                    <a href="https://www.npmjs.com/package/@enokdev/spring-fullstack-speed" target="_blank"><i class="fab fa-npm"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/support.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="60" fill="#3F51B5" />
+
+  <!-- Spring leaf icon (stylized) -->
+  <path d="M40 30C50 40 50 70 30 85C50 75 80 65 90 40C75 50 60 45 40 30Z" fill="#4CAF50" />
+
+  <!-- Fast-forward icon -->
+  <path d="M65 50L85 60L65 70V50Z" fill="white" />
+  <path d="M45 50L65 60L45 70V50Z" fill="white" />
+
+  <!-- SFS text -->
+  <text x="60" y="95" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">SFS</text>
+</svg>
+

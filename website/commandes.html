@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commandes - Spring-Fullstack-Speed</title>
+    <meta name="description" content="Liste complète des commandes disponibles dans Spring-Fullstack-Speed avec exemples et options.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/commandes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a href="index.html">
+                        <img src="images/logo.svg" alt="SFS Logo">
+                        <span>Spring-Fullstack-Speed</span>
+                    </a>
+                </div>
+                <div class="nav-links" id="navLinks">
+                    <i class="fas fa-times" onclick="hideMenu()"></i>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html" class="active">Commandes</a></li>
+                        <li><a href="demos.html">Démos</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <i class="fas fa-bars" onclick="showMenu()"></i>
+            </nav>
+
+            <div class="commands-hero">
+                <h1>Commandes SFS</h1>
+                <p>Guide complet de toutes les commandes disponibles</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="command-search">
+        <div class="container">
+            <div class="search-box">
+                <input type="text" id="commandSearch" placeholder="Rechercher une commande...">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </section>
+
+    <section class="commands-list">
+        <div class="container">
+            <div class="commands-categories">
+                <div class="category-tabs">
+                    <button class="category-tab active" data-category="all">Toutes</button>
+                    <button class="category-tab" data-category="generation">Génération</button>
+                    <button class="category-tab" data-category="dev">Développement</button>
+                    <button class="category-tab" data-category="deployment">Déploiement</button>
+                    <button class="category-tab" data-category="utils">Utilitaires</button>
+                </div>
+            </div>
+
+            <div id="allCommands" class="commands-container">
+                <!-- Application Generator -->
+                <div class="command-card" data-category="generation">
+                    <div class="command-header">
+                        <h2>sfs app</h2>
+                        <div class="command-badges">
+                            <span class="badge primary">Génération</span>
+                            <span class="badge">Principal</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Génère une nouvelle application Spring Boot fullstack complète.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs app</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs app')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs app --name=my-app --package=com.example --db=postgresql --frontend=react</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs app --name=my-app --package=com.example --db=postgresql --frontend=react')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--name</code></td>
+                                    <td>Nom de l'application</td>
+                                    <td>String</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--package</code></td>
+                                    <td>Package Java de base</td>
+                                    <td>String</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--db</code></td>
+                                    <td>Base de données</td>
+                                    <td>h2, mysql, postgresql, mongodb</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--frontend</code></td>
+                                    <td>Framework frontend</td>
+                                    <td>none, react, vue, angular, thymeleaf, jte</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--auth</code></td>
+                                    <td>Type d'authentification</td>
+                                    <td>none, jwt, oauth2, session</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Entity Generator -->
+                <div class="command-card" data-category="generation">
+                    <div class="command-header">
+                        <h2>sfs entity</h2>
+                        <div class="command-badges">
+                            <span class="badge primary">Génération</span>
+                            <span class="badge secondary">Alias: e</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Génère une nouvelle entité Java avec son repository.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs entity --name=Product</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs entity --name=Product')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs entity --name=Product --fields=name:string,price:double,description:string[required]</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs entity --name=Product --fields=name:string,price:double,description:string[required]')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--name</code></td>
+                                    <td>Nom de l'entité</td>
+                                    <td>String</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--fields</code></td>
+                                    <td>Champs de l'entité</td>
+                                    <td>Liste de nom:type[validations]</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--relations</code></td>
+                                    <td>Relations avec d'autres entités</td>
+                                    <td>Liste de type:entité:field</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--package</code></td>
+                                    <td>Package de l'entité</td>
+                                    <td>String</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- DTO Generator -->
+                <div class="command-card" data-category="generation">
+                    <div class="command-header">
+                        <h2>sfs dtos</h2>
+                        <div class="command-badges">
+                            <span class="badge primary">Génération</span>
+                            <span class="badge secondary">Alias: d</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Génère des DTOs pour une entité existante.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs dtos --entity=Product</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs dtos --entity=Product')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs dtos --entity=Product --types=basic,create,update --mapping=mapstruct</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs dtos --entity=Product --types=basic,create,update --mapping=mapstruct')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--entity</code></td>
+                                    <td>Nom de l'entité</td>
+                                    <td>String</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--types</code></td>
+                                    <td>Types de DTOs à générer</td>
+                                    <td>basic, create, update, view, all</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--mapping</code></td>
+                                    <td>Outil de mapping entité-DTO</td>
+                                    <td>manual, mapstruct, modelmapper</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CRUD Generator -->
+                <div class="command-card" data-category="generation">
+                    <div class="command-header">
+                        <h2>sfs crud</h2>
+                        <div class="command-badges">
+                            <span class="badge primary">Génération</span>
+                            <span class="badge secondary">Alias: c</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Génère les opérations CRUD pour une entité existante.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs crud --entity=Product</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs crud --entity=Product')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs crud --entity=Product --pagination=true --sorting=true --frontend=true</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs crud --entity=Product --pagination=true --sorting=true --frontend=true')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--entity</code></td>
+                                    <td>Nom de l'entité</td>
+                                    <td>String</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--pagination</code></td>
+                                    <td>Activer la pagination</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--sorting</code></td>
+                                    <td>Activer le tri</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--frontend</code></td>
+                                    <td>Générer des composants frontend</td>
+                                    <td>true, false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Development Commands -->
+                <div class="command-card" data-category="dev">
+                    <div class="command-header">
+                        <h2>sfs serve</h2>
+                        <div class="command-badges">
+                            <span class="badge warning">Développement</span>
+                            <span class="badge secondary">Alias: s</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Démarre un serveur de développement pour votre application.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs serve</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs serve')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs serve --backend --frontend --port=8080</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs serve --backend --frontend --port=8080')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--backend</code></td>
+                                    <td>Démarrer le serveur backend</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--frontend</code></td>
+                                    <td>Démarrer le serveur frontend</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--port</code></td>
+                                    <td>Port du serveur backend</td>
+                                    <td>Numéro de port</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Test Command -->
+                <div class="command-card" data-category="dev">
+                    <div class="command-header">
+                        <h2>sfs test</h2>
+                        <div class="command-badges">
+                            <span class="badge warning">Développement</span>
+                            <span class="badge secondary">Alias: t</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Exécute différents types de tests sur votre application.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs test</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs test')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs test --type=unit</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs test --type=unit')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--type</code></td>
+                                    <td>Type de tests à exécuter</td>
+                                    <td>unit, integration, e2e, all</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--coverage</code></td>
+                                    <td>Générer un rapport de couverture</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--watch</code></td>
+                                    <td>Exécuter en mode watch</td>
+                                    <td>true, false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Deployment Commands -->
+                <div class="command-card" data-category="deployment">
+                    <div class="command-header">
+                        <h2>sfs docker</h2>
+                        <div class="command-badges">
+                            <span class="badge danger">Déploiement</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Gère les conteneurs Docker pour votre application.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs docker build</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs docker build')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs docker compose up</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs docker compose up')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Sous-commandes</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Commande</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>build</code></td>
+                                    <td>Construit une image Docker</td>
+                                </tr>
+                                <tr>
+                                    <td><code>compose</code></td>
+                                    <td>Gère les configurations docker-compose</td>
+                                </tr>
+                                <tr>
+                                    <td><code>push</code></td>
+                                    <td>Pousse une image vers un registry</td>
+                                </tr>
+                                <tr>
+                                    <td><code>run</code></td>
+                                    <td>Exécute l'application dans un conteneur</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Kubernetes Command -->
+                <div class="command-card" data-category="deployment">
+                    <div class="command-header">
+                        <h2>sfs kubernetes</h2>
+                        <div class="command-badges">
+                            <span class="badge danger">Déploiement</span>
+                            <span class="badge secondary">Alias: k8s</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Gère les déploiements Kubernetes pour votre application.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs kubernetes apply</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs kubernetes apply')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs kubernetes apply --env=dev</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs kubernetes apply --env=dev')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Sous-commandes</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Commande</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>apply</code></td>
+                                    <td>Applique les configurations K8s</td>
+                                </tr>
+                                <tr>
+                                    <td><code>generate</code></td>
+                                    <td>Génère de nouvelles configurations K8s</td>
+                                </tr>
+                                <tr>
+                                    <td><code>delete</code></td>
+                                    <td>Supprime les ressources K8s</td>
+                                </tr>
+                                <tr>
+                                    <td><code>status</code></td>
+                                    <td>Affiche l'état du déploiement</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Utility Commands -->
+                <div class="command-card" data-category="utils">
+                    <div class="command-header">
+                        <h2>sfs doctor</h2>
+                        <div class="command-badges">
+                            <span class="badge info">Utilitaire</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Analyse votre projet pour détecter et corriger les problèmes éventuels.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs doctor</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs doctor')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs doctor --fix</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs doctor --fix')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--fix</code></td>
+                                    <td>Tenter de corriger les problèmes</td>
+                                    <td>true, false</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--type</code></td>
+                                    <td>Type de problèmes à chercher</td>
+                                    <td>structure, dependencies, config, all</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Upgrade Command -->
+                <div class="command-card" data-category="utils">
+                    <div class="command-header">
+                        <h2>sfs upgrade</h2>
+                        <div class="command-badges">
+                            <span class="badge info">Utilitaire</span>
+                        </div>
+                    </div>
+                    <div class="command-description">
+                        <p>Met à jour votre projet vers une version plus récente de Spring-Fullstack-Speed.</p>
+                    </div>
+                    <div class="command-examples">
+                        <h3>Exemples</h3>
+                        <div class="code-block">
+                            <pre><code>sfs upgrade</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs upgrade')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="code-block">
+                            <pre><code>sfs upgrade --target=1.1.0</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('sfs upgrade --target=1.1.0')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="command-options">
+                        <h3>Options</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Option</th>
+                                    <th>Description</th>
+                                    <th>Valeurs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>--target</code></td>
+                                    <td>Version cible</td>
+                                    <td>numéro de version</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--backup</code></td>
+                                    <td>Créer une sauvegarde avant la mise à jour</td>
+                                    <td>true, false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="images/logo.svg" alt="SFS Logo">
+                    <h3>Spring-Fullstack-Speed</h3>
+                    <p>Générateur d'applications Spring Boot fullstack</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Liens rapides</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-community">
+                    <h4>Communauté</h4>
+                    <ul>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/issues" target="_blank">Signaler un bug</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md" target="_blank">Comment contribuer</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Spring-Fullstack-Speed. Sous licence MIT.</p>
+                <div class="social-icons">
+                    <a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i></a>
+                    <a href="https://www.npmjs.com/package/@enokdev/spring-fullstack-speed" target="_blank"><i class="fab fa-npm"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/commands.js"></script>
+</body>
+</html>
+

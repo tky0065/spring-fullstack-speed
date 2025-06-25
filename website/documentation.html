@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - Spring-Fullstack-Speed</title>
+    <meta name="description" content="Documentation complète sur l'utilisation du générateur Spring-Fullstack-Speed pour créer des applications Spring Boot fullstack.">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/documentation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header class="documentation-header">
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <a href="index.html">
+                        <img src="images/logo.png" alt="SFS Logo">
+                        <span>Spring-Fullstack-Speed</span>
+                    </a>
+                </div>
+                <div class="nav-links" id="navLinks">
+                    <i class="fas fa-times" onclick="hideMenu()"></i>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html" class="active">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="demos.html">Démos</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <i class="fas fa-bars" onclick="showMenu()"></i>
+            </nav>
+        </div>
+    </header>
+
+    <div class="documentation-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Documentation</h3>
+            </div>
+            <ul class="docs-menu">
+                <li><a href="#introduction" class="active">Introduction</a></li>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="#commandes-principales">Commandes principales</a></li>
+                <li>
+                    <a href="#generation-application">Génération d'application</a>
+                    <ul>
+                        <li><a href="#options-app">Options disponibles</a></li>
+                        <li><a href="#structure-app">Structure générée</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#generation-entite">Génération d'entités</a>
+                    <ul>
+                        <li><a href="#types-champs">Types de champs</a></li>
+                        <li><a href="#validations">Validations</a></li>
+                        <li><a href="#relations">Relations</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#generation-dto">Génération de DTOs</a>
+                    <ul>
+                        <li><a href="#mapping">Mapping Entity-DTO</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#generation-crud">Génération CRUD</a>
+                    <ul>
+                        <li><a href="#options-crud">Options disponibles</a></li>
+                        <li><a href="#api-rest">API REST</a></li>
+                    </ul>
+                </li>
+                <li><a href="#bases-donnees">Bases de données</a></li>
+                <li><a href="#securite">Sécurité & Authentification</a></li>
+                <li><a href="#frontend">Frontend</a></li>
+                <li><a href="#docker">Docker & Kubernetes</a></li>
+                <li><a href="#tests">Tests</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <section id="introduction" class="doc-section">
+                <h1>Documentation Spring-Fullstack-Speed</h1>
+                <p class="version">Version actuelle: 1.0.1</p>
+
+                <div class="intro-text">
+                    <p>Spring-Fullstack-Speed (SFS) est un générateur de code CLI qui permet de créer rapidement des applications web fullstack modernes avec Spring Boot comme backend et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE).</p>
+                    <p>Inspiré par JHipster, ce projet vise à simplifier et accélérer le développement d'applications Java enterprise en automatisant la génération de code boilerplate et l'intégration des technologies modernes.</p>
+                </div>
+
+                <div class="key-features">
+                    <h2>Fonctionnalités clés</h2>
+                    <ul>
+                        <li>Génération complète d'applications Spring Boot avec frontend intégré</li>
+                        <li>Création automatique d'entités, DTOs et opérations CRUD</li>
+                        <li>Configuration de sécurité prête à l'emploi (JWT, OAuth2)</li>
+                        <li>Support pour plusieurs bases de données (MySQL, PostgreSQL, MongoDB, H2)</li>
+                        <li>Intégration de frameworks frontend modernes (React, Vue.js, Angular)</li>
+                        <li>Configuration Docker et Kubernetes</li>
+                        <li>Outils de test et de qualité du code</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="installation" class="doc-section">
+                <h2>Installation</h2>
+
+                <div class="prerequisites-doc">
+                    <h3>Prérequis</h3>
+                    <ul>
+                        <li><strong>Node.js</strong> : v20.0.0 ou supérieure</li>
+                        <li><strong>NPM</strong> : v10.0.0 ou supérieure</li>
+                        <li><strong>Java</strong> : JDK 17 ou supérieure</li>
+                        <li><strong>Maven ou Gradle</strong> : pour la compilation des projets Spring Boot</li>
+                    </ul>
+                </div>
+
+                <div class="installation-methods">
+                    <h3>Méthodes d'installation</h3>
+
+                    <div class="installation-method">
+                        <h4>Installation globale (recommandée)</h4>
+                        <div class="code-block">
+                            <pre><code>npm install -g @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npm install -g @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p>Cette méthode installe SFS globalement sur votre système, ce qui vous permet d'utiliser la commande <code>sfs</code> depuis n'importe quel répertoire.</p>
+                    </div>
+
+                    <div class="installation-method">
+                        <h4>Utilisation avec npx</h4>
+                        <div class="code-block">
+                            <pre><code>npx @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npx @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <p>Cette méthode permet d'utiliser SFS sans installation préalable. Cependant, chaque utilisation téléchargera temporairement le package.</p>
+                    </div>
+                </div>
+
+                <div class="verification">
+                    <h3>Vérification de l'installation</h3>
+                    <div class="code-block">
+                        <pre><code>sfs --version</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs --version')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <p>Cette commande devrait afficher la version actuelle de SFS installée sur votre système.</p>
+                </div>
+            </section>
+
+            <section id="commandes-principales" class="doc-section">
+                <h2>Commandes principales</h2>
+
+                <p>Spring-Fullstack-Speed offre plusieurs commandes pour générer différents aspects de votre application:</p>
+
+                <table class="commands-table">
+                    <thead>
+                        <tr>
+                            <th>Commande</th>
+                            <th>Description</th>
+                            <th>Alias</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>sfs app</code></td>
+                            <td>Génère une nouvelle application Spring Boot fullstack</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs entity</code></td>
+                            <td>Génère une nouvelle entité avec son repository</td>
+                            <td><code>sfs e</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs dtos</code></td>
+                            <td>Génère des DTOs pour une entité existante</td>
+                            <td><code>sfs d</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs crud</code></td>
+                            <td>Génère les opérations CRUD pour une entité</td>
+                            <td><code>sfs c</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs module</code></td>
+                            <td>Génère un nouveau module fonctionnel</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs generate</code></td>
+                            <td>Génération rapide de code (entités, DTOs, CRUD)</td>
+                            <td><code>sfs g</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs serve</code></td>
+                            <td>Démarre un serveur de développement</td>
+                            <td><code>sfs s</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs test</code></td>
+                            <td>Exécute différents types de tests</td>
+                            <td><code>sfs t</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs deploy</code></td>
+                            <td>Options de déploiement (serveurs, cloud, k8s)</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs docker</code></td>
+                            <td>Gestion des conteneurs Docker</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td><code>sfs kubernetes</code></td>
+                            <td>Gestion des déploiements Kubernetes</td>
+                            <td><code>sfs k8s</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="help-command">
+                    <h3>Aide et options</h3>
+                    <p>Pour afficher l'aide sur une commande spécifique, utilisez l'option <code>--help</code> ou <code>-h</code>:</p>
+                    <div class="code-block">
+                        <pre><code>sfs entity --help</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs entity --help')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="generation-application" class="doc-section">
+                <h2>Génération d'application</h2>
+
+                <p>La commande <code>sfs app</code> est le point de départ pour créer une nouvelle application Spring Boot fullstack.</p>
+
+                <div class="basic-usage">
+                    <h3>Utilisation basique</h3>
+                    <div class="code-block">
+                        <pre><code>sfs app</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs app')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <p>Cette commande lance un processus interactif qui vous guidera à travers les différentes options de configuration.</p>
+                </div>
+
+                <div id="options-app">
+                    <h3>Options disponibles</h3>
+                    <p>Pour une génération non interactive, vous pouvez spécifier les options directement:</p>
+                    <div class="code-block">
+                        <pre><code>sfs app --name=my-app --package=com.example --db=mysql --frontend=react</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs app --name=my-app --package=com.example --db=mysql --frontend=react')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <table class="options-table">
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Description</th>
+                                <th>Valeurs possibles</th>
+                                <th>Défaut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>--name</code></td>
+                                <td>Nom de l'application</td>
+                                <td>String</td>
+                                <td><code>my-app</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--package</code></td>
+                                <td>Package Java de base</td>
+                                <td>String (format package Java)</td>
+                                <td><code>com.example</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--db</code></td>
+                                <td>Base de données</td>
+                                <td>h2, mysql, postgresql, mongodb</td>
+                                <td><code>h2</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--frontend</code></td>
+                                <td>Framework frontend</td>
+                                <td>none, react, vue, angular, thymeleaf, jte</td>
+                                <td><code>react</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--auth</code></td>
+                                <td>Type d'authentification</td>
+                                <td>none, jwt, oauth2, session</td>
+                                <td><code>jwt</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--build</code></td>
+                                <td>Outil de build</td>
+                                <td>maven, gradle</td>
+                                <td><code>maven</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--features</code></td>
+                                <td>Fonctionnalités supplémentaires</td>
+                                <td>websocket, cache, elasticsearch, ...</td>
+                                <td><code>[]</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="structure-app">
+                    <h3>Structure générée</h3>
+                    <p>L'application générée suit une structure standard d'un projet Spring Boot:</p>
+
+                    <div class="code-block">
+                        <pre><code>my-app/
+├── README.md
+├── pom.xml (ou build.gradle)
+├── mvnw / gradlew
+├── .gitignore
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── example/
+│   │   │           ├── MyAppApplication.java
+│   │   │           ├── config/
+│   │   │           ├── controller/
+│   │   │           ├── domain/
+│   │   │           ├── dto/
+│   │   │           ├── repository/
+│   │   │           ├── security/
+│   │   │           └── service/
+│   │   └── resources/
+│   │       ├── application.yml
+│   │       ├── static/
+│   │       └── templates/
+│   └── test/
+│       └── java/
+│           └── com/
+│               └── example/
+│                   ├── MyAppApplicationTests.java
+│                   └── ...
+├── frontend/ (si un framework frontend est sélectionné)
+│   ├── package.json
+│   ├── vite.config.js / webpack.config.js / angular.json
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── ...
+│   └── ...
+└── docker/
+    ├── Dockerfile
+    └── docker-compose.yml</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Les autres sections seraient similaires, avec le contenu approprié -->
+
+            <section id="faq" class="doc-section">
+                <h2>FAQ - Questions fréquemment posées</h2>
+
+                <div class="faq-item">
+                    <h3>Comment mettre à jour Spring-Fullstack-Speed ?</h3>
+                    <div class="answer">
+                        <p>Pour mettre à jour vers la dernière version, utilisez la commande suivante :</p>
+                        <div class="code-block">
+                            <pre><code>npm update -g @enokdev/spring-fullstack-speed</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('npm update -g @enokdev/spring-fullstack-speed')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Comment ajouter des fonctionnalités à un projet existant ?</h3>
+                    <div class="answer">
+                        <p>Utilisez la commande <code>sfs add</code> pour ajouter de nouvelles fonctionnalités à un projet existant :</p>
+                        <div class="code-block">
+                            <pre><code>cd my-project
+sfs add --feature=websocket</code></pre>
+                            <button class="copy-btn" onclick="copyToClipboard('cd my-project\nsfs add --feature=websocket')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Puis-je personnaliser les templates générés ?</h3>
+                    <div class="answer">
+                        <p>Oui, vous pouvez personnaliser les templates en créant un dossier <code>~/.sfs/templates/</code> et en y copiant les templates que vous souhaitez modifier. SFS utilisera automatiquement vos templates personnalisés.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Comment signaler un bug ou proposer une amélioration ?</h3>
+                    <div class="answer">
+                        <p>Vous pouvez signaler des bugs ou proposer des améliorations en ouvrant une issue sur notre <a href="https://github.com/tky0065/spring-fullstack-speed/issues" target="_blank">dépôt GitHub</a>.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="images/logo.png" alt="SFS Logo">
+                    <h3>Spring-Fullstack-Speed</h3>
+                    <p>Générateur d'applications Spring Boot fullstack</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Liens rapides</h4>
+                    <ul>
+                        <li><a href="index.html">Accueil</a></li>
+                        <li><a href="documentation.html">Documentation</a></li>
+                        <li><a href="commandes.html">Commandes</a></li>
+                        <li><a href="roadmap.html">Roadmap</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-community">
+                    <h4>Communauté</h4>
+                    <ul>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/issues" target="_blank">Signaler un bug</a></li>
+                        <li><a href="https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md" target="_blank">Comment contribuer</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Spring-Fullstack-Speed. Sous licence MIT.</p>
+                <div class="social-icons">
+                    <a href="https://github.com/tky0065/spring-fullstack-speed" target="_blank"><i class="fab fa-github"></i></a>
+                    <a href="https://www.npmjs.com/package/@enokdev/spring-fullstack-speed" target="_blank"><i class="fab fa-npm"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/documentation.js"></script>
+</body>
+</html>

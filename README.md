@@ -4,10 +4,13 @@
 
 SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapidement des applications web fullstack modernes avec Spring Boot comme backend et divers frameworks frontend (React, Vue.js, Angular, Thymeleaf, JTE). Inspiré par JHipster, ce projet vise à simplifier et accélérer le développement d'applications Java enterprise en automatisant la génération de code boilerplate et l'intégration des technologies modernes.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-ISC-green.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)
+[![npm version](https://img.shields.io/npm/v/@enokdev/spring-fullstack-speed.svg)](https://www.npmjs.com/package/@enokdev/spring-fullstack-speed)
+[![Downloads](https://img.shields.io/npm/dm/@enokdev/spring-fullstack-speed.svg)](https://www.npmjs.com/package/@enokdev/spring-fullstack-speed)
+[![License](https://img.shields.io/npm/l/@enokdev/spring-fullstack-speed)](https://github.com/tky0065/spring-fullstack-speed/blob/main/LICENSE)
+![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 ![Java](https://img.shields.io/badge/java-%3E%3D17-orange.svg)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md)
+[![Documentation](https://img.shields.io/badge/docs-available-blue.svg)](https://github.com/tky0065/spring-fullstack-speed/tree/main/docs)
 
 ## 📋 Table des matières
 
