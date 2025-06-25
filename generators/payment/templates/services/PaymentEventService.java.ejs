@@ -1,0 +1,174 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.PaymentEvent;
+import <%= packageName %>.repository.PaymentEventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les événements de paiement.
+ * Traite principalement les webhooks envoyés par les fournisseurs de paiement.
+ */
+@Service
+@Transactional
+public class PaymentEventService {
+
+    private final PaymentEventRepository paymentEventRepository;
+
+    public PaymentEventService(PaymentEventRepository paymentEventRepository) {
+        this.paymentEventRepository = paymentEventRepository;
+    }
+
+    /**
+     * Enregistre un nouvel événement de paiement.
+     *
+     * @param provider Le fournisseur de paiement (stripe, paypal, etc.)
+     * @param eventType Le type d'événement
+     * @param payload Le contenu JSON brut de l'événement
+     * @param providerEventId L'identifiant de l'événement chez le fournisseur
+     * @return L'événement enregistré
+     */
+    @Transactional
+    public PaymentEvent registerEvent(String provider, String eventType, String payload, String providerEventId) {
+        // Vérifier si l'événement a déjà été reçu pour éviter les doublons
+        Optional<PaymentEvent> existingEvent = paymentEventRepository.findByProviderEventId(providerEventId);
+        if (existingEvent.isPresent()) {
+            return existingEvent.get();
+        }
+
+        PaymentEvent event = new PaymentEvent();
+        event.setProvider(provider);
+        event.setEventType(eventType);
+        event.setPayload(payload);
+        event.setProviderEventId(providerEventId);
+        event.setStatus("RECEIVED");
+
+        return paymentEventRepository.save(event);
+    }
+
+    /**
+     * Marque un événement comme traité.
+     *
+     * @param eventId L'identifiant de l'événement
+     * @return L'événement mis à jour
+     */
+    @Transactional
+    public Optional<PaymentEvent> markEventAsProcessed(String eventId) {
+        return paymentEventRepository.findByEventId(eventId)
+                .map(event -> {
+                    event.setStatus("PROCESSED");
+                    event.setProcessedDate(Instant.now());
+                    return paymentEventRepository.save(event);
+                });
+    }
+
+    /**
+     * Marque un événement comme échoué avec un message d'erreur.
+     *
+     * @param eventId L'identifiant de l'événement
+     * @param errorMessage Le message d'erreur
+     * @return L'événement mis à jour
+     */
+    @Transactional
+    public Optional<PaymentEvent> markEventAsFailed(String eventId, String errorMessage) {
+        return paymentEventRepository.findByEventId(eventId)
+                .map(event -> {
+                    event.setStatus("FAILED");
+                    event.setErrorMessage(errorMessage);
+                    return paymentEventRepository.save(event);
+                });
+    }
+
+    /**
+     * Trouve un événement par son identifiant unique.
+     *
+     * @param eventId L'identifiant unique de l'événement
+     * @return L'événement si trouvé
+     */
+    @Transactional(readOnly = true)
+    public Optional<PaymentEvent> findByEventId(String eventId) {
+        return paymentEventRepository.findByEventId(eventId);
+    }
+
+    /**
+     * Trouve les événements par fournisseur.
+     *
+     * @param provider Le fournisseur (stripe, paypal, etc.)
+     * @return La liste des événements pour ce fournisseur
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findByProvider(String provider) {
+        return paymentEventRepository.findByProvider(provider);
+    }
+
+    /**
+     * Trouve les événements par type.
+     *
+     * @param eventType Le type d'événement
+     * @return La liste des événements de ce type
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findByEventType(String eventType) {
+        return paymentEventRepository.findByEventType(eventType);
+    }
+
+    /**
+     * Trouve les événements par fournisseur et type.
+     *
+     * @param provider Le fournisseur
+     * @param eventType Le type d'événement
+     * @return La liste des événements correspondants
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findByProviderAndEventType(String provider, String eventType) {
+        return paymentEventRepository.findByProviderAndEventType(provider, eventType);
+    }
+
+    /**
+     * Trouve les événements par statut avec pagination.
+     *
+     * @param status Le statut à rechercher
+     * @param pageable Les informations de pagination
+     * @return Une page d'événements avec le statut spécifié
+     */
+    @Transactional(readOnly = true)
+    public Page<PaymentEvent> findByStatus(String status, Pageable pageable) {
+        return paymentEventRepository.findAll(pageable);
+    }
+
+    /**
+     * Trouve les événements qui n'ont pas encore été traités.
+     *
+     * @return La liste des événements non traités
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findUnprocessedEvents() {
+        return paymentEventRepository.findByStatusNotAndProcessedDateIsNullOrderByCreatedDateAsc("PROCESSED");
+    }
+
+    /**
+     * Trouve les événements en erreur.
+     *
+     * @return La liste des événements en erreur
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findFailedEvents() {
+        return paymentEventRepository.findByStatusAndErrorMessageIsNotNull("FAILED");
+    }
+
+    /**
+     * Trouve les derniers événements reçus.
+     *
+     * @return La liste des derniers événements
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentEvent> findRecentEvents() {
+        return paymentEventRepository.findTop10ByOrderByCreatedDateDesc();
+    }
+}

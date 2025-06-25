@@ -1,0 +1,111 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.InvoiceItem;
+import <%= packageName %>.domain.Invoice;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité InvoiceItem.
+ */
+@Repository
+public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, Long> {
+
+    /**
+     * Trouve un élément de facture par son identifiant unique.
+     *
+     * @param invoiceItemId l'identifiant unique de l'élément de facture
+     * @return l'élément de facture si trouvé
+     */
+    Optional<InvoiceItem> findByInvoiceItemId(String invoiceItemId);
+
+    /**
+     * Trouve tous les éléments pour une facture donnée.
+     *
+     * @param invoice la facture
+     * @return la liste des éléments de facture
+     */
+    List<InvoiceItem> findByInvoice(Invoice invoice);
+
+    /**
+     * Trouve tous les éléments pour un identifiant de facture donné.
+     *
+     * @param invoiceId l'ID de la facture
+     * @return la liste des éléments de facture
+     */
+    @Query("SELECT i FROM InvoiceItem i WHERE i.invoice.id = :invoiceId")
+    List<InvoiceItem> findByInvoiceId(@Param("invoiceId") Long invoiceId);
+
+    /**
+     * Trouve les éléments de facture par description.
+     *
+     * @param description la description à rechercher
+     * @return la liste des éléments de facture avec la description spécifiée
+     */
+    List<InvoiceItem> findByDescriptionContaining(String description);
+
+    /**
+     * Trouve les éléments de facture pour un produit donné.
+     *
+     * @param productId l'ID du produit
+     * @return la liste des éléments de facture
+     */
+    List<InvoiceItem> findByProductId(String productId);
+
+    /**
+     * Trouve les éléments de facture pour un plan donné.
+     *
+     * @param planId l'ID du plan
+     * @return la liste des éléments de facture
+     */
+    List<InvoiceItem> findByPlanId(String planId);
+
+    /**
+     * Trouve les éléments de facture pour un abonnement donné.
+     *
+     * @param subscriptionId l'ID de l'abonnement
+     * @return la liste des éléments de facture
+     */
+    List<InvoiceItem> findBySubscriptionId(String subscriptionId);
+
+    /**
+     * Calcule le montant total des éléments pour une facture donnée.
+     *
+     * @param invoiceId l'ID de la facture
+     * @return le montant total des éléments
+     */
+    @Query("SELECT SUM(i.amount) FROM InvoiceItem i WHERE i.invoice.id = :invoiceId")
+    BigDecimal sumAmountByInvoiceId(@Param("invoiceId") Long invoiceId);
+
+    /**
+     * Trouve les éléments de facture avec un montant supérieur à la valeur donnée.
+     *
+     * @param amount le montant minimum
+     * @return la liste des éléments de facture
+     */
+    List<InvoiceItem> findByAmountGreaterThan(BigDecimal amount);
+
+    /**
+     * Calcule le montant total des taxes pour une facture donnée.
+     *
+     * @param invoiceId l'ID de la facture
+     * @return le montant total des taxes
+     */
+    @Query("SELECT SUM(i.taxAmount) FROM InvoiceItem i WHERE i.invoice.id = :invoiceId")
+    BigDecimal sumTaxAmountByInvoiceId(@Param("invoiceId") Long invoiceId);
+
+    /**
+     * Trouve les éléments de facture avec une référence de provider spécifique.
+     *
+     * @param providerReference la référence du provider
+     * @return un élément de facture optionnel si trouvé
+     */
+    Optional<InvoiceItem> findByProviderReference(String providerReference);
+}

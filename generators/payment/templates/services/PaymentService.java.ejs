@@ -1,0 +1,104 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Payment;
+import <%= packageName %>.domain.PaymentMethod;
+import <%= packageName %>.service.dto.PaymentDTO;
+import <%= packageName %>.service.dto.PaymentRequestDTO;
+import <%= packageName %>.service.dto.PaymentResponseDTO;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service Interface pour gérer les paiements.
+ */
+public interface PaymentService {
+
+    /**
+     * Crée un nouveau paiement.
+     *
+     * @param paymentRequestDTO les informations du paiement à créer
+     * @return le PaymentResponseDTO contenant les détails du paiement créé
+     */
+    PaymentResponseDTO createPayment(PaymentRequestDTO paymentRequestDTO);
+
+    /**
+     * Confirme un paiement en attente.
+     *
+     * @param paymentId l'ID du paiement
+     * @param paymentMethodId l'ID de la méthode de paiement
+     * @return le PaymentResponseDTO mis à jour
+     */
+    PaymentResponseDTO confirmPayment(String paymentId, Long paymentMethodId);
+
+    /**
+     * Capture un paiement autorisé.
+     *
+     * @param paymentId l'ID du paiement
+     * @return le PaymentResponseDTO mis à jour
+     */
+    PaymentResponseDTO capturePayment(String paymentId);
+
+    /**
+     * Annule un paiement.
+     *
+     * @param paymentId l'ID du paiement
+     * @return le PaymentResponseDTO mis à jour
+     */
+    PaymentResponseDTO cancelPayment(String paymentId);
+
+    /**
+     * Récupère un paiement par son ID.
+     *
+     * @param paymentId l'ID du paiement
+     * @return le PaymentDTO correspondant
+     */
+    Optional<PaymentDTO> getPaymentById(String paymentId);
+
+    /**
+     * Récupère tous les paiements d'un client.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des PaymentDTO pour ce client
+     */
+    List<PaymentDTO> getPaymentsByCustomerId(Long customerId);
+
+    /**
+     * Traite le callback d'un paiement.
+     *
+     * @param providerReference la référence du provider
+     * @param status le statut du paiement
+     * @return le PaymentResponseDTO mis à jour
+     */
+    PaymentResponseDTO processPaymentCallback(String providerReference, String status);
+
+    <% if (refunds) { %>
+    /**
+     * Rembourse un paiement.
+     *
+     * @param paymentId l'ID du paiement
+     * @param amount le montant à rembourser (null pour un remboursement total)
+     * @param reason la raison du remboursement
+     * @return le PaymentResponseDTO mis à jour
+     */
+    PaymentResponseDTO refundPayment(String paymentId, BigDecimal amount, String reason);
+    <% } %>
+
+    /**
+     * Crée une session de paiement pour la redirection.
+     *
+     * @param paymentRequestDTO les informations du paiement
+     * @return l'URL de redirection pour le paiement
+     */
+    String createPaymentSession(PaymentRequestDTO paymentRequestDTO);
+
+    /**
+     * Obtient l'URL de redirection pour compléter un paiement.
+     *
+     * @param paymentId l'ID du paiement
+     * @return l'URL de redirection
+     */
+    String getPaymentRedirectUrl(String paymentId);
+}

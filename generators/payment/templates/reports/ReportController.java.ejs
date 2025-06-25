@@ -1,0 +1,197 @@
+package <%= packageName %>.controller;
+
+import <%= packageName %>.dto.reports.ReportDTO;
+import <%= packageName %>.entities.reports.CustomerReport;
+import <%= packageName %>.entities.reports.RevenueReport;
+import <%= packageName %>.entities.reports.TransactionReport;
+import <%= packageName %>.service.reports.ReportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Contrôleur REST pour la gestion des rapports financiers.
+ */
+@RestController
+@RequestMapping("/api/reports")
+public class ReportController {
+
+    private final Logger log = LoggerFactory.getLogger(ReportController.class);
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    /**
+     * {@code GET /reports} : Récupère tous les rapports.
+     *
+     * @return la liste de tous les rapports avec statut {@code 200 (OK)}
+     */
+    @GetMapping
+    public ResponseEntity<List<ReportDTO>> getAllReports() {
+        log.debug("REST request pour récupérer tous les rapports");
+        List<ReportDTO> reports = reportService.getAllReports();
+        return ResponseEntity.ok().body(reports);
+    }
+
+    /**
+     * {@code GET /reports/:id} : Récupère un rapport par son ID.
+     *
+     * @param id l'ID du rapport à récupérer
+     * @return le rapport avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ReportDTO> getReport(@PathVariable Long id) {
+        log.debug("REST request pour récupérer le rapport : {}", id);
+        ReportDTO report = reportService.getReportById(id);
+        return ResponseEntity.ok().body(report);
+    }
+
+    /**
+     * {@code POST /reports} : Crée un nouveau rapport.
+     *
+     * @param reportDTO le rapport à créer
+     * @return le rapport créé avec statut {@code 201 (Created)}
+     */
+    @PostMapping
+    public ResponseEntity<ReportDTO> createReport(@RequestBody ReportDTO reportDTO) {
+        log.debug("REST request pour créer un nouveau rapport : {}", reportDTO);
+        ReportDTO result = reportService.createReport(reportDTO);
+        return ResponseEntity.ok().body(result);
+    }
+
+    /**
+     * {@code PUT /reports/:id} : Met à jour un rapport existant.
+     *
+     * @param id l'ID du rapport à mettre à jour
+     * @param reportDTO les nouvelles données du rapport
+     * @return le rapport mis à jour avec statut {@code 200 (OK)}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ReportDTO> updateReport(@PathVariable Long id, @RequestBody ReportDTO reportDTO) {
+        log.debug("REST request pour mettre à jour le rapport : {}", id);
+        ReportDTO result = reportService.updateReport(id, reportDTO);
+        return ResponseEntity.ok().body(result);
+    }
+
+    /**
+     * {@code DELETE /reports/:id} : Supprime un rapport.
+     *
+     * @param id l'ID du rapport à supprimer
+     * @return statut {@code 204 (NO_CONTENT)}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReport(@PathVariable Long id) {
+        log.debug("REST request pour supprimer le rapport : {}", id);
+        reportService.deleteReport(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * {@code GET /reports/revenue} : Génère un rapport de revenus.
+     *
+     * @param startDate date de début pour le rapport
+     * @param endDate date de fin pour le rapport
+     * @return le rapport de revenus avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/revenue")
+    public ResponseEntity<RevenueReport> generateRevenueReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date endDate) {
+        log.debug("REST request pour générer un rapport de revenus entre {} et {}", startDate, endDate);
+        RevenueReport report = reportService.generateRevenueReport(startDate, endDate);
+        return ResponseEntity.ok().body(report);
+    }
+
+    /**
+     * {@code GET /reports/transactions} : Génère un rapport de transactions.
+     *
+     * @param startDate date de début pour le rapport
+     * @param endDate date de fin pour le rapport
+     * @return le rapport de transactions avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/transactions")
+    public ResponseEntity<TransactionReport> generateTransactionReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date endDate) {
+        log.debug("REST request pour générer un rapport de transactions entre {} et {}", startDate, endDate);
+        TransactionReport report = reportService.generateTransactionReport(startDate, endDate);
+        return ResponseEntity.ok().body(report);
+    }
+
+    /**
+     * {@code GET /reports/customers} : Génère un rapport client.
+     *
+     * @param startDate date de début pour le rapport
+     * @param endDate date de fin pour le rapport
+     * @return le rapport client avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/customers")
+    public ResponseEntity<CustomerReport> generateCustomerReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date endDate) {
+        log.debug("REST request pour générer un rapport client entre {} et {}", startDate, endDate);
+        CustomerReport report = reportService.generateCustomerReport(startDate, endDate);
+        return ResponseEntity.ok().body(report);
+    }
+
+    /**
+     * {@code GET /reports/:id/excel} : Exporte un rapport au format Excel.
+     *
+     * @param id l'ID du rapport à exporter
+     * @return le fichier Excel avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/{id}/excel")
+    public ResponseEntity<Resource> exportReportToExcel(@PathVariable Long id) {
+        log.debug("REST request pour exporter le rapport {} au format Excel", id);
+        byte[] reportContent = reportService.exportReportToExcel(id);
+        ByteArrayResource resource = new ByteArrayResource(reportContent);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report-" + id + ".xlsx")
+                .body(resource);
+    }
+
+    /**
+     * {@code GET /reports/:id/pdf} : Exporte un rapport au format PDF.
+     *
+     * @param id l'ID du rapport à exporter
+     * @return le fichier PDF avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<Resource> exportReportToPdf(@PathVariable Long id) {
+        log.debug("REST request pour exporter le rapport {} au format PDF", id);
+        byte[] reportContent = reportService.exportReportToPdf(id);
+        ByteArrayResource resource = new ByteArrayResource(reportContent);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report-" + id + ".pdf")
+                .body(resource);
+    }
+
+    /**
+     * {@code GET /reports/statistics} : Récupère des statistiques de paiement.
+     *
+     * @param days le nombre de jours à prendre en compte
+     * @return les statistiques avec statut {@code 200 (OK)}
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<Map<String, Object>> getPaymentStatistics(@RequestParam(defaultValue = "30") int days) {
+        log.debug("REST request pour récupérer les statistiques de paiement des {} derniers jours", days);
+        Map<String, Object> statistics = reportService.generatePaymentStatistics(days);
+        return ResponseEntity.ok().body(statistics);
+    }
+}

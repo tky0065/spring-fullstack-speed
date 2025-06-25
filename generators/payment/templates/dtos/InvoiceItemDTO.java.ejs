@@ -1,0 +1,72 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter un élément de facture dans le système de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString
+public class InvoiceItemDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    private String invoiceItemId;
+
+    @NotNull
+    private String invoiceId;
+
+    private String customerId;
+
+    private String subscriptionId;
+
+    private String planId;
+
+    @NotNull
+    private BigDecimal amount;
+
+    private String currency;
+
+    private String description;
+
+    private BigDecimal quantity;
+
+    private String type; // subscription, one-time, tax, etc.
+
+    private Instant periodStart;
+
+    private Instant periodEnd;
+
+    private Boolean proration;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    <% if (providers.includes('stripe')) { %>
+    private String stripeInvoiceItemId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalInvoiceItemId;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private String braintreeInvoiceItemId;
+    <% } %>
+}

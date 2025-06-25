@@ -1,0 +1,71 @@
+package <%= packageName %>.entities.reports;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Entité représentant un rapport de transactions.
+ */
+@Data
+@NoArgsConstructor
+public class TransactionReport implements Serializable {
+
+    private Long id;
+
+    private String title;
+
+    private Date startDate;
+
+    private Date endDate;
+
+    private Integer totalTransactions;
+
+    private Integer successfulTransactions;
+
+    private Integer failedTransactions;
+
+    private BigDecimal totalAmount;
+
+    private BigDecimal averageTransactionAmount;
+
+    private List<TransactionByStatus> transactionsByStatus = new ArrayList<>();
+
+    private List<TransactionByDate> transactionsByDate = new ArrayList<>();
+
+    private List<FailureReason> topFailureReasons = new ArrayList<>();
+
+    // Nested class for transactions grouped by status
+    @Data
+    @NoArgsConstructor
+    public static class TransactionByStatus implements Serializable {
+        private String status;
+        private Integer count;
+        private BigDecimal totalAmount;
+        private BigDecimal percentage;
+    }
+
+    // Nested class for transactions grouped by date
+    @Data
+    @NoArgsConstructor
+    public static class TransactionByDate implements Serializable {
+        private Date date;
+        private Integer count;
+        private BigDecimal totalAmount;
+        private Integer successCount;
+        private Integer failureCount;
+    }
+
+    // Nested class for top failure reasons
+    @Data
+    @NoArgsConstructor
+    public static class FailureReason implements Serializable {
+        private String reason;
+        private Integer count;
+        private BigDecimal percentage;
+    }
+}

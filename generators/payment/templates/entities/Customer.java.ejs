@@ -1,0 +1,145 @@
+package <%= packageName %>.domain;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.ToString;
+
+import javax.persistence.*;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Entité Customer qui représente un client pour les paiements.
+ * Générée par Spring-Fullstack-Speed.
+ */
+@Entity
+@Table(name = "payment_customer")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"paymentMethods", "payments"<% if (subscription) { %>, "subscriptions"<% } %>})
+public class Customer implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "external_id")
+    private String externalId;
+
+    @NotNull
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Email
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "address_line_1")
+    private String addressLine1;
+
+    @Column(name = "address_line_2")
+    private String addressLine2;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "state")
+    private String state;
+
+    @Column(name = "postal_code")
+    private String postalCode;
+
+    @Column(name = "country")
+    private String country;
+
+    @Column(name = "created_date", nullable = false)
+    @Builder.Default
+    private Instant createdDate = Instant.now();
+
+    @Column(name = "updated_date")
+    private Instant updatedDate;
+
+    @OneToMany(mappedBy = "customer")
+    @Builder.Default
+    private Set<PaymentMethod> paymentMethods = new HashSet<>();
+
+    @OneToMany(mappedBy = "customer")
+    @Builder.Default
+    private Set<Payment> payments = new HashSet<>();
+
+    <% if (subscription) { %>
+    @OneToMany(mappedBy = "customer")
+    @Builder.Default
+    private Set<Subscription> subscriptions = new HashSet<>();
+    <% } %>
+
+    // Propriétés spécifiques aux providers de paiement
+    <% if (providers.includes('stripe')) { %>
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    @Column(name = "paypal_customer_id")
+    private String paypalCustomerId;
+    <% } %>
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedDate = Instant.now();
+    }
+
+    // Méthodes utilitaires pour gérer les relations
+    public Customer addPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethods.add(paymentMethod);
+        paymentMethod.setCustomer(this);
+        return this;
+    }
+
+    public Customer removePaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethods.remove(paymentMethod);
+        paymentMethod.setCustomer(null);
+        return this;
+    }
+
+    public Customer addPayment(Payment payment) {
+        this.payments.add(payment);
+        payment.setCustomer(this);
+        return this;
+    }
+
+    public Customer removePayment(Payment payment) {
+        this.payments.remove(payment);
+        payment.setCustomer(null);
+        return this;
+    }
+
+    <% if (subscription) { %>
+    public Customer addSubscription(Subscription subscription) {
+        this.subscriptions.add(subscription);
+        subscription.setCustomer(this);
+        return this;
+    }
+
+    public Customer removeSubscription(Subscription subscription) {
+        this.subscriptions.remove(subscription);
+        subscription.setCustomer(null);
+        return this;
+    }
+    <% } %>
+}

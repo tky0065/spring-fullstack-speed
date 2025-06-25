@@ -1,0 +1,101 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.service.dto.ReportDTO;
+import <%= packageName %>.service.report.CustomerReport;
+import <%= packageName %>.service.report.RevenueReport;
+import <%= packageName %>.service.report.TransactionReport;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Service pour la génération et la gestion des rapports financiers.
+ */
+public interface ReportService {
+
+    /**
+     * Génère un rapport de revenus pour une période donnée.
+     *
+     * @param startDate la date de début de la période
+     * @param endDate la date de fin de la période
+     * @param groupBy la façon de grouper les données (jour, semaine, mois, année)
+     * @return le rapport de revenus
+     */
+    RevenueReport generateRevenueReport(LocalDate startDate, LocalDate endDate, String groupBy);
+
+    /**
+     * Génère un rapport de transactions pour une période donnée.
+     *
+     * @param startDate la date de début de la période
+     * @param endDate la date de fin de la période
+     * @param status filtre optionnel par statut de transaction
+     * @return le rapport de transactions
+     */
+    TransactionReport generateTransactionReport(LocalDate startDate, LocalDate endDate, Optional<String> status);
+
+    /**
+     * Génère un rapport client pour une période donnée.
+     *
+     * @param startDate la date de début de la période
+     * @param endDate la date de fin de la période
+     * @return le rapport client
+     */
+    CustomerReport generateCustomerReport(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Récupère un rapport par son ID.
+     *
+     * @param reportId l'ID du rapport
+     * @return le rapport trouvé, ou empty si non trouvé
+     */
+    Optional<ReportDTO> getReportById(Long reportId);
+
+    /**
+     * Récupère tous les rapports disponibles.
+     *
+     * @return la liste de tous les rapports
+     */
+    List<ReportDTO> getAllReports();
+
+    /**
+     * Exporte un rapport au format PDF.
+     *
+     * @param reportId l'ID du rapport à exporter
+     * @return le chemin du fichier exporté
+     */
+    String exportReportToPdf(Long reportId);
+
+    /**
+     * Exporte un rapport au format Excel.
+     *
+     * @param reportId l'ID du rapport à exporter
+     * @return le chemin du fichier exporté
+     */
+    String exportReportToExcel(Long reportId);
+
+    /**
+     * Sauvegarde un rapport généré.
+     *
+     * @param reportDTO les données du rapport à sauvegarder
+     * @return le rapport sauvegardé
+     */
+    ReportDTO saveReport(ReportDTO reportDTO);
+
+    /**
+     * Supprime un rapport.
+     *
+     * @param reportId l'ID du rapport à supprimer
+     */
+    void deleteReport(Long reportId);
+
+    /**
+     * Génère un rapport de résumé financier avec les métriques clés.
+     *
+     * @param startDate la date de début de la période
+     * @param endDate la date de fin de la période
+     * @return une carte des métriques financières clés
+     */
+    Map<String, Object> generateFinancialSummary(LocalDate startDate, LocalDate endDate);
+}

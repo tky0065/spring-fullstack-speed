@@ -1,0 +1,121 @@
+package <%= packageName %>.domain;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.ToString;
+
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import java.io.Serializable;
+import java.time.Instant;
+import java.time.YearMonth;
+
+/**
+ * Entité PaymentMethod qui représente une méthode de paiement d'un client.
+ * Générée par Spring-Fullstack-Speed.
+ */
+@Entity
+@Table(name = "payment_method")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"customer"})
+public class PaymentMethod implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull
+    @Column(name = "type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private PaymentMethodType type;
+
+    @Column(name = "token")
+    private String token;
+
+    // Pour les cartes de crédit
+    @Column(name = "card_last_digits")
+    private String cardLastDigits;
+
+    @Column(name = "card_brand")
+    private String cardBrand;
+
+    @Column(name = "card_expiry_month")
+    private Integer cardExpiryMonth;
+
+    @Column(name = "card_expiry_year")
+    private Integer cardExpiryYear;
+
+    @Column(name = "card_holder")
+    private String cardHolder;
+
+    // Pour les comptes bancaires
+    @Column(name = "bank_name")
+    private String bankName;
+
+    @Column(name = "bank_account_last_digits")
+    private String bankAccountLastDigits;
+
+    @Column(name = "bank_routing_number")
+    private String bankRoutingNumber;
+
+    @Column(name = "is_default")
+    @Builder.Default
+    private boolean isDefault = false;
+
+    @Column(name = "created_date", nullable = false)
+    @Builder.Default
+    private Instant createdDate = Instant.now();
+
+    @Column(name = "updated_date")
+    private Instant updatedDate;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
+    // Propriétés spécifiques aux providers de paiement
+    <% if (providers.includes('stripe')) { %>
+    @Column(name = "stripe_payment_method_id")
+    private String stripePaymentMethodId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    @Column(name = "paypal_payment_method_id")
+    private String paypalPaymentMethodId;
+    <% } %>
+
+    // Enum pour les types de méthodes de paiement
+    public enum PaymentMethodType {
+        CREDIT_CARD, DEBIT_CARD, BANK_ACCOUNT, PAYPAL, APPLE_PAY, GOOGLE_PAY, CRYPTO
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedDate = Instant.now();
+    }
+
+    /**
+     * Vérifie si la carte est expirée.
+     */
+    public boolean isCardExpired() {
+        if (type != PaymentMethodType.CREDIT_CARD && type != PaymentMethodType.DEBIT_CARD) {
+            return false;
+        }
+
+        if (cardExpiryMonth == null || cardExpiryYear == null) {
+            return false;
+        }
+
+        YearMonth expiryDate = YearMonth.of(cardExpiryYear, cardExpiryMonth);
+        return expiryDate.isBefore(YearMonth.now());
+    }
+}

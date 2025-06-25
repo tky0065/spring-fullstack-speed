@@ -1,0 +1,175 @@
+package <%= packageName %>.web.rest;
+
+import <%= packageName %>.domain.Subscription;
+import <%= packageName %>.service.SubscriptionService;
+import <%= packageName %>.web.rest.errors.BadRequestAlertException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import javax.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST controller pour gérer les {@link Subscription}.
+ */
+@RestController
+@RequestMapping("/api")
+public class SubscriptionController {
+
+    private final Logger log = LoggerFactory.getLogger(SubscriptionController.class);
+
+    private static final String ENTITY_NAME = "subscription";
+
+    @Value("${spring.application.name}")
+    private String applicationName;
+
+    private final SubscriptionService subscriptionService;
+
+    public SubscriptionController(SubscriptionService subscriptionService) {
+        this.subscriptionService = subscriptionService;
+    }
+
+    /**
+     * {@code POST  /subscriptions} : Crée un nouvel abonnement.
+     *
+     * @param subscription l'abonnement à créer.
+     * @return le {@link ResponseEntity} avec status {@code 201 (Created)} et le nouvel abonnement dans le body,
+     * ou avec status {@code 400 (Bad Request)} si l'abonnement a déjà un ID.
+     * @throws URISyntaxException si l'URI de location syntax est incorrecte.
+     */
+    @PostMapping("/subscriptions")
+    public ResponseEntity<Subscription> createSubscription(@Valid @RequestBody Subscription subscription) throws URISyntaxException {
+        log.debug("REST request to save Subscription : {}", subscription);
+        if (subscription.getId() != null) {
+            throw new BadRequestAlertException("Un nouvel abonnement ne peut pas déjà avoir un ID", ENTITY_NAME, "idexists");
+        }
+        Subscription result = subscriptionService.createSubscription(subscription);
+        return ResponseEntity
+            .created(new URI("/api/subscriptions/" + result.getId()))
+            .body(result);
+    }
+
+    /**
+     * {@code PUT  /subscriptions/:id} : Met à jour un abonnement existant.
+     *
+     * @param id l'id de l'abonnement à mettre à jour.
+     * @param subscription l'abonnement à mettre à jour.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et l'abonnement mis à jour dans le body,
+     * ou avec status {@code 400 (Bad Request)} si l'abonnement n'est pas valide,
+     * ou avec status {@code 500 (Internal Server Error)} si l'abonnement n'a pas pu être mis à jour.
+     * @throws URISyntaxException si l'URI de location syntax est incorrecte.
+     */
+    @PutMapping("/subscriptions/{id}")
+    public ResponseEntity<Subscription> updateSubscription(@PathVariable(value = "id", required = false) final Long id, @Valid @RequestBody Subscription subscription) throws URISyntaxException {
+        log.debug("REST request to update Subscription : {}, {}", id, subscription);
+        if (subscription.getId() == null) {
+            throw new BadRequestAlertException("ID invalide", ENTITY_NAME, "idnull");
+        }
+        if (!id.equals(subscription.getId())) {
+            throw new BadRequestAlertException("ID invalide", ENTITY_NAME, "idinvalid");
+        }
+
+        Subscription result = subscriptionService.updateSubscription(subscription);
+        return ResponseEntity.ok().body(result);
+    }
+
+    /**
+     * {@code GET  /subscriptions} : récupère tous les abonnements.
+     *
+     * @param pageable les informations de pagination.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des abonnements dans le body.
+     */
+    @GetMapping("/subscriptions")
+    public ResponseEntity<List<Subscription>> getAllSubscriptions(Pageable pageable) {
+        log.debug("REST request to get a page of Subscriptions");
+        Page<Subscription> page = subscriptionService.findByStatus(null, pageable);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Total-Count", Long.toString(page.getTotalElements()));
+        return ResponseEntity.ok().headers(headers).body(page.getContent());
+    }
+
+    /**
+     * {@code GET  /subscriptions/:id} : récupère l'abonnement avec l'id "id".
+     *
+     * @param id l'id de l'abonnement à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et l'abonnement dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/subscriptions/{id}")
+    public ResponseEntity<Subscription> getSubscription(@PathVariable Long id) {
+        log.debug("REST request to get Subscription : {}", id);
+        Optional<Subscription> subscription = subscriptionService.findBySubscriptionId(id.toString());
+        return subscription.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /subscriptions/by-subscription-id/:subscriptionId} : récupère l'abonnement avec le subscriptionId spécifié.
+     *
+     * @param subscriptionId l'id unique de l'abonnement à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et l'abonnement dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/subscriptions/by-subscription-id/{subscriptionId}")
+    public ResponseEntity<Subscription> getSubscriptionBySubscriptionId(@PathVariable String subscriptionId) {
+        log.debug("REST request to get Subscription by subscriptionId : {}", subscriptionId);
+        Optional<Subscription> subscription = subscriptionService.findBySubscriptionId(subscriptionId);
+        return subscription.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /subscriptions/customer/:customerId} : récupère les abonnements pour un client donné.
+     *
+     * @param customerId l'id du client.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des abonnements dans le body.
+     */
+    @GetMapping("/subscriptions/customer/{customerId}")
+    public ResponseEntity<List<Subscription>> getSubscriptionsByCustomer(@PathVariable Long customerId) {
+        log.debug("REST request to get Subscriptions by Customer : {}", customerId);
+        List<Subscription> subscriptions = subscriptionService.findByCustomerId(customerId);
+        return ResponseEntity.ok().body(subscriptions);
+    }
+
+    /**
+     * {@code POST  /subscriptions/:id/cancel} : annule un abonnement.
+     *
+     * @param id l'id de l'abonnement à annuler.
+     * @param cancelImmediately true pour annuler immédiatement, false pour annuler à la fin de la période en cours.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et l'abonnement annulé,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @PostMapping("/subscriptions/{id}/cancel")
+    public ResponseEntity<Subscription> cancelSubscription(@PathVariable Long id, @RequestParam(required = false, defaultValue = "false") boolean cancelImmediately) {
+        log.debug("REST request to cancel Subscription : {}, immediate: {}", id, cancelImmediately);
+        Optional<Subscription> result = subscriptionService.cancelSubscription(id.toString(), cancelImmediately);
+        return result.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code POST  /subscriptions/:id/renew} : renouvelle un abonnement.
+     *
+     * @param id l'id de l'abonnement à renouveler.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et l'abonnement renouvelé,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @PostMapping("/subscriptions/{id}/renew")
+    public ResponseEntity<Subscription> renewSubscription(@PathVariable Long id) {
+        log.debug("REST request to renew Subscription : {}", id);
+        Optional<Subscription> result = subscriptionService.renewSubscription(id.toString());
+        return result.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+}

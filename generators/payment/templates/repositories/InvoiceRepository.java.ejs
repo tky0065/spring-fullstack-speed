@@ -1,0 +1,132 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Invoice;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Subscription;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité Invoice.
+ */
+@Repository
+public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
+
+    /**
+     * Trouve une facture par son identifiant unique.
+     *
+     * @param invoiceId l'identifiant unique de la facture
+     * @return la facture si trouvée
+     */
+    Optional<Invoice> findByInvoiceId(String invoiceId);
+
+    /**
+     * Trouve toutes les factures pour un client donné.
+     *
+     * @param customer le client
+     * @return la liste des factures
+     */
+    List<Invoice> findByCustomer(Customer customer);
+
+    /**
+     * Trouve toutes les factures pour un identifiant client donné.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des factures
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.customer.id = :customerId")
+    List<Invoice> findByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve les factures par statut.
+     *
+     * @param status le statut à rechercher
+     * @return la liste des factures avec le statut spécifié
+     */
+    List<Invoice> findByStatus(String status);
+
+    /**
+     * Trouve les factures pour un abonnement donné.
+     *
+     * @param subscription l'abonnement
+     * @return la liste des factures
+     */
+    List<Invoice> findBySubscription(Subscription subscription);
+
+    /**
+     * Trouve les factures pour un identifiant d'abonnement donné.
+     *
+     * @param subscriptionId l'ID de l'abonnement
+     * @return la liste des factures
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.subscription.id = :subscriptionId")
+    List<Invoice> findBySubscriptionId(@Param("subscriptionId") Long subscriptionId);
+
+    /**
+     * Trouve les factures créées entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des factures créées dans l'intervalle
+     */
+    List<Invoice> findByCreatedDateBetween(Instant startDate, Instant endDate);
+
+    /**
+     * Trouve les factures par date de facture.
+     *
+     * @param invoiceDate la date de facture
+     * @return la liste des factures
+     */
+    List<Invoice> findByInvoiceDate(LocalDate invoiceDate);
+
+    /**
+     * Trouve les factures dont la date d'échéance est passée mais qui ne sont pas payées.
+     *
+     * @param currentDate la date actuelle
+     * @return la liste des factures en retard
+     */
+    @Query("SELECT i FROM Invoice i WHERE i.dueDate < :currentDate AND i.status != 'paid'")
+    List<Invoice> findOverdueInvoices(@Param("currentDate") LocalDate currentDate);
+
+    /**
+     * Calcule le montant total des factures payées pour un client donné.
+     *
+     * @param customerId l'ID du client
+     * @return le montant total des factures payées
+     */
+    @Query("SELECT SUM(i.amount) FROM Invoice i WHERE i.customer.id = :customerId AND i.status = 'paid'")
+    BigDecimal sumPaidInvoiceAmountByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve les factures avec un montant supérieur à la valeur donnée.
+     *
+     * @param amount le montant minimum
+     * @return la liste des factures
+     */
+    List<Invoice> findByAmountGreaterThan(BigDecimal amount);
+
+    /**
+     * Trouve les factures avec une référence de provider spécifique.
+     *
+     * @param providerReference la référence du provider
+     * @return une facture optionnelle si trouvée
+     */
+    Optional<Invoice> findByProviderReference(String providerReference);
+
+    /**
+     * Trouve les factures par numéro de facture.
+     *
+     * @param invoiceNumber le numéro de facture
+     * @return la facture si trouvée
+     */
+    Optional<Invoice> findByInvoiceNumber(String invoiceNumber);
+}

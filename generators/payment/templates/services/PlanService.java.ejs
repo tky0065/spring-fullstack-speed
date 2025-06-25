@@ -1,0 +1,168 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Plan;
+import <%= packageName %>.repository.PlanRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les plans d'abonnement.
+ */
+@Service
+@Transactional
+public class PlanService {
+
+    private final PlanRepository planRepository;
+
+    public PlanService(PlanRepository planRepository) {
+        this.planRepository = planRepository;
+    }
+
+    /**
+     * Crée un nouveau plan d'abonnement.
+     *
+     * @param plan Le plan à créer
+     * @return Le plan créé
+     */
+    @Transactional
+    public Plan createPlan(Plan plan) {
+        return planRepository.save(plan);
+    }
+
+    /**
+     * Met à jour un plan existant.
+     *
+     * @param plan Le plan à mettre à jour
+     * @return Le plan mis à jour
+     */
+    @Transactional
+    public Plan updatePlan(Plan plan) {
+        return planRepository.save(plan);
+    }
+
+    /**
+     * Active ou désactive un plan.
+     *
+     * @param planId L'identifiant du plan
+     * @param active Le nouvel état d'activation
+     * @return Le plan mis à jour
+     */
+    @Transactional
+    public Optional<Plan> setActive(String planId, boolean active) {
+        return planRepository.findByPlanId(planId)
+                .map(plan -> {
+                    plan.setActive(active);
+                    return planRepository.save(plan);
+                });
+    }
+
+    /**
+     * Trouve un plan par son identifiant unique.
+     *
+     * @param planId L'identifiant unique du plan
+     * @return Le plan si trouvé
+     */
+    @Transactional(readOnly = true)
+    public Optional<Plan> findByPlanId(String planId) {
+        return planRepository.findByPlanId(planId);
+    }
+
+    /**
+     * Trouve un plan par son nom.
+     *
+     * @param name Le nom du plan
+     * @return Le plan si trouvé
+     */
+    @Transactional(readOnly = true)
+    public Optional<Plan> findByName(String name) {
+        return planRepository.findByName(name);
+    }
+
+    /**
+     * Trouve tous les plans actifs.
+     *
+     * @return La liste des plans actifs
+     */
+    @Transactional(readOnly = true)
+    public List<Plan> findActivePlans() {
+        return planRepository.findByActive(true);
+    }
+
+    /**
+     * Trouve tous les plans par statut d'activation avec pagination.
+     *
+     * @param active Le statut d'activation
+     * @param pageable Les informations de pagination
+     * @return Une page de plans
+     */
+    @Transactional(readOnly = true)
+    public Page<Plan> findByActive(boolean active, Pageable pageable) {
+        return planRepository.findAll(pageable);
+    }
+
+    /**
+     * Trouve les plans par intervalle de facturation.
+     *
+     * @param billingInterval L'intervalle de facturation (month, year, etc.)
+     * @return La liste des plans avec l'intervalle spécifié
+     */
+    @Transactional(readOnly = true)
+    public List<Plan> findByBillingInterval(String billingInterval) {
+        return planRepository.findByBillingInterval(billingInterval);
+    }
+
+    /**
+     * Trouve les plans avec un prix inférieur à la valeur donnée.
+     *
+     * @param maxAmount Le montant maximum
+     * @return La liste des plans
+     */
+    @Transactional(readOnly = true)
+    public List<Plan> findPlansUnderPrice(BigDecimal maxAmount) {
+        return planRepository.findByAmountLessThan(maxAmount);
+    }
+
+    /**
+     * Trouve les plans qui incluent une période d'essai.
+     *
+     * @return La liste des plans avec période d'essai
+     */
+    @Transactional(readOnly = true)
+    public List<Plan> findPlansWithTrial() {
+        return planRepository.findByTrialPeriodDaysGreaterThan(0);
+    }
+
+    /**
+     * Supprime un plan (désactivation uniquement).
+     *
+     * @param planId L'identifiant du plan
+     * @return true si le plan a été désactivé
+     */
+    @Transactional
+    public boolean deletePlan(String planId) {
+        return planRepository.findByPlanId(planId)
+                .map(plan -> {
+                    plan.setActive(false);
+                    planRepository.save(plan);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    /**
+     * Trouve tous les plans, avec pagination.
+     *
+     * @param pageable Les informations de pagination
+     * @return Une page de plans
+     */
+    @Transactional(readOnly = true)
+    public Page<Plan> findAllPlans(Pageable pageable) {
+        return planRepository.findAll(pageable);
+    }
+}

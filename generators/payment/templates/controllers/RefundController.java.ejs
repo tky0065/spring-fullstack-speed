@@ -1,0 +1,146 @@
+package <%= packageName %>.controllers;
+
+import <%= packageName %>.dtos.RefundDTO;
+import <%= packageName %>.dtos.PaymentResponseDTO;
+import <%= packageName %>.services.RefundService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+
+/**
+ * Contrôleur REST pour gérer les remboursements.
+ */
+@RestController
+@RequestMapping("/api/refunds")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "Refund API", description = "API pour la gestion des remboursements")
+public class RefundController {
+
+    private final RefundService refundService;
+
+    /**
+     * Effectue un remboursement complet pour un paiement.
+     *
+     * @param paymentId ID du paiement à rembourser
+     * @return DTO du remboursement créé
+     */
+    @PostMapping("/payment/{paymentId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Rembourser un paiement intégralement",
+               description = "Effectue un remboursement complet du paiement spécifié")
+    @ApiResponse(responseCode = "201", description = "Remboursement créé avec succès",
+                 content = @Content(schema = @Schema(implementation = RefundDTO.class)))
+    @ApiResponse(responseCode = "404", description = "Paiement non trouvé")
+    @ApiResponse(responseCode = "400", description = "Paiement déjà remboursé ou autre erreur")
+    public ResponseEntity<RefundDTO> refundPayment(@PathVariable Long paymentId) {
+        log.info("Demande de remboursement complet pour le paiement: {}", paymentId);
+        RefundDTO refund = refundService.refundPayment(paymentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(refund);
+    }
+
+    /**
+     * Effectue un remboursement partiel d'un paiement.
+     *
+     * @param paymentId ID du paiement à rembourser partiellement
+     * @param refundDTO Informations sur le remboursement partiel
+     * @return DTO du remboursement créé
+     */
+    @PostMapping("/payment/{paymentId}/partial")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Rembourser partiellement un paiement",
+               description = "Effectue un remboursement partiel du montant spécifié")
+    @ApiResponse(responseCode = "201", description = "Remboursement partiel créé avec succès",
+                 content = @Content(schema = @Schema(implementation = RefundDTO.class)))
+    @ApiResponse(responseCode = "404", description = "Paiement non trouvé")
+    @ApiResponse(responseCode = "400", description = "Montant invalide ou autre erreur")
+    public ResponseEntity<RefundDTO> partialRefund(
+            @PathVariable Long paymentId,
+            @Valid @RequestBody RefundDTO refundDTO) {
+        log.info("Demande de remboursement partiel pour le paiement: {}", paymentId);
+        RefundDTO refund = refundService.partialRefund(paymentId, refundDTO.getAmount(), refundDTO.getReason());
+        return ResponseEntity.status(HttpStatus.CREATED).body(refund);
+    }
+
+    /**
+     * Récupère tous les remboursements.
+     *
+     * @return Liste de tous les remboursements
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Récupérer tous les remboursements",
+               description = "Liste tous les remboursements effectués")
+    public ResponseEntity<List<RefundDTO>> getAllRefunds() {
+        log.info("Récupération de tous les remboursements");
+        List<RefundDTO> refunds = refundService.findAllRefunds();
+        return ResponseEntity.ok(refunds);
+    }
+
+    /**
+     * Récupère un remboursement par son ID.
+     *
+     * @param id ID du remboursement
+     * @return DTO du remboursement trouvé
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Récupérer un remboursement par ID",
+               description = "Trouve un remboursement par son ID")
+    @ApiResponse(responseCode = "200", description = "Remboursement trouvé",
+                 content = @Content(schema = @Schema(implementation = RefundDTO.class)))
+    @ApiResponse(responseCode = "404", description = "Remboursement non trouvé")
+    public ResponseEntity<RefundDTO> getRefundById(@PathVariable Long id) {
+        log.info("Récupération du remboursement: {}", id);
+        RefundDTO refund = refundService.findRefundById(id)
+                .orElseThrow(() -> new RuntimeException("Remboursement non trouvé avec l'ID: " + id));
+        return ResponseEntity.ok(refund);
+    }
+
+    /**
+     * Récupère tous les remboursements associés à un paiement.
+     *
+     * @param paymentId ID du paiement
+     * @return Liste des remboursements pour ce paiement
+     */
+    @GetMapping("/payment/{paymentId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Récupérer les remboursements d'un paiement",
+               description = "Liste tous les remboursements effectués pour un paiement spécifique")
+    public ResponseEntity<List<RefundDTO>> getRefundsByPayment(@PathVariable Long paymentId) {
+        log.info("Récupération des remboursements pour le paiement: {}", paymentId);
+        List<RefundDTO> refunds = refundService.findRefundsByPaymentId(paymentId);
+        return ResponseEntity.ok(refunds);
+    }
+
+    /**
+     * Annule un remboursement (si possible, selon le provider de paiement).
+     *
+     * @param id ID du remboursement à annuler
+     * @return Statut de la demande d'annulation
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Annuler un remboursement",
+               description = "Tente d'annuler un remboursement si cela est encore possible")
+    @ApiResponse(responseCode = "200", description = "Remboursement annulé avec succès",
+                 content = @Content(schema = @Schema(implementation = PaymentResponseDTO.class)))
+    @ApiResponse(responseCode = "400", description = "Impossible d'annuler le remboursement")
+    @ApiResponse(responseCode = "404", description = "Remboursement non trouvé")
+    public ResponseEntity<PaymentResponseDTO> cancelRefund(@PathVariable Long id) {
+        log.info("Demande d'annulation du remboursement: {}", id);
+        PaymentResponseDTO response = refundService.cancelRefund(id);
+        return ResponseEntity.ok(response);
+    }
+}

@@ -1,0 +1,180 @@
+package <%= packageName %>.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+/**
+ * Configuration principale du système de paiement.
+ * Générée par Spring-Fullstack-Speed.
+ */
+@Configuration
+public class PaymentConfig {
+
+    private final PaymentProperties paymentProperties;
+
+    public PaymentConfig(PaymentProperties paymentProperties) {
+        this.paymentProperties = paymentProperties;
+    }
+
+    /**
+     * Configuration des propriétés de paiement.
+     */
+    @Bean
+    @Primary
+    @ConfigurationProperties(prefix = "payment")
+    public PaymentProperties paymentProperties() {
+        return new PaymentProperties();
+    }
+
+    /**
+     * Classe pour les propriétés de configuration de paiement.
+     */
+    public static class PaymentProperties {
+
+        private String defaultProvider;
+        private String currency = "EUR";
+
+        <% if (providers.includes('stripe')) { %>
+        private StripeProperties stripe = new StripeProperties();
+        <% } %>
+
+        <% if (providers.includes('paypal')) { %>
+        private PayPalProperties paypal = new PayPalProperties();
+        <% } %>
+
+        public String getDefaultProvider() {
+            return defaultProvider;
+        }
+
+        public void setDefaultProvider(String defaultProvider) {
+            this.defaultProvider = defaultProvider;
+        }
+
+        public String getCurrency() {
+            return currency;
+        }
+
+        public void setCurrency(String currency) {
+            this.currency = currency;
+        }
+
+        <% if (providers.includes('stripe')) { %>
+        public StripeProperties getStripe() {
+            return stripe;
+        }
+
+        public void setStripe(StripeProperties stripe) {
+            this.stripe = stripe;
+        }
+        <% } %>
+
+        <% if (providers.includes('paypal')) { %>
+        public PayPalProperties getPaypal() {
+            return paypal;
+        }
+
+        public void setPaypal(PayPalProperties paypal) {
+            this.paypal = paypal;
+        }
+        <% } %>
+    }
+
+    <% if (providers.includes('stripe')) { %>
+    /**
+     * Propriétés de configuration pour Stripe.
+     */
+    public static class StripeProperties {
+        private String apiKey;
+        private String webhookSecret;
+        private String successUrl;
+        private String cancelUrl;
+
+        public String getApiKey() {
+            return apiKey;
+        }
+
+        public void setApiKey(String apiKey) {
+            this.apiKey = apiKey;
+        }
+
+        public String getWebhookSecret() {
+            return webhookSecret;
+        }
+
+        public void setWebhookSecret(String webhookSecret) {
+            this.webhookSecret = webhookSecret;
+        }
+
+        public String getSuccessUrl() {
+            return successUrl;
+        }
+
+        public void setSuccessUrl(String successUrl) {
+            this.successUrl = successUrl;
+        }
+
+        public String getCancelUrl() {
+            return cancelUrl;
+        }
+
+        public void setCancelUrl(String cancelUrl) {
+            this.cancelUrl = cancelUrl;
+        }
+    }
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    /**
+     * Propriétés de configuration pour PayPal.
+     */
+    public static class PayPalProperties {
+        private String clientId;
+        private String clientSecret;
+        private String mode = "sandbox"; // sandbox ou live
+        private String successUrl;
+        private String cancelUrl;
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+
+        public String getClientSecret() {
+            return clientSecret;
+        }
+
+        public void setClientSecret(String clientSecret) {
+            this.clientSecret = clientSecret;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public void setMode(String mode) {
+            this.mode = mode;
+        }
+
+        public String getSuccessUrl() {
+            return successUrl;
+        }
+
+        public void setSuccessUrl(String successUrl) {
+            this.successUrl = successUrl;
+        }
+
+        public String getCancelUrl() {
+            return cancelUrl;
+        }
+
+        public void setCancelUrl(String cancelUrl) {
+            this.cancelUrl = cancelUrl;
+        }
+    }
+    <% } %>
+}

@@ -1,0 +1,67 @@
+package <%= packageName %>.entities.reports;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Entité représentant un rapport de revenus.
+ */
+@Data
+@NoArgsConstructor
+public class RevenueReport implements Serializable {
+
+    private Long id;
+
+    private String title;
+
+    private Date startDate;
+
+    private Date endDate;
+
+    private BigDecimal totalRevenue;
+
+    private BigDecimal averageDailyRevenue;
+
+    private BigDecimal growthRate;
+
+    private List<RevenueByPeriod> revenueByPeriods = new ArrayList<>();
+
+    private List<RevenueByPaymentMethod> revenueByPaymentMethods = new ArrayList<>();
+
+    private List<RevenueByCategory> revenueByCategories = new ArrayList<>();
+
+    // Nested class for revenue breakdown by period (daily, weekly, monthly)
+    @Data
+    @NoArgsConstructor
+    public static class RevenueByPeriod implements Serializable {
+        private String period;
+        private Date date;
+        private BigDecimal amount;
+        private Integer transactionCount;
+    }
+
+    // Nested class for revenue breakdown by payment method
+    @Data
+    @NoArgsConstructor
+    public static class RevenueByPaymentMethod implements Serializable {
+        private String paymentMethod;
+        private BigDecimal amount;
+        private Integer transactionCount;
+        private BigDecimal percentage;
+    }
+
+    // Nested class for revenue breakdown by category
+    @Data
+    @NoArgsConstructor
+    public static class RevenueByCategory implements Serializable {
+        private String category;
+        private BigDecimal amount;
+        private Integer transactionCount;
+        private BigDecimal percentage;
+    }
+}

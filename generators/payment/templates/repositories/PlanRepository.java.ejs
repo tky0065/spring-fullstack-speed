@@ -1,0 +1,88 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Plan;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité Plan.
+ */
+@Repository
+public interface PlanRepository extends JpaRepository<Plan, Long> {
+
+    /**
+     * Trouve un plan par son identifiant unique.
+     *
+     * @param planId l'identifiant unique du plan
+     * @return le plan si trouvé
+     */
+    Optional<Plan> findByPlanId(String planId);
+
+    /**
+     * Trouve un plan par son nom.
+     *
+     * @param name le nom du plan
+     * @return le plan si trouvé
+     */
+    Optional<Plan> findByName(String name);
+
+    /**
+     * Trouve les plans par statut actif.
+     *
+     * @param active le statut actif ou non
+     * @return la liste des plans avec le statut spécifié
+     */
+    List<Plan> findByActive(Boolean active);
+
+    /**
+     * Trouve les plans par intervalle de facturation.
+     *
+     * @param billingInterval l'intervalle de facturation (month, year, etc.)
+     * @return la liste des plans avec l'intervalle spécifié
+     */
+    List<Plan> findByBillingInterval(String billingInterval);
+
+    /**
+     * Trouve les plans avec un montant inférieur à la valeur donnée.
+     *
+     * @param amount le montant maximum
+     * @return la liste des plans
+     */
+    List<Plan> findByAmountLessThan(BigDecimal amount);
+
+    /**
+     * Trouve les plans avec un montant supérieur à la valeur donnée.
+     *
+     * @param amount le montant minimum
+     * @return la liste des plans
+     */
+    List<Plan> findByAmountGreaterThan(BigDecimal amount);
+
+    /**
+     * Trouve les plans par devise.
+     *
+     * @param currency la devise recherchée
+     * @return la liste des plans dans cette devise
+     */
+    List<Plan> findByCurrency(String currency);
+
+    /**
+     * Trouve un plan par sa référence chez le provider.
+     *
+     * @param providerReference la référence du provider
+     * @return le plan si trouvé
+     */
+    Optional<Plan> findByProviderReference(String providerReference);
+
+    /**
+     * Trouve les plans qui incluent une période d'essai.
+     *
+     * @return la liste des plans avec période d'essai
+     */
+    List<Plan> findByTrialPeriodDaysGreaterThan(Integer days);
+}

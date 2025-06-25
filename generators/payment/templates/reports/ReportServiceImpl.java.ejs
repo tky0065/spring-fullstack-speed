@@ -1,0 +1,262 @@
+package <%= packageName %>.service.reports;
+
+import <%= packageName %>.dto.reports.ReportDTO;
+import <%= packageName %>.entities.reports.CustomerReport;
+import <%= packageName %>.entities.reports.RevenueReport;
+import <%= packageName %>.entities.reports.TransactionReport;
+import <%= packageName %>.repositories.PaymentRepository;
+import <%= packageName %>.repositories.reports.ReportRepository;
+import <%= packageName %>.service.reports.generators.ExcelReportGenerator;
+import <%= packageName %>.service.reports.generators.PdfReportGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Implémentation du service pour la gestion des rapports financiers.
+ */
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private final Logger log = LoggerFactory.getLogger(ReportServiceImpl.class);
+    private final ReportRepository reportRepository;
+    private final PaymentRepository paymentRepository;
+    private final ExcelReportGenerator excelReportGenerator;
+    private final PdfReportGenerator pdfReportGenerator;
+
+    public ReportServiceImpl(
+            ReportRepository reportRepository,
+            PaymentRepository paymentRepository,
+            ExcelReportGenerator excelReportGenerator,
+            PdfReportGenerator pdfReportGenerator) {
+        this.reportRepository = reportRepository;
+        this.paymentRepository = paymentRepository;
+        this.excelReportGenerator = excelReportGenerator;
+        this.pdfReportGenerator = pdfReportGenerator;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReportDTO> getAllReports() {
+        log.debug("Récupération de tous les rapports");
+        return reportRepository.findAll().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ReportDTO> getReportById(Long reportId) {
+        log.debug("Récupération du rapport avec l'ID : {}", reportId);
+        return reportRepository.findById(reportId)
+                .map(this::mapToDTO);
+    }
+
+    @Override
+    @Transactional
+    public ReportDTO saveReport(ReportDTO reportDTO) {
+        log.debug("Sauvegarde du rapport : {}", reportDTO);
+        var report = mapToEntity(reportDTO);
+        report = reportRepository.save(report);
+        return mapToDTO(report);
+    }
+
+    @Override
+    @Transactional
+    public void deleteReport(Long reportId) {
+        log.debug("Suppression du rapport avec l'ID : {}", reportId);
+        reportRepository.deleteById(reportId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RevenueReport generateRevenueReport(LocalDate startDate, LocalDate endDate, String groupBy) {
+        log.debug("Génération du rapport de revenus pour la période du {} au {}, groupé par {}", startDate, endDate, groupBy);
+
+        // Convertir LocalDate en Date si nécessaire pour les repositories
+        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        // Récupérer les données de paiement pour la période
+        var payments = paymentRepository.findByDateBetween(start, end);
+
+        // Créer et retourner le rapport de revenus
+        RevenueReport report = new RevenueReport();
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        report.setPeriod(groupBy);
+        report.setTotalRevenue(calculateTotalRevenue(payments));
+        report.setRevenueByPeriod(groupRevenueByPeriod(payments, groupBy));
+
+        return report;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionReport generateTransactionReport(LocalDate startDate, LocalDate endDate, Optional<String> status) {
+        log.debug("Génération du rapport de transactions pour la période du {} au {}", startDate, endDate);
+
+        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        // Récup��rer les transactions avec filtre de statut optionnel
+        var transactions = status.isPresent()
+                ? paymentRepository.findByDateBetweenAndStatus(start, end, status.get())
+                : paymentRepository.findByDateBetween(start, end);
+
+        // Créer et retourner le rapport de transactions
+        TransactionReport report = new TransactionReport();
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        report.setTotalTransactions(transactions.size());
+        report.setTransactionsByStatus(groupTransactionsByStatus(transactions));
+        report.setTransactions(transactions);
+
+        return report;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerReport generateCustomerReport(LocalDate startDate, LocalDate endDate) {
+        log.debug("Génération du rapport client pour la période du {} au {}", startDate, endDate);
+
+        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        var payments = paymentRepository.findByDateBetween(start, end);
+
+        // Créer et retourner le rapport client
+        CustomerReport report = new CustomerReport();
+        report.setStartDate(startDate);
+        report.setEndDate(endDate);
+        report.setNewCustomers(calculateNewCustomers(start, end));
+        report.setTotalCustomers(calculateTotalCustomers());
+        report.setCustomerRetentionRate(calculateCustomerRetentionRate(start, end));
+        report.setAverageRevenuePerCustomer(calculateAverageRevenuePerCustomer(payments));
+
+        return report;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String exportReportToPdf(Long reportId) {
+        log.debug("Exportation du rapport {} au format PDF", reportId);
+        var reportData = reportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Rapport non trouvé avec l'ID: " + reportId));
+
+        return pdfReportGenerator.generateReport(mapToDTO(reportData));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String exportReportToExcel(Long reportId) {
+        log.debug("Exportation du rapport {} au format Excel", reportId);
+        var reportData = reportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Rapport non trouvé avec l'ID: " + reportId));
+
+        return excelReportGenerator.generateReport(mapToDTO(reportData));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateFinancialSummary(LocalDate startDate, LocalDate endDate) {
+        log.debug("Génération du résumé financier pour la période du {} au {}", startDate, endDate);
+
+        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date end = Date.from(endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+        var payments = paymentRepository.findByDateBetween(start, end);
+
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalRevenue", calculateTotalRevenue(payments));
+        summary.put("successfulTransactions", countSuccessfulTransactions(payments));
+        summary.put("failedTransactions", countFailedTransactions(payments));
+        summary.put("averageTransactionAmount", calculateAverageTransactionAmount(payments));
+        summary.put("topPaymentMethods", getTopPaymentMethods(payments));
+        summary.put("revenueGrowth", calculateRevenueGrowthPercentage(startDate, endDate));
+
+        return summary;
+    }
+
+    // Méthodes utilitaires
+
+    private Double calculateTotalRevenue(List<?> payments) {
+        // Implémenter le calcul du revenu total
+        return 0.0; // À remplacer par le vrai calcul
+    }
+
+    private Map<String, Double> groupRevenueByPeriod(List<?> payments, String groupBy) {
+        // Implémenter le groupement des revenus par période
+        return new HashMap<>(); // À remplacer par le vrai groupement
+    }
+
+    private Map<String, Integer> groupTransactionsByStatus(List<?> transactions) {
+        // Implémenter le groupement des transactions par statut
+        return new HashMap<>(); // À remplacer par le vrai groupement
+    }
+
+    private int calculateNewCustomers(Date start, Date end) {
+        // Implémenter le calcul des nouveaux clients
+        return 0; // À remplacer par le vrai calcul
+    }
+
+    private int calculateTotalCustomers() {
+        // Implémenter le calcul du nombre total de clients
+        return 0; // À remplacer par le vrai calcul
+    }
+
+    private double calculateCustomerRetentionRate(Date start, Date end) {
+        // Implémenter le calcul du taux de rétention des clients
+        return 0.0; // À remplacer par le vrai calcul
+    }
+
+    private double calculateAverageRevenuePerCustomer(List<?> payments) {
+        // Implémenter le calcul du revenu moyen par client
+        return 0.0; // À remplacer par le vrai calcul
+    }
+
+    private int countSuccessfulTransactions(List<?> payments) {
+        // Implémenter le comptage des transactions réussies
+        return 0; // À remplacer par le vrai comptage
+    }
+
+    private int countFailedTransactions(List<?> payments) {
+        // Implémenter le comptage des transactions échouées
+        return 0; // À remplacer par le vrai comptage
+    }
+
+    private double calculateAverageTransactionAmount(List<?> payments) {
+        // Implémenter le calcul du montant moyen des transactions
+        return 0.0; // À remplacer par le vrai calcul
+    }
+
+    private Map<String, Integer> getTopPaymentMethods(List<?> payments) {
+        // Implémenter l'obtention des méthodes de paiement les plus utilisées
+        return new HashMap<>(); // À remplacer par le vrai résultat
+    }
+
+    private double calculateRevenueGrowthPercentage(LocalDate startDate, LocalDate endDate) {
+        // Implémenter le calcul du pourcentage de croissance des revenus
+        return 0.0; // À remplacer par le vrai calcul
+    }
+
+    private ReportDTO mapToDTO(Object entity) {
+        // Implémenter la conversion d'entité en DTO
+        return new ReportDTO(); // À remplacer par la vraie conversion
+    }
+
+    private Object mapToEntity(ReportDTO dto) {
+        // Implémenter la conversion de DTO en entité
+        return new Object(); // À remplacer par la vraie conversion
+    }
+}

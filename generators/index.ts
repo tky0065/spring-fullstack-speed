@@ -22,6 +22,7 @@ export { default as UpgradeGenerator } from './upgrade/index.js';
 export { default as PluginsGenerator } from './plugins/index.js';
 export { default as KubernetesGenerator } from './kubernetes/index.js';
 export { default as DockerGenerator } from './docker/index.js';
+export { default as PaymentGenerator } from './payment/index.js';
 
 // Définit les types de générateurs disponibles
 export const GENERATOR_TYPES = {
@@ -41,7 +42,8 @@ export const GENERATOR_TYPES = {
   UPGRADE: 'upgrade',
   PLUGINS: 'plugins',
   KUBERNETES: 'kubernetes',
-  DOCKER: 'docker'
+  DOCKER: 'docker',
+  PAYMENT: 'payment'
 };
 
 // Définition des alias pour les commandes principales
@@ -55,5 +57,7 @@ export const COMMAND_ALIASES = {
   's': 'serve',
   't': 'test',
   'k': 'kubernetes',
-  'doc': 'docker'
+  'doc': 'docker',
+  'p': 'payment',
+
 };

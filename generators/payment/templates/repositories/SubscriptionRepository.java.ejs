@@ -1,0 +1,113 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Subscription;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Plan;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité Subscription.
+ */
+@Repository
+public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
+
+    /**
+     * Trouve un abonnement par son identifiant unique.
+     *
+     * @param subscriptionId l'identifiant unique de l'abonnement
+     * @return l'abonnement si trouvé
+     */
+    Optional<Subscription> findBySubscriptionId(String subscriptionId);
+
+    /**
+     * Trouve tous les abonnements pour un client donné.
+     *
+     * @param customer le client
+     * @return la liste des abonnements
+     */
+    List<Subscription> findByCustomer(Customer customer);
+
+    /**
+     * Trouve tous les abonnements pour un identifiant client donné.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des abonnements
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.customer.id = :customerId")
+    List<Subscription> findByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve les abonnements par statut.
+     *
+     * @param status le statut à rechercher
+     * @return la liste des abonnements avec le statut spécifié
+     */
+    List<Subscription> findByStatus(String status);
+
+    /**
+     * Trouve les abonnements pour un plan donné.
+     *
+     * @param plan le plan d'abonnement
+     * @return la liste des abonnements
+     */
+    List<Subscription> findByPlan(Plan plan);
+
+    /**
+     * Trouve les abonnements pour un identifiant de plan donné.
+     *
+     * @param planId l'ID du plan
+     * @return la liste des abonnements
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.plan.id = :planId")
+    List<Subscription> findByPlanId(@Param("planId") Long planId);
+
+    /**
+     * Trouve les abonnements actifs qui doivent être renouvelés avant une date donnée.
+     *
+     * @param date la date limite
+     * @return la liste des abonnements à renouveler
+     */
+    @Query("SELECT s FROM Subscription s WHERE s.status = 'ACTIVE' AND s.currentPeriodEnd <= :date")
+    List<Subscription> findActiveSubscriptionsToRenewBefore(@Param("date") Instant date);
+
+    /**
+     * Trouve les abonnements qui se terminent à la fin de la période en cours.
+     *
+     * @return la liste des abonnements à terminer
+     */
+    List<Subscription> findByCancelAtPeriodEndIsTrue();
+
+    /**
+     * Trouve les abonnements créés entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des abonnements créés dans l'intervalle
+     */
+    List<Subscription> findByCreatedDateBetween(Instant startDate, Instant endDate);
+
+    /**
+     * Compte le nombre d'abonnements actifs par plan.
+     *
+     * @param planId l'ID du plan
+     * @return le nombre d'abonnements actifs
+     */
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.plan.id = :planId AND s.status = 'ACTIVE'")
+    Long countActiveSubscriptionsByPlanId(@Param("planId") Long planId);
+
+    /**
+     * Trouve les abonnements avec une référence de provider spécifique.
+     *
+     * @param providerReference la référence du provider
+     * @return un abonnement optionnel si trouvé
+     */
+    Optional<Subscription> findByProviderReference(String providerReference);
+}

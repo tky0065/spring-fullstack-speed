@@ -1,0 +1,102 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.PaymentMethod;
+import <%= packageName %>.domain.PaymentMethod.PaymentMethodType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Spring Data JPA repository pour l'entité PaymentMethod.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@Repository
+public interface PaymentMethodRepository extends JpaRepository<PaymentMethod, Long> {
+
+    /**
+     * Trouve toutes les méthodes de paiement d'un client.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des méthodes de paiement
+     */
+    List<PaymentMethod> findByCustomerId(Long customerId);
+
+    /**
+     * Trouve la méthode de paiement par défaut d'un client.
+     *
+     * @param customerId l'ID du client
+     * @return la méthode de paiement par défaut (optionnel)
+     */
+    Optional<PaymentMethod> findByCustomerIdAndIsDefaultTrue(Long customerId);
+
+    /**
+     * Trouve les méthodes de paiement d'un client par type.
+     *
+     * @param customerId l'ID du client
+     * @param type le type de méthode de paiement
+     * @return la liste des méthodes de paiement
+     */
+    List<PaymentMethod> findByCustomerIdAndType(Long customerId, PaymentMethodType type);
+
+    <% if (providers.includes('stripe')) { %>
+    /**
+     * Trouve une méthode de paiement par son ID Stripe.
+     *
+     * @param stripePaymentMethodId l'ID de la méthode de paiement Stripe
+     * @return la méthode de paiement (optionnel)
+     */
+    Optional<PaymentMethod> findByStripePaymentMethodId(String stripePaymentMethodId);
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    /**
+     * Trouve une méthode de paiement par son ID PayPal.
+     *
+     * @param paypalPaymentMethodId l'ID de la méthode de paiement PayPal
+     * @return la méthode de paiement (optionnel)
+     */
+    Optional<PaymentMethod> findByPaypalPaymentMethodId(String paypalPaymentMethodId);
+    <% } %>
+
+    /**
+     * Compte le nombre de méthodes de paiement pour un client.
+     *
+     * @param customerId l'ID du client
+     * @return le nombre de méthodes de paiement
+     */
+    long countByCustomerId(Long customerId);
+
+    /**
+     * Trouve les méthodes de paiement par derniers chiffres de carte.
+     *
+     * @param cardLastDigits les derniers chiffres de la carte
+     * @return la liste des méthodes de paiement
+     */
+    List<PaymentMethod> findByCardLastDigits(String cardLastDigits);
+
+    /**
+     * Trouve les méthodes de paiement par marque de carte et client.
+     *
+     * @param customerId l'ID du client
+     * @param cardBrand la marque de la carte
+     * @return la liste des méthodes de paiement
+     */
+    @Query("SELECT pm FROM PaymentMethod pm WHERE pm.customer.id = :customerId AND pm.cardBrand = :cardBrand")
+    List<PaymentMethod> findByCustomerIdAndCardBrand(
+        @Param("customerId") Long customerId,
+        @Param("cardBrand") String cardBrand
+    );
+
+    /**
+     * Trouve les méthodes de paiement qui vont expirer dans un mois spécifique.
+     *
+     * @param month le mois d'expiration (1-12)
+     * @param year l'année d'expiration
+     * @return la liste des méthodes de paiement
+     */
+    List<PaymentMethod> findByCardExpiryMonthAndCardExpiryYear(Integer month, Integer year);
+}

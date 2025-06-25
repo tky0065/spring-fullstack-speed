@@ -63,6 +63,7 @@ const availableGenerators = [
   { name: 'kubernetes', path: './dist/generators/kubernetes/index.js' },
   { name: 'docker', path: './dist/generators/docker/index.js' },
   { name: 'notification', path: './dist/generators/notification/index.js' },
+  { name: 'payment', path: './dist/generators/payment/index.js' },
   { name: 'search', path: './dist/generators/search/index.js' },
   { name: 'cicd', path: './dist/generators/cicd/index.js' },
   { name: 'container', path: './dist/generators/container/index.js' }
@@ -107,6 +108,7 @@ ${chalk.yellow('Générateurs disponibles:')}
   kubernetes: Gestion des déploiements Kubernetes
   docker   : Gestion des conteneurs Docker
   notification: Gestion des notifications
+  payment  : Gestion des paiements
   search   : Fonctionnalités de recherche
   cicd     : Intégration et déploiement continus
   container : Gestion des conteneurs

@@ -120,6 +120,49 @@ class CrudGenerator extends BaseGenerator {
 }
 ```
 
+### PaymentGenerator
+
+Génère un système complet de paiement avec support pour différentes plateformes de paiement.
+
+```typescript
+class PaymentGenerator extends BaseGenerator {
+  // Options disponibles
+  provider: string[]; // Providers de paiement ('stripe', 'paypal', 'braintree', etc.)
+  subscription: boolean; // Support des abonnements
+  webhook: boolean; // Configuration des webhooks
+  invoicing: boolean; // Système de facturation
+  taxes: boolean; // Gestion des taxes
+  refunds: boolean; // Gestion des remboursements
+  reporting: boolean; // Rapports financiers
+  packageName: string; // Nom du package pour le système de paiement
+  lombok: boolean; // Utilisation de Lombok pour réduire le code boilerplate
+
+  // Méthodes principales
+  async initializing(): Promise<void>; // Initialisation et vérifications
+  async prompting(): Promise<void>; // Questions à l'utilisateur
+  configuring(): void; // Configuration des dépendances
+  writing(): void; // Écriture des fichiers
+  install(): void; // Installation des dépendances
+  end(): void; // Actions finales
+
+  // Méthodes internes
+  private _generateEntities(context: any): void; // Générer les entités de paiement
+  private _generateRepositories(context: any): void; // Générer les repositories
+  private _generateServices(context: any): void; // Générer les services de paiement
+  private _generateControllers(context: any): void; // Générer les controllers
+  private _generateDtos(context: any): void; // Générer les DTOs avec Lombok
+  private _generateConfigurations(context: any): void; // Générer les configurations
+  private _generateWebhooks(context: any): void; // Générer les webhooks
+  private _generateSubscriptions(context: any): void; // Générer le système d'abonnements
+  private _generateInvoicing(context: any): void; // Générer le système de facturation
+  private _generateTaxes(context: any): void; // Générer la gestion des taxes
+  private _generateRefunds(context: any): void; // Générer la gestion des remboursements
+  private _generateReports(context: any): void; // Générer les rapports financiers
+  private _generateTests(context: any): void; // Générer les tests
+  private _updateConfigurations(context: any): void; // Mettre à jour les configurations
+}
+```
+
 ## Utilitaires
 
 ### TemplateEngine
@@ -275,4 +318,27 @@ class NewFeatureGenerator extends BaseGenerator {
     );
   }
 }
+```
+
+### Génération complète avec options avancées
+
+```typescript
+// Exemple de génération avec le PaymentGenerator
+const paymentGenerator = new PaymentGenerator();
+paymentGenerator.provider = ['stripe', 'paypal'];
+paymentGenerator.subscription = true;
+paymentGenerator.webhook = true;
+paymentGenerator.invoicing = true;
+paymentGenerator.taxes = true;
+paymentGenerator.refunds = true;
+paymentGenerator.reporting = true;
+paymentGenerator.packageName = 'com.example.payment';
+paymentGenerator.lombok = true;
+
+await paymentGenerator.initialize();
+await paymentGenerator.promptOptions();
+paymentGenerator.configuring();
+paymentGenerator.writing();
+paymentGenerator.install();
+paymentGenerator.end();
 ```

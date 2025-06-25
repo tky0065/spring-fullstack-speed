@@ -1,0 +1,86 @@
+package <%= packageName %>.config;
+
+import com.stripe.Stripe;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Configuration Stripe pour le système de paiement.
+ * Générée par Spring-Fullstack-Speed.
+ */
+@Configuration
+@EnableConfigurationProperties
+@Slf4j
+public class StripeConfig {
+
+    private final PaymentConfig.PaymentProperties paymentProperties;
+
+    public StripeConfig(PaymentConfig.PaymentProperties paymentProperties) {
+        this.paymentProperties = paymentProperties;
+
+        // Initialisation de l'API Stripe avec la clé API configurée
+        if (paymentProperties.getStripe() != null && paymentProperties.getStripe().getApiKey() != null) {
+            Stripe.apiKey = paymentProperties.getStripe().getApiKey();
+            log.info("Stripe API initialized with provided key");
+        } else {
+            log.warn("Stripe API key not configured. Stripe payments will not work until a valid API key is provided.");
+        }
+    }
+
+    /**
+     * Configuration des routes de redirection pour Stripe
+     */
+    @Bean
+    public StripeRedirectConfig stripeRedirectConfig() {
+        return new StripeRedirectConfig(
+            paymentProperties.getStripe().getSuccessUrl(),
+            paymentProperties.getStripe().getCancelUrl()
+        );
+    }
+
+    /**
+     * Configuration des webhooks Stripe
+     */
+    @Bean
+    public StripeWebhookConfig stripeWebhookConfig() {
+        return new StripeWebhookConfig(paymentProperties.getStripe().getWebhookSecret());
+    }
+
+    /**
+     * Classe de configuration pour les redirections Stripe
+     */
+    public static class StripeRedirectConfig {
+        private final String successUrl;
+        private final String cancelUrl;
+
+        public StripeRedirectConfig(String successUrl, String cancelUrl) {
+            this.successUrl = successUrl;
+            this.cancelUrl = cancelUrl;
+        }
+
+        public String getSuccessUrl() {
+            return successUrl;
+        }
+
+        public String getCancelUrl() {
+            return cancelUrl;
+        }
+    }
+
+    /**
+     * Classe de configuration pour les webhooks Stripe
+     */
+    public static class StripeWebhookConfig {
+        private final String webhookSecret;
+
+        public StripeWebhookConfig(String webhookSecret) {
+            this.webhookSecret = webhookSecret;
+        }
+
+        public String getWebhookSecret() {
+            return webhookSecret;
+        }
+    }
+}

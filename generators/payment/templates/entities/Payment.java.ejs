@@ -1,0 +1,95 @@
+package <%= packageName %>.domain;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.ToString;
+
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Entité Payment qui représente une transaction de paiement.
+ * Générée par Spring-Fullstack-Speed.
+ */
+@Entity
+@Table(name = "payment")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"customer", "paymentMethod"})
+public class Payment implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "payment_id", unique = true, nullable = false)
+    @Builder.Default
+    private String paymentId = UUID.randomUUID().toString();
+
+    @NotNull
+    @Column(name = "amount", precision = 21, scale = 2, nullable = false)
+    private BigDecimal amount;
+
+    @NotNull
+    @Column(name = "currency", nullable = false)
+    @Size(min = 3, max = 3)
+    private String currency;
+
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private PaymentStatus status = PaymentStatus.PENDING;
+
+    @Column(name = "provider", nullable = false)
+    private String provider;
+
+    @Column(name = "provider_transaction_id")
+    private String providerTransactionId;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "created_date", nullable = false)
+    @Builder.Default
+    private Instant createdDate = Instant.now();
+
+    @Column(name = "updated_date")
+    private Instant updatedDate;
+
+    @Column(name = "completed_date")
+    private Instant completedDate;
+
+    @ManyToOne
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
+    @ManyToOne
+    @JoinColumn(name = "payment_method_id")
+    private PaymentMethod paymentMethod;
+
+    @Column(name = "metadata", columnDefinition = "TEXT")
+    private String metadata;
+
+    // Enum pour les statuts de paiement
+    public enum PaymentStatus {
+        PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED, CANCELLED
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedDate = Instant.now();
+    }
+}

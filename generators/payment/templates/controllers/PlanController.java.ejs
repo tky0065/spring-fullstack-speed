@@ -1,0 +1,188 @@
+package <%= packageName %>.web.rest;
+
+import <%= packageName %>.domain.Plan;
+import <%= packageName %>.service.PlanService;
+import <%= packageName %>.web.rest.errors.BadRequestAlertException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import javax.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST controller pour gérer les {@link Plan}.
+ */
+@RestController
+@RequestMapping("/api")
+public class PlanController {
+
+    private final Logger log = LoggerFactory.getLogger(PlanController.class);
+
+    private static final String ENTITY_NAME = "plan";
+
+    @Value("${spring.application.name}")
+    private String applicationName;
+
+    private final PlanService planService;
+
+    public PlanController(PlanService planService) {
+        this.planService = planService;
+    }
+
+    /**
+     * {@code POST  /plans} : Crée un nouveau plan.
+     *
+     * @param plan le plan à créer.
+     * @return le {@link ResponseEntity} avec status {@code 201 (Created)} et le nouveau plan dans le body,
+     * ou avec status {@code 400 (Bad Request)} si le plan a déjà un ID.
+     * @throws URISyntaxException si l'URI de location syntax est incorrecte.
+     */
+    @PostMapping("/plans")
+    public ResponseEntity<Plan> createPlan(@Valid @RequestBody Plan plan) throws URISyntaxException {
+        log.debug("REST request to save Plan : {}", plan);
+        if (plan.getId() != null) {
+            throw new BadRequestAlertException("Un nouveau plan ne peut pas déjà avoir un ID", ENTITY_NAME, "idexists");
+        }
+        Plan result = planService.createPlan(plan);
+        return ResponseEntity
+            .created(new URI("/api/plans/" + result.getId()))
+            .body(result);
+    }
+
+    /**
+     * {@code PUT  /plans/:id} : Met à jour un plan existant.
+     *
+     * @param id l'id du plan à mettre à jour.
+     * @param plan le plan à mettre à jour.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et le plan mis à jour dans le body,
+     * ou avec status {@code 400 (Bad Request)} si le plan n'est pas valide,
+     * ou avec status {@code 500 (Internal Server Error)} si le plan n'a pas pu être mis à jour.
+     * @throws URISyntaxException si l'URI de location syntax est incorrecte.
+     */
+    @PutMapping("/plans/{id}")
+    public ResponseEntity<Plan> updatePlan(@PathVariable(value = "id", required = false) final Long id, @Valid @RequestBody Plan plan) throws URISyntaxException {
+        log.debug("REST request to update Plan : {}, {}", id, plan);
+        if (plan.getId() == null) {
+            throw new BadRequestAlertException("ID invalide", ENTITY_NAME, "idnull");
+        }
+        if (!id.equals(plan.getId())) {
+            throw new BadRequestAlertException("ID invalide", ENTITY_NAME, "idinvalid");
+        }
+
+        Plan result = planService.updatePlan(plan);
+        return ResponseEntity.ok().body(result);
+    }
+
+    /**
+     * {@code GET  /plans} : récupère tous les plans.
+     *
+     * @param pageable les informations de pagination.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des plans dans le body.
+     */
+    @GetMapping("/plans")
+    public ResponseEntity<List<Plan>> getAllPlans(Pageable pageable) {
+        log.debug("REST request to get a page of Plans");
+        Page<Plan> page = planService.findAllPlans(pageable);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Total-Count", Long.toString(page.getTotalElements()));
+        return ResponseEntity.ok().headers(headers).body(page.getContent());
+    }
+
+    /**
+     * {@code GET  /plans/active} : récupère tous les plans actifs.
+     *
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des plans actifs dans le body.
+     */
+    @GetMapping("/plans/active")
+    public ResponseEntity<List<Plan>> getActivePlans() {
+        log.debug("REST request to get active Plans");
+        List<Plan> plans = planService.findActivePlans();
+        return ResponseEntity.ok().body(plans);
+    }
+
+    /**
+     * {@code GET  /plans/:id} : récupère le plan avec l'id "id".
+     *
+     * @param id l'id du plan à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et le plan dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/plans/{id}")
+    public ResponseEntity<Plan> getPlan(@PathVariable Long id) {
+        log.debug("REST request to get Plan : {}", id);
+        Optional<Plan> plan = planService.findByPlanId(id.toString());
+        return plan.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /plans/by-plan-id/:planId} : récupère le plan avec le planId spécifié.
+     *
+     * @param planId l'id unique du plan à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et le plan dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/plans/by-plan-id/{planId}")
+    public ResponseEntity<Plan> getPlanByPlanId(@PathVariable String planId) {
+        log.debug("REST request to get Plan by planId : {}", planId);
+        Optional<Plan> plan = planService.findByPlanId(planId);
+        return plan.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /plans/by-name/:name} : récupère le plan avec le nom spécifié.
+     *
+     * @param name le nom du plan à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et le plan dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/plans/by-name/{name}")
+    public ResponseEntity<Plan> getPlanByName(@PathVariable String name) {
+        log.debug("REST request to get Plan by name : {}", name);
+        Optional<Plan> plan = planService.findByName(name);
+        return plan.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code PUT  /plans/:id/status} : active ou désactive un plan.
+     *
+     * @param id l'id du plan à mettre à jour.
+     * @param active le nouvel état d'activation.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et le plan mis à jour,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @PutMapping("/plans/{id}/status")
+    public ResponseEntity<Plan> updatePlanStatus(@PathVariable Long id, @RequestParam boolean active) {
+        log.debug("REST request to update Plan status : {}, active: {}", id, active);
+        Optional<Plan> result = planService.setActive(id.toString(), active);
+        return result.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code DELETE  /plans/:id} : supprime le plan avec l'id "id".
+     * Note: Cette opération désactive le plan plutôt que de le supprimer physiquement.
+     *
+     * @param id l'id du plan à supprimer.
+     * @return le {@link ResponseEntity} avec status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/plans/{id}")
+    public ResponseEntity<Void> deletePlan(@PathVariable Long id) {
+        log.debug("REST request to delete Plan : {}", id);
+        planService.deletePlan(id.toString());
+        return ResponseEntity.noContent().build();
+    }
+}

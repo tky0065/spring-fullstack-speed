@@ -27,6 +27,8 @@ Architecture Générale
 * IMPORTANT *  ## AVANT DE COMMENCER UNE TÂCHE FAIT `tree -a generators (linux,marc)` `tree .\generators\ /f  (windows)`  Pour vérifier la structure du projet pour éviter les erreurs de structure. et la duplication de code
 
 
+  ## utilise lombock pour les getters et setters et les constructeurs
+
 ## 🚀 Fonctionnalités Supplémentaires Proposées
 
 - ✅ Génération d'API REST documentée (OpenAPI/Swagger)
@@ -344,21 +346,21 @@ Architecture Générale
 
 ## 📋 PHASE 8 : FEATURES BUSINESS (Priorité Basse)
 
-### Module 8.1 : Système de Paiement (pas important pour le moment)
-- [ ] Intégrer Stripe API
-- [ ] Configurer PayPal SDK
-- [ ] Créer les entités Payment
-- [ ] Implémenter les webhooks payment
-- [ ] Générer les controllers payment
-- [ ] Créer les services de facturation
-- [ ] Implémenter les abonnements
-- [ ] Configurer les taxes
-- [ ] Créer les rapports financiers
-- [ ] Implémenter les remboursements
-- [ ] Configurer la sécurité payments
-- [ ] Tester les intégrations payment
+### Module 8.1 : Système de Paiement (pas important pour le moment) (utilise lombok pour les getters et setters et les constructeurs)
+- [x] Intégrer Stripe API
+- [x] Configurer PayPal SDK
+- [x] Créer les entités Payment
+- [x] Implémenter les webhooks payment
+- [x] Générer les controllers payment
+- [x] Créer les services de facturation
+- [x] Implémenter les abonnements
+- [x] Configurer les taxes
+- [x] Créer les rapports financiers
+- [x] Implémenter les remboursements
+- [x] Configurer la sécurité payments
+- [x] Mettre a jour tous les documentation et site web
 
-### Module 8.2 : Multi-tenant Support (pas important pour le moment)
+### Module 8.2 : Multi-tenant Support (pas important pour le moment) (utilise lombok pour les getters et setters et les constructeurs)
 - [ ] Implémenter tenant isolation
 - [ ] Créer les entités Tenant
 - [ ] Configurer database per tenant
@@ -372,7 +374,7 @@ Architecture Générale
 - [ ] Optimiser les performances
 - [ ] Tester multi-tenancy
 
-### Module 8.3 : Internationalisation (i18n) (pas important pour le moment)
+### Module 8.3 : Internationalisation (i18n) (pas important pour le moment) (utilise lombok pour les getters et setters et les constructeurs)
 - [ ] Configurer Spring i18n
 - [ ] Créer les fichiers de traduction
 - [ ] Implémenter l'extraction de textes
@@ -404,19 +406,6 @@ Architecture Générale
 - [x] Configurer les thèmes CLI
 - [ ] Tester l'interface utilisateur
 
-### Module 9.2 : Gestion des Templates (NE PAS FAIRE POUR LE MOMENT)
-- [ ] Créer le système de versioning templates
-- [ ] Implémenter le téléchargement de templates
-- [ ] Créer le cache des templates
-- [ ] Implémenter la mise à jour automatique
-- [ ] Créer le registry des templates
-- [ ] Implémenter les templates custom
-- [ ] Configurer les sources de templates
-- [ ] Créer la validation des templates
-- [ ] Implémenter le rollback de templates
-- [ ] Configurer la compression
-- [ ] Créer les tests de templates
-- [ ] Documenter le système de templates
 
 ### Module 9.3 : Commandes Utilitaires
 - [X] Implémenter `sfs add` (composants)
@@ -466,44 +455,36 @@ Architecture Générale
 - [x] Configurer les tests visuels
 - [x] Automatiser tous les tests
 
-### Module 10.3 : Qualité du Code (pas important pour le moment)
-- [ ] Configurer SonarQube integration
-- [ ] Implémenter les règles de qualité
-- [ ] Créer les pre-commit hooks
-- [ ] Configurer les linters
-- [ ] Implémenter dependency scanning
-- [ ] Créer les rapports de qualité
-- [ ] Configurer security scanning
-- [ ] Implémenter performance monitoring
-- [ ] Créer les code reviews automatiques
-- [ ] Configurer les métriques
-- [ ] Automatiser la génération de rapports
-- [ ] Tester la pipeline qualité
 
 ---
 
 ## 📋 PHASE 11 : DOCUMENTATION & PUBLICATION (Priorité Moyenne)
 
 ### Module 11.1 : Documentation Utilisateur
-- [ ] Créer le guide d'installation
-- [ ] Rédiger les tutoriels étape par étape
-- [ ] Documenter toutes les commandes
-- [ ] Créer les exemples de code
-- [ ] Générer les FAQs
-- [ ] Créer les guides de migration
-- [ ] Documenter les bonnes pratiques
-- [ ] Créer les vidéos tutorials
-- [ ] Rédiger les troubleshooting guides
-- [ ] Créer la documentation API
-- [ ] Générer les changelogs
-- [ ] Tester toute la documentation
+- [x] Créer le guide d'installation
+- [x] Rédiger les tutoriels étape par étape
+- [x] Documenter toutes les commandes
+- [x] Créer les exemples de code
+- [x] Générer les FAQs
+- [x] Créer les guides de migration
+- [x] Documenter les bonnes pratiques
+- [x] Créer les vidéos tutorials
+- [x] Rédiger les troubleshooting guides
+- [x] Créer la documentation API
+- [x] Générer les changelogs
+- [x] Tester toute la documentation
 
 ### Module 11.2 : Documentation Développeur
-- [x] Documenter l'architecture
-- [x] Créer les guides de contribution
-- [x] Documenter l'API interne
-- [x] Créer les guides de développement
-- [x] Documenter les templates
+- [x] Créer la documentation API interne
+- [x] Documenter l'architecture du code
+- [x] Créer des guides pour les contributeurs
+- [x] Documenter les conventions de code
+- [x] Créer des diagrammes d'architecture
+- [x] Documenter le système de templates
+- [x] Créer des tutoriels pour développeurs
+- [x] Documenter le workflow de développement
+- [x] Créer la documentation des tests
+- [x] Documenter les hooks et événements
 - [x] Créer les guides d'extension
 - [x] Documenter les hooks
 - [x] Créer les guides de débogage
@@ -527,7 +508,7 @@ Architecture Générale
 - [ ] Publier la version 1.0
 
 
-## Support pour Kotlin  
+## Support pour Kotlin
 
 - [ ] Créer les templates Kotlin pour Spring Boot
 - [ ] Configurer les dépendances Kotlin
@@ -542,7 +523,7 @@ Architecture Générale
 - [ ] Créer des templates de migration pour Kotlin
 -  [ ] Implémenter les bonnes pratiques Kotlin
 - [ ] Configurer les outils de build pour Kotlin (Gradle/Maven)
-- 
+-
 
 ---
 

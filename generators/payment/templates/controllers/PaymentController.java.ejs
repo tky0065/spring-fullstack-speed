@@ -1,0 +1,240 @@
+package <%= packageName %>.web.rest;
+
+import <%= packageName %>.domain.Payment;
+import <%= packageName %>.service.PaymentService;
+import <%= packageName %>.service.dto.PaymentDTO;
+import <%= packageName %>.service.dto.PaymentRequestDTO;
+import <%= packageName %>.service.dto.PaymentResponseDTO;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+
+/**
+ * REST controller pour gérer les paiements.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@RestController
+@RequestMapping("/api/payments")
+@Tag(name = "Paiements", description = "API de gestion des paiements")
+public class PaymentController {
+
+    private final Logger log = LoggerFactory.getLogger(PaymentController.class);
+    private final PaymentService paymentService;
+
+    public PaymentController(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    /**
+     * {@code POST /payments} : Crée un nouveau paiement.
+     *
+     * @param paymentRequestDTO les informations du paiement à créer
+     * @return le {@link ResponseEntity} avec statut {@code 201 (Created)} et le nouveau paiement,
+     * ou avec statut {@code 400 (Bad Request)} si la requête n'est pas valide
+     * @throws URISyntaxException si l'URI n'est pas valide
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ROLE_USER')")
+    @Operation(
+        summary = "Créer un nouveau paiement",
+        description = "Crée un nouveau paiement avec les informations fournies",
+        security = @SecurityRequirement(name = "jwt"),
+        responses = {
+            @ApiResponse(responseCode = "201", description = "Paiement créé avec succès"),
+            @ApiResponse(responseCode = "400", description = "Requête invalide"),
+            @ApiResponse(responseCode = "401", description = "Non autorisé"),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
+        }
+    )
+    public ResponseEntity<PaymentResponseDTO> createPayment(@Valid @RequestBody PaymentRequestDTO paymentRequestDTO) throws URISyntaxException {
+        log.debug("REST request to create Payment : {}", paymentRequestDTO);
+        PaymentResponseDTO result = paymentService.createPayment(paymentRequestDTO);
+        return ResponseEntity
+            .created(new URI("/api/payments/" + result.getPaymentId()))
+            .body(result);
+    }
+
+    /**
+     * {@code POST /payments/session} : Crée une session de paiement pour redirection.
+     *
+     * @param paymentRequestDTO les informations du paiement
+     * @return le {@link ResponseEntity} avec l'URL de redirection
+     */
+    @PostMapping("/session")
+    @PreAuthorize("hasRole('ROLE_USER')")
+    @Operation(
+        summary = "Créer une session de paiement",
+        description = "Crée une session de paiement et retourne une URL de redirection",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<String> createPaymentSession(@Valid @RequestBody PaymentRequestDTO paymentRequestDTO) {
+        log.debug("REST request to create payment session : {}", paymentRequestDTO);
+        String redirectUrl = paymentService.createPaymentSession(paymentRequestDTO);
+        return ResponseEntity.ok(redirectUrl);
+    }
+
+    /**
+     * {@code POST /payments/{id}/confirm} : Confirme un paiement.
+     *
+     * @param id l'ID du paiement à confirmer
+     * @param paymentMethodId l'ID de la méthode de paiement
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et le paiement mis à jour
+     */
+    @PostMapping("/{id}/confirm")
+    @PreAuthorize("hasRole('ROLE_USER')")
+    @Operation(
+        summary = "Confirmer un paiement",
+        description = "Confirme un paiement avec la méthode de paiement spécifiée",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<PaymentResponseDTO> confirmPayment(
+            @PathVariable String id,
+            @RequestParam Long paymentMethodId) {
+        log.debug("REST request to confirm Payment : {}", id);
+        PaymentResponseDTO result = paymentService.confirmPayment(id, paymentMethodId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * {@code POST /payments/{id}/capture} : Capture un paiement autorisé.
+     *
+     * @param id l'ID du paiement à capturer
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et le paiement mis à jour
+     */
+    @PostMapping("/{id}/capture")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+        summary = "Capturer un paiement autorisé",
+        description = "Capture un paiement préalablement autorisé",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<PaymentResponseDTO> capturePayment(@PathVariable String id) {
+        log.debug("REST request to capture Payment : {}", id);
+        PaymentResponseDTO result = paymentService.capturePayment(id);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * {@code POST /payments/{id}/cancel} : Annule un paiement.
+     *
+     * @param id l'ID du paiement à annuler
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et le paiement mis à jour
+     */
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    @Operation(
+        summary = "Annuler un paiement",
+        description = "Annule un paiement en attente",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<PaymentResponseDTO> cancelPayment(@PathVariable String id) {
+        log.debug("REST request to cancel Payment : {}", id);
+        PaymentResponseDTO result = paymentService.cancelPayment(id);
+        return ResponseEntity.ok(result);
+    }
+
+    <% if (refunds) { %>
+    /**
+     * {@code POST /payments/{id}/refund} : Rembourse un paiement.
+     *
+     * @param id l'ID du paiement à rembourser
+     * @param amount le montant à rembourser (optionnel, rembourse tout si non spécifié)
+     * @param reason la raison du remboursement (optionnel)
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et le paiement mis à jour
+     */
+    @PostMapping("/{id}/refund")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+        summary = "Rembourser un paiement",
+        description = "Rembourse un paiement intégralement ou partiellement",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<PaymentResponseDTO> refundPayment(
+            @PathVariable String id,
+            @RequestParam(required = false) BigDecimal amount,
+            @RequestParam(required = false) String reason) {
+        log.debug("REST request to refund Payment : {}, amount: {}", id, amount);
+        PaymentResponseDTO result = paymentService.refundPayment(id, amount, reason);
+        return ResponseEntity.ok(result);
+    }
+    <% } %>
+
+    /**
+     * {@code GET /payments/{id}} : Récupère un paiement par son ID.
+     *
+     * @param id l'ID du paiement à récupérer
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et le paiement,
+     * ou avec statut {@code 404 (Not Found)}
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    @Operation(
+        summary = "Récupérer un paiement par ID",
+        description = "Récupère les informations d'un paiement spécifique",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<PaymentDTO> getPayment(@PathVariable String id) {
+        log.debug("REST request to get Payment : {}", id);
+        return paymentService.getPaymentById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET /payments/customer/{customerId}} : Récupère tous les paiements d'un client.
+     *
+     * @param customerId l'ID du client
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} et la liste des paiements
+     */
+    @GetMapping("/customer/{customerId}")
+    @PreAuthorize("hasAnyRole('ROLE_USER', 'ROLE_ADMIN')")
+    @Operation(
+        summary = "Récupérer les paiements d'un client",
+        description = "Récupère la liste de tous les paiements associés à un client spécifique",
+        security = @SecurityRequirement(name = "jwt")
+    )
+    public ResponseEntity<List<PaymentDTO>> getCustomerPayments(@PathVariable Long customerId) {
+        log.debug("REST request to get Payments for customer : {}", customerId);
+        List<PaymentDTO> payments = paymentService.getPaymentsByCustomerId(customerId);
+        return ResponseEntity.ok(payments);
+    }
+
+    /**
+     * {@code POST /payments/webhook/{provider}} : Point d'entrée pour les webhooks des providers de paiement.
+     *
+     * @param provider le provider de paiement (stripe, paypal, etc.)
+     * @param payload le contenu du webhook
+     * @return le {@link ResponseEntity} avec statut {@code 200 (OK)} si le webhook a été traité avec succès
+     */
+    @PostMapping("/webhook/{provider}")
+    @Operation(
+        summary = "Webhook pour les notifications de paiement",
+        description = "Point d'entrée pour les webhooks des providers de paiement"
+    )
+    public ResponseEntity<Void> handleWebhook(
+            @PathVariable String provider,
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String signature) {
+        log.debug("REST request to process webhook from {} : {}", provider, payload);
+        // La logique de traitement du webhook sera implémentée dans le service spécifique
+        // paymentService.processWebhook(provider, payload, signature);
+        return ResponseEntity.ok().build();
+    }
+}

@@ -1,0 +1,72 @@
+package <%= packageName %>.entities.reports;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Entité représentant un rapport client.
+ */
+@Data
+@NoArgsConstructor
+public class CustomerReport implements Serializable {
+
+    private Long id;
+
+    private String title;
+
+    private Date startDate;
+
+    private Date endDate;
+
+    private Integer totalCustomers;
+
+    private Integer newCustomers;
+
+    private Integer returningCustomers;
+
+    private BigDecimal averageSpendPerCustomer;
+
+    private List<CustomerSegment> customerSegments = new ArrayList<>();
+
+    private List<TopCustomer> topCustomers = new ArrayList<>();
+
+    private List<CustomerActivity> customerActivityTrend = new ArrayList<>();
+
+    // Nested class for customer segments
+    @Data
+    @NoArgsConstructor
+    public static class CustomerSegment implements Serializable {
+        private String segment;
+        private Integer customerCount;
+        private BigDecimal totalSpent;
+        private BigDecimal averageSpent;
+        private BigDecimal percentageOfTotal;
+    }
+
+    // Nested class for top customers
+    @Data
+    @NoArgsConstructor
+    public static class TopCustomer implements Serializable {
+        private Long customerId;
+        private String customerName;
+        private String customerEmail;
+        private BigDecimal totalSpent;
+        private Integer transactionCount;
+        private Date lastTransactionDate;
+    }
+
+    // Nested class for customer activity trends
+    @Data
+    @NoArgsConstructor
+    public static class CustomerActivity implements Serializable {
+        private Date date;
+        private Integer activeCustomers;
+        private Integer newCustomers;
+        private Integer returningCustomers;
+    }
+}

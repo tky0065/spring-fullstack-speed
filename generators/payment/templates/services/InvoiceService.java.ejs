@@ -1,0 +1,246 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Invoice;
+import <%= packageName %>.domain.InvoiceItem;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Subscription;
+import <%= packageName %>.repository.InvoiceRepository;
+import <%= packageName %>.repository.InvoiceItemRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Service pour gérer les factures.
+ */
+@Service
+@Transactional
+public class InvoiceService {
+
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
+
+    public InvoiceService(InvoiceRepository invoiceRepository, InvoiceItemRepository invoiceItemRepository) {
+        this.invoiceRepository = invoiceRepository;
+        this.invoiceItemRepository = invoiceItemRepository;
+    }
+
+    /**
+     * Crée une nouvelle facture.
+     *
+     * @param invoice La facture à créer
+     * @return La facture créée
+     */
+    @Transactional
+    public Invoice createInvoice(Invoice invoice) {
+        // Génération d'un numéro de facture si non fourni
+        if (invoice.getInvoiceNumber() == null) {
+            invoice.setInvoiceNumber(generateInvoiceNumber());
+        }
+
+        // Calcul automatique du montant total si la facture a des articles
+        if (invoice.getItems() != null && !invoice.getItems().isEmpty()) {
+            BigDecimal total = BigDecimal.ZERO;
+            BigDecimal totalTax = BigDecimal.ZERO;
+
+            for (InvoiceItem item : invoice.getItems()) {
+                item.setInvoice(invoice);
+                if (item.getAmount() != null) {
+                    total = total.add(item.getAmount());
+                }
+                if (item.getTaxAmount() != null) {
+                    totalTax = totalTax.add(item.getTaxAmount());
+                }
+            }
+
+            invoice.setAmount(total);
+            invoice.setAmountDue(total);
+
+            // Si la facture vient d'être créée, initialiser le statut à "draft"
+            if (invoice.getStatus() == null) {
+                invoice.setStatus("draft");
+            }
+        }
+
+        return invoiceRepository.save(invoice);
+    }
+
+    /**
+     * Finalise une facture en changeant son statut de "draft" à "open".
+     *
+     * @param invoiceId L'identifiant de la facture
+     * @return La facture finalisée
+     */
+    @Transactional
+    public Optional<Invoice> finalizeInvoice(String invoiceId) {
+        return invoiceRepository.findByInvoiceId(invoiceId)
+                .map(invoice -> {
+                    if ("draft".equals(invoice.getStatus())) {
+                        invoice.setStatus("open");
+
+                        // Si aucune date d'échéance n'est définie, définir par défaut à 30 jours
+                        if (invoice.getDueDate() == null && invoice.getInvoiceDate() != null) {
+                            invoice.setDueDate(invoice.getInvoiceDate().plusDays(30));
+                        }
+
+                        return invoiceRepository.save(invoice);
+                    }
+                    return invoice;
+                });
+    }
+
+    /**
+     * Marque une facture comme payée.
+     *
+     * @param invoiceId L'identifiant de la facture
+     * @param paymentIntentId L'identifiant de l'intention de paiement (optionnel)
+     * @return La facture mise à jour
+     */
+    @Transactional
+    public Optional<Invoice> markInvoiceAsPaid(String invoiceId, String paymentIntentId) {
+        return invoiceRepository.findByInvoiceId(invoiceId)
+                .map(invoice -> {
+                    invoice.setStatus("paid");
+                    invoice.setPaidDate(Instant.now());
+                    invoice.setAmountPaid(invoice.getAmount());
+                    invoice.setAmountDue(BigDecimal.ZERO);
+
+                    if (paymentIntentId != null) {
+                        invoice.setPaymentIntentId(paymentIntentId);
+                    }
+
+                    return invoiceRepository.save(invoice);
+                });
+    }
+
+    /**
+     * Ajoute un article à une facture existante.
+     *
+     * @param invoiceId L'identifiant de la facture
+     * @param item L'article à ajouter
+     * @return La facture mise à jour
+     */
+    @Transactional
+    public Optional<Invoice> addInvoiceItem(String invoiceId, InvoiceItem item) {
+        return invoiceRepository.findByInvoiceId(invoiceId)
+                .map(invoice -> {
+                    // Vérifier que la facture est encore à l'état brouillon
+                    if (!"draft".equals(invoice.getStatus())) {
+                        throw new IllegalStateException("Cannot add items to a finalized invoice");
+                    }
+
+                    item.setInvoice(invoice);
+                    invoiceItemRepository.save(item);
+
+                    // Recalculer le montant total
+                    BigDecimal newTotal = invoice.getAmount() != null ? invoice.getAmount() : BigDecimal.ZERO;
+                    newTotal = newTotal.add(item.getAmount());
+                    invoice.setAmount(newTotal);
+                    invoice.setAmountDue(newTotal);
+
+                    return invoiceRepository.save(invoice);
+                });
+    }
+
+    /**
+     * Génère une URL pour la facture PDF si le provider le supporte.
+     *
+     * @param invoiceId L'identifiant de la facture
+     * @param pdfUrl L'URL du PDF à définir
+     * @return La facture mise à jour
+     */
+    @Transactional
+    public Optional<Invoice> setPdfUrl(String invoiceId, String pdfUrl) {
+        return invoiceRepository.findByInvoiceId(invoiceId)
+                .map(invoice -> {
+                    invoice.setPdfUrl(pdfUrl);
+                    return invoiceRepository.save(invoice);
+                });
+    }
+
+    /**
+     * Trouve une facture par son identifiant unique.
+     *
+     * @param invoiceId L'identifiant unique de la facture
+     * @return La facture si trouvée
+     */
+    @Transactional(readOnly = true)
+    public Optional<Invoice> findByInvoiceId(String invoiceId) {
+        return invoiceRepository.findByInvoiceId(invoiceId);
+    }
+
+    /**
+     * Trouve toutes les factures pour un client donné.
+     *
+     * @param customer Le client
+     * @return La liste des factures
+     */
+    @Transactional(readOnly = true)
+    public List<Invoice> findByCustomer(Customer customer) {
+        return invoiceRepository.findByCustomer(customer);
+    }
+
+    /**
+     * Trouve toutes les factures pour un identifiant client donné.
+     *
+     * @param customerId L'ID du client
+     * @return La liste des factures
+     */
+    @Transactional(readOnly = true)
+    public List<Invoice> findByCustomerId(Long customerId) {
+        return invoiceRepository.findByCustomerId(customerId);
+    }
+
+    /**
+     * Trouve les factures par statut avec pagination.
+     *
+     * @param status Le statut à rechercher
+     * @param pageable Les informations de pagination
+     * @return Une page de factures avec le statut spécifié
+     */
+    @Transactional(readOnly = true)
+    public Page<Invoice> findByStatus(String status, Pageable pageable) {
+        return invoiceRepository.findAll(pageable);
+    }
+
+    /**
+     * Trouve les factures dont la date d'échéance est passée mais qui ne sont pas payées.
+     *
+     * @return La liste des factures en retard
+     */
+    @Transactional(readOnly = true)
+    public List<Invoice> findOverdueInvoices() {
+        return invoiceRepository.findOverdueInvoices(LocalDate.now());
+    }
+
+    /**
+     * Calcule le montant total des factures payées pour un client donné.
+     *
+     * @param customerId L'ID du client
+     * @return Le montant total des factures payées
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal sumPaidInvoiceAmountByCustomerId(Long customerId) {
+        return invoiceRepository.sumPaidInvoiceAmountByCustomerId(customerId);
+    }
+
+    /**
+     * Génère un numéro de facture unique.
+     *
+     * @return Un numéro de facture
+     */
+    private String generateInvoiceNumber() {
+        // Format: INV-YYYY-XXXXX (année-5 chiffres)
+        return "INV-" + LocalDate.now().getYear() + "-" +
+                String.format("%05d", (int)(Math.random() * 100000));
+    }
+}

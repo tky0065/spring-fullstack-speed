@@ -1,0 +1,540 @@
+package <%= packageName %>.service.impl;
+
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
+import com.stripe.model.checkout.Session;
+import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentConfirmParams;
+import com.stripe.param.checkout.SessionCreateParams;
+import <%= packageName %>.config.PaymentConfig.PaymentProperties;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Payment;
+import <%= packageName %>.domain.Payment.PaymentStatus;
+import <%= packageName %>.domain.PaymentMethod;
+import <%= packageName %>.repository.CustomerRepository;
+import <%= packageName %>.repository.PaymentMethodRepository;
+import <%= packageName %>.repository.PaymentRepository;
+import <%= packageName %>.service.PaymentService;
+import <%= packageName %>.service.dto.PaymentDTO;
+import <%= packageName %>.service.dto.PaymentRequestDTO;
+import <%= packageName %>.service.dto.PaymentResponseDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Implémentation du service PaymentService pour Stripe.
+ */
+@Service("stripePaymentService")
+public class StripePaymentService implements PaymentService {
+
+    private final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
+
+    private final PaymentProperties paymentProperties;
+    private final PaymentRepository paymentRepository;
+    private final CustomerRepository customerRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+
+    public StripePaymentService(
+            PaymentProperties paymentProperties,
+            PaymentRepository paymentRepository,
+            CustomerRepository customerRepository,
+            PaymentMethodRepository paymentMethodRepository) {
+        this.paymentProperties = paymentProperties;
+        this.paymentRepository = paymentRepository;
+        this.customerRepository = customerRepository;
+        this.paymentMethodRepository = paymentMethodRepository;
+
+        // Initialisation de Stripe avec la clé API
+        Stripe.apiKey = paymentProperties.getStripe().getApiKey();
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO createPayment(PaymentRequestDTO paymentRequestDTO) {
+        log.debug("Request to create payment with Stripe: {}", paymentRequestDTO);
+
+        try {
+            // Récupérer le client
+            Customer customer = customerRepository.findById(paymentRequestDTO.getCustomerId())
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+
+            // Créer l'objet Payment
+            Payment payment = new Payment();
+            payment.setAmount(paymentRequestDTO.getAmount());
+            payment.setCurrency(paymentRequestDTO.getCurrency() != null ?
+                    paymentRequestDTO.getCurrency() : paymentProperties.getCurrency());
+            payment.setDescription(paymentRequestDTO.getDescription());
+            payment.setProvider("stripe");
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setCustomer(customer);
+
+            // Si une méthode de paiement est spécifiée
+            if (paymentRequestDTO.getPaymentMethodId() != null) {
+                PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentRequestDTO.getPaymentMethodId())
+                    .orElseThrow(() -> new IllegalArgumentException("Payment method not found"));
+                payment.setPaymentMethod(paymentMethod);
+            }
+
+            // Sauvegarder le paiement dans la base de données
+            payment = paymentRepository.save(payment);
+
+            // Convertir en centimes pour Stripe (Stripe fonctionne avec les plus petites unités de la devise)
+            long amount = paymentRequestDTO.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+
+            // Créer le PaymentIntent avec Stripe
+            PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
+                .setAmount(amount)
+                .setCurrency(payment.getCurrency().toLowerCase())
+                .setDescription(payment.getDescription())
+                .putMetadata("paymentId", payment.getPaymentId())
+                .setConfirm(false);
+
+            // Ajouter le customer_id si disponible
+            if (customer.getStripeCustomerId() != null) {
+                paramsBuilder.setCustomer(customer.getStripeCustomerId());
+            }
+
+            // Créer le PaymentIntent
+            PaymentIntent paymentIntent = PaymentIntent.create(paramsBuilder.build());
+
+            // Mettre à jour le paiement avec l'ID de transaction Stripe
+            payment.setProviderTransactionId(paymentIntent.getId());
+            paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setClientSecret(paymentIntent.getClientSecret());
+            response.setProviderReference(paymentIntent.getId());
+
+            return response;
+
+        } catch (StripeException e) {
+            log.error("Error creating payment with Stripe", e);
+            throw new RuntimeException("Error creating payment with Stripe: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO confirmPayment(String paymentId, Long paymentMethodId) {
+        log.debug("Request to confirm payment {} with payment method {}", paymentId, paymentMethodId);
+
+        try {
+            // Récupérer le paiement
+            Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            // Récupérer la méthode de paiement
+            PaymentMethod paymentMethod = paymentMethodRepository.findById(paymentMethodId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment method not found"));
+
+            // Vérifier que la méthode de paiement appartient au même client
+            if (!paymentMethod.getCustomer().getId().equals(payment.getCustomer().getId())) {
+                throw new IllegalArgumentException("Payment method does not belong to the customer");
+            }
+
+            // Associer la méthode de paiement au paiement
+            payment.setPaymentMethod(paymentMethod);
+
+            // Mettre à jour le statut du paiement
+            payment.setStatus(PaymentStatus.PROCESSING);
+            payment = paymentRepository.save(payment);
+
+            // Confirmer le PaymentIntent avec Stripe
+            PaymentIntent paymentIntent = PaymentIntent.retrieve(payment.getProviderTransactionId());
+
+            PaymentIntentConfirmParams confirmParams = PaymentIntentConfirmParams.builder()
+                .setPaymentMethod(paymentMethod.getStripePaymentMethodId())
+                .build();
+
+            PaymentIntent confirmedIntent = paymentIntent.confirm(confirmParams);
+
+            // Mettre à jour le statut du paiement selon la réponse de Stripe
+            if ("succeeded".equals(confirmedIntent.getStatus())) {
+                payment.setStatus(PaymentStatus.COMPLETED);
+                payment.setCompletedDate(Instant.now());
+            } else if ("requires_action".equals(confirmedIntent.getStatus())) {
+                payment.setStatus(PaymentStatus.PENDING);
+            } else if ("canceled".equals(confirmedIntent.getStatus())) {
+                payment.setStatus(PaymentStatus.CANCELLED);
+            }
+
+            payment = paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setProviderReference(payment.getProviderTransactionId());
+
+            // Si une action est requise côté client (3D Secure par exemple)
+            if ("requires_action".equals(confirmedIntent.getStatus()) &&
+                confirmedIntent.getNextAction() != null) {
+                response.setRequiresAction(true);
+                response.setClientSecret(confirmedIntent.getClientSecret());
+                response.setRedirectUrl(confirmedIntent.getNextAction().getRedirectToUrl().getUrl());
+            }
+
+            return response;
+
+        } catch (StripeException e) {
+            log.error("Error confirming payment with Stripe", e);
+            throw new RuntimeException("Error confirming payment with Stripe: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO capturePayment(String paymentId) {
+        log.debug("Request to capture payment: {}", paymentId);
+
+        try {
+            // Récupérer le paiement
+            Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            // Vérifier que le paiement est en attente
+            if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.PROCESSING) {
+                throw new IllegalStateException("Payment cannot be captured because it is not in PENDING or PROCESSING state");
+            }
+
+            // Capturer le paiement avec Stripe
+            PaymentIntent paymentIntent = PaymentIntent.retrieve(payment.getProviderTransactionId());
+            PaymentIntent capturedIntent = paymentIntent.capture();
+
+            // Mettre à jour le statut du paiement
+            if ("succeeded".equals(capturedIntent.getStatus())) {
+                payment.setStatus(PaymentStatus.COMPLETED);
+                payment.setCompletedDate(Instant.now());
+            } else {
+                payment.setStatus(PaymentStatus.FAILED);
+            }
+
+            payment = paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setProviderReference(payment.getProviderTransactionId());
+
+            return response;
+
+        } catch (StripeException e) {
+            log.error("Error capturing payment with Stripe", e);
+            throw new RuntimeException("Error capturing payment with Stripe: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO cancelPayment(String paymentId) {
+        log.debug("Request to cancel payment: {}", paymentId);
+
+        try {
+            // Récupérer le paiement
+            Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            // Vérifier que le paiement peut être annulé
+            if (payment.getStatus() == PaymentStatus.COMPLETED || payment.getStatus() == PaymentStatus.REFUNDED) {
+                throw new IllegalStateException("Payment cannot be cancelled because it is already COMPLETED or REFUNDED");
+            }
+
+            // Annuler le paiement avec Stripe
+            PaymentIntent paymentIntent = PaymentIntent.retrieve(payment.getProviderTransactionId());
+            PaymentIntent cancelledIntent = paymentIntent.cancel();
+
+            // Mettre à jour le statut du paiement
+            payment.setStatus(PaymentStatus.CANCELLED);
+            payment = paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setProviderReference(payment.getProviderTransactionId());
+
+            return response;
+
+        } catch (StripeException e) {
+            log.error("Error cancelling payment with Stripe", e);
+            throw new RuntimeException("Error cancelling payment with Stripe: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<PaymentDTO> getPaymentById(String paymentId) {
+        log.debug("Request to get payment: {}", paymentId);
+
+        return paymentRepository.findByPaymentId(paymentId)
+            .map(this::convertToDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentDTO> getPaymentsByCustomerId(Long customerId) {
+        log.debug("Request to get payments for customer: {}", customerId);
+
+        return paymentRepository.findByCustomerId(customerId).stream()
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO processPaymentCallback(String providerReference, String status) {
+        log.debug("Processing payment callback from Stripe for: {}, status: {}", providerReference, status);
+
+        try {
+            // Récupérer le paiement par référence provider
+            Payment payment = paymentRepository.findByProviderTransactionId(providerReference)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for provider reference: " + providerReference));
+
+            // Mettre à jour le statut selon le callback
+            PaymentStatus paymentStatus;
+
+            switch (status) {
+                case "succeeded":
+                    paymentStatus = PaymentStatus.COMPLETED;
+                    payment.setCompletedDate(Instant.now());
+                    break;
+                case "processing":
+                    paymentStatus = PaymentStatus.PROCESSING;
+                    break;
+                case "requires_payment_method":
+                case "requires_confirmation":
+                case "requires_action":
+                    paymentStatus = PaymentStatus.PENDING;
+                    break;
+                case "canceled":
+                    paymentStatus = PaymentStatus.CANCELLED;
+                    break;
+                default:
+                    paymentStatus = PaymentStatus.FAILED;
+            }
+
+            payment.setStatus(paymentStatus);
+            payment = paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setProviderReference(payment.getProviderTransactionId());
+
+            return response;
+
+        } catch (Exception e) {
+            log.error("Error processing payment callback from Stripe", e);
+            throw new RuntimeException("Error processing payment callback: " + e.getMessage());
+        }
+    }
+
+    <% if (refunds) { %>
+    @Override
+    @Transactional
+    public PaymentResponseDTO refundPayment(String paymentId, BigDecimal amount, String reason) {
+        log.debug("Request to refund payment: {}, amount: {}, reason: {}", paymentId, amount, reason);
+
+        try {
+            // Récupérer le paiement
+            Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            // Vérifier que le paiement est complété
+            if (payment.getStatus() != PaymentStatus.COMPLETED) {
+                throw new IllegalStateException("Payment cannot be refunded because it is not COMPLETED");
+            }
+
+            // Préparer le montant du remboursement
+            long refundAmount = amount != null ?
+                amount.multiply(BigDecimal.valueOf(100)).longValue() : // Montant partiel
+                null; // Remboursement total
+
+            // Créer le remboursement avec Stripe
+            com.stripe.model.Refund.RefundCreateParams.Builder paramsBuilder =
+                com.stripe.model.Refund.RefundCreateParams.builder()
+                    .setPaymentIntent(payment.getProviderTransactionId());
+
+            // Ajouter le montant si c'est un remboursement partiel
+            if (refundAmount != null) {
+                paramsBuilder.setAmount(refundAmount);
+            }
+
+            // Ajouter la raison si fournie
+            if (reason != null) {
+                paramsBuilder.setReason(com.stripe.model.Refund.RefundCreateParams.Reason.valueOf(reason.toUpperCase()));
+            }
+
+            // Créer le remboursement
+            com.stripe.model.Refund refund = com.stripe.model.Refund.create(paramsBuilder.build());
+
+            // Mettre à jour le statut du paiement
+            payment.setStatus(PaymentStatus.REFUNDED);
+            payment = paymentRepository.save(payment);
+
+            // Construire la réponse
+            PaymentResponseDTO response = new PaymentResponseDTO();
+            response.setPaymentId(payment.getPaymentId());
+            response.setStatus(payment.getStatus().toString());
+            response.setAmount(payment.getAmount());
+            response.setCurrency(payment.getCurrency());
+            response.setProviderReference(payment.getProviderTransactionId());
+            response.setRefundId(refund.getId());
+
+            return response;
+
+        } catch (StripeException e) {
+            log.error("Error refunding payment with Stripe", e);
+            throw new RuntimeException("Error refunding payment with Stripe: " + e.getMessage());
+        }
+    }
+    <% } %>
+
+    @Override
+    @Transactional
+    public String createPaymentSession(PaymentRequestDTO paymentRequestDTO) {
+        log.debug("Request to create payment session with Stripe: {}", paymentRequestDTO);
+
+        try {
+            // Récupérer le client
+            Customer customer = customerRepository.findById(paymentRequestDTO.getCustomerId())
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+
+            // Créer l'objet Payment
+            Payment payment = new Payment();
+            payment.setAmount(paymentRequestDTO.getAmount());
+            payment.setCurrency(paymentRequestDTO.getCurrency() != null ?
+                    paymentRequestDTO.getCurrency() : paymentProperties.getCurrency());
+            payment.setDescription(paymentRequestDTO.getDescription());
+            payment.setProvider("stripe");
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setCustomer(customer);
+
+            // Sauvegarder le paiement dans la base de données
+            payment = paymentRepository.save(payment);
+
+            // Convertir en centimes pour Stripe
+            long amount = paymentRequestDTO.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+
+            // Créer les paramètres de la session Stripe Checkout
+            SessionCreateParams.Builder builder = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(paymentProperties.getStripe().getSuccessUrl() + "?session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(paymentProperties.getStripe().getCancelUrl());
+
+            // Ajouter les items
+            builder.addLineItem(
+                SessionCreateParams.LineItem.builder()
+                    .setQuantity(1L)
+                    .setPriceData(
+                        SessionCreateParams.LineItem.PriceData.builder()
+                            .setCurrency(payment.getCurrency().toLowerCase())
+                            .setUnitAmount(amount)
+                            .setProductData(
+                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                    .setName(paymentRequestDTO.getDescription() != null ?
+                                            paymentRequestDTO.getDescription() : "Payment")
+                                    .build()
+                            )
+                            .build()
+                    )
+                    .build()
+            );
+
+            // Ajouter les métadonnées pour lier la session au paiement
+            builder.putMetadata("paymentId", payment.getPaymentId());
+
+            // Créer la session
+            Session session = Session.create(builder.build());
+
+            // Mettre à jour le paiement avec la référence de la session
+            payment.setProviderTransactionId(session.getId());
+            paymentRepository.save(payment);
+
+            // Retourner l'URL de redirection
+            return session.getUrl();
+
+        } catch (StripeException e) {
+            log.error("Error creating payment session with Stripe", e);
+            throw new RuntimeException("Error creating payment session with Stripe: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String getPaymentRedirectUrl(String paymentId) {
+        log.debug("Request to get payment redirect URL for: {}", paymentId);
+
+        try {
+            // Récupérer le paiement
+            Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+
+            // Récupérer la session Stripe
+            Session session = Session.retrieve(payment.getProviderTransactionId());
+
+            // Retourner l'URL de la session
+            return session.getUrl();
+
+        } catch (StripeException e) {
+            log.error("Error retrieving payment session with Stripe", e);
+            throw new RuntimeException("Error retrieving payment session with Stripe: " + e.getMessage());
+        }
+    }
+
+    // Méthode utilitaire pour convertir une entité Payment en DTO
+    private PaymentDTO convertToDto(Payment payment) {
+        PaymentDTO dto = new PaymentDTO();
+        dto.setId(payment.getId());
+        dto.setPaymentId(payment.getPaymentId());
+        dto.setAmount(payment.getAmount());
+        dto.setCurrency(payment.getCurrency());
+        dto.setStatus(payment.getStatus().toString());
+        dto.setProvider(payment.getProvider());
+        dto.setProviderTransactionId(payment.getProviderTransactionId());
+        dto.setDescription(payment.getDescription());
+        dto.setCreatedDate(payment.getCreatedDate());
+        dto.setUpdatedDate(payment.getUpdatedDate());
+        dto.setCompletedDate(payment.getCompletedDate());
+
+        if (payment.getCustomer() != null) {
+            dto.setCustomerId(payment.getCustomer().getId());
+            dto.setCustomerName(payment.getCustomer().getName());
+        }
+
+        if (payment.getPaymentMethod() != null) {
+            dto.setPaymentMethodId(payment.getPaymentMethod().getId());
+            dto.setPaymentMethodType(payment.getPaymentMethod().getType().toString());
+
+            if (payment.getPaymentMethod().getCardBrand() != null && payment.getPaymentMethod().getCardLastDigits() != null) {
+                dto.setPaymentMethodDisplay(payment.getPaymentMethod().getCardBrand() + " **** " + payment.getPaymentMethod().getCardLastDigits());
+            }
+        }
+
+        return dto;
+    }
+}

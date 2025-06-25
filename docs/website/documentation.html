@@ -73,6 +73,15 @@
                         <li><a href="#api-rest">API REST</a></li>
                     </ul>
                 </li>
+                <li>
+                    <a href="#systeme-paiement">Système de Paiement</a>
+                    <ul>
+                        <li><a href="#options-paiement">Options disponibles</a></li>
+                        <li><a href="#fournisseurs-paiement">Fournisseurs</a></li>
+                        <li><a href="#remboursements">Remboursements</a></li>
+                        <li><a href="#rapports-financiers">Rapports financiers</a></li>
+                    </ul>
+                </li>
                 <li><a href="#bases-donnees">Bases de données</a></li>
                 <li><a href="#securite">Sécurité & Authentification</a></li>
                 <li><a href="#frontend">Frontend</a></li>
@@ -99,9 +108,7 @@
                         <li>Création automatique d'entités, DTOs et opérations CRUD</li>
                         <li>Configuration de sécurité prête à l'emploi (JWT, OAuth2)</li>
                         <li>Support pour plusieurs bases de données (MySQL, PostgreSQL, MongoDB, H2)</li>
-                        <li>Intégration de frameworks frontend modernes (React, Vue.js, Angular)</li>
-                        <li>Configuration Docker et Kubernetes</li>
-                        <li>Outils de test et de qualité du code</li>
+                        <li>Système de paiement complet avec support pour Stripe et PayPal</li>
                     </ul>
                 </div>
             </section>
@@ -369,6 +376,90 @@
     ├── Dockerfile
     └── docker-compose.yml</code></pre>
                     </div>
+                </div>
+            </section>
+
+            <section id="systeme-paiement" class="doc-section">
+                <h2>Système de Paiement</h2>
+
+                <p>Le système de paiement de Spring-Fullstack-Speed permet d'intégrer facilement des solutions de paiement dans votre application.</p>
+
+                <div class="basic-usage">
+                    <h3>Utilisation basique</h3>
+                    <div class="code-block">
+                        <pre><code>sfs payment</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs payment')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <p>Cette commande lance un processus interactif pour configurer le système de paiement.</p>
+                </div>
+
+                <div id="options-paiement">
+                    <h3>Options disponibles</h3>
+                    <p>Pour une configuration non interactive, spécifiez les options directement:</p>
+                    <div class="code-block">
+                        <pre><code>sfs payment --provider=stripe --currency=eur</code></pre>
+                        <button class="copy-btn" onclick="copyToClipboard('sfs payment --provider=stripe --currency=eur')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+
+                    <table class="options-table">
+                        <thead>
+                            <tr>
+                                <th>Option</th>
+                                <th>Description</th>
+                                <th>Valeurs possibles</th>
+                                <th>Défaut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>--provider</code></td>
+                                <td>Fournisseur de paiement</td>
+                                <td>stripe, paypal</td>
+                                <td><code>stripe</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--currency</code></td>
+                                <td>Devise des transactions</td>
+                                <td>EUR, USD, ...</td>
+                                <td><code>EUR</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>--webhook</code></td>
+                                <td>URL du webhook de paiement</td>
+                                <td>String</td>
+                                <td>-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="fournisseurs-paiement">
+                    <h3>Fournisseurs de paiement</h3>
+                    <p>SFS prend en charge plusieurs fournisseurs de paiement:</p>
+
+                    <div class="provider-info">
+                        <h4>Stripe</h4>
+                        <p>Stripe est un fournisseur de services de paiement en ligne. Pour l'utiliser, créez un compte sur <a href="https://stripe.com" target="_blank">stripe.com</a> et obtenez vos clés API.</p>
+                    </div>
+
+                    <div class="provider-info">
+                        <h4>PayPal</h4>
+                        <p>PayPal est un système de paiement en ligne populaire. Inscrivez-vous sur <a href="https://paypal.com" target="_blank">paypal.com</a> pour obtenir vos identifiants API.</p>
+                    </div>
+                </div>
+
+                <div id="remboursements">
+                    <h3>Remboursements</h3>
+                    <p>Pour gérer les remboursements, utilisez les fonctionnalités intégrées de votre fournisseur de paiement. Par exemple, Stripe et PayPal offrent des API pour traiter les remboursements.</p>
+                </div>
+
+                <div id="rapports-financiers">
+                    <h3>Rapports financiers</h3>
+                    <p>Générez des rapports financiers détaillés sur les transactions, les remboursements, et les revenus directement depuis le tableau de bord de votre fournisseur de paiement.</p>
                 </div>
             </section>
 

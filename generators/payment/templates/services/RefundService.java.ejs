@@ -1,0 +1,335 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Refund;
+import <%= packageName %>.domain.Payment;
+import <%= packageName %>.domain.Transaction;
+import <%= packageName %>.dtos.RefundDTO;
+import <%= packageName %>.dtos.PaymentResponseDTO;
+import <%= packageName %>.exceptions.PaymentException;
+import <%= packageName %>.exceptions.RefundException;
+import <%= packageName %>.repository.RefundRepository;
+import <%= packageName %>.repository.PaymentRepository;
+import <%= packageName %>.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * Service pour gérer les remboursements de paiements.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RefundService {
+
+    private final RefundRepository refundRepository;
+    private final PaymentRepository paymentRepository;
+    private final TransactionRepository transactionRepository;
+    private final StripePaymentService stripePaymentService;
+
+    /**
+     * Effectue un remboursement complet d'un paiement.
+     *
+     * @param paymentId ID du paiement à rembourser
+     * @return DTO du remboursement créé
+     * @throws PaymentException si le paiement n'est pas trouvé ou ne peut pas être remboursé
+     */
+    @Transactional
+    public RefundDTO refundPayment(Long paymentId) {
+        log.debug("Service de remboursement complet pour le paiement ID: {}", paymentId);
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentException("Paiement non trouvé avec l'ID: " + paymentId));
+
+        // Vérifier si le paiement est remboursable
+        if (!payment.isRefundable()) {
+            throw new PaymentException("Le paiement n'est pas remboursable: " + paymentId);
+        }
+
+        // Vérifier si le paiement a déjà été entièrement remboursé
+        BigDecimal alreadyRefundedAmount = getAlreadyRefundedAmount(paymentId);
+        if (alreadyRefundedAmount.compareTo(payment.getAmount()) >= 0) {
+            throw new PaymentException("Le paiement a déjà été entièrement remboursé: " + paymentId);
+        }
+
+        // Calculer le montant à rembourser (reste à rembourser)
+        BigDecimal amountToRefund = payment.getAmount().subtract(alreadyRefundedAmount);
+
+        // Créer le remboursement dans la base de données
+        Refund refund = new Refund();
+        refund.setPayment(payment);
+        refund.setAmount(amountToRefund);
+        refund.setReason("Remboursement complet");
+        refund.setStatus("PENDING");
+        refund.setCreatedAt(Instant.now());
+
+        refund = refundRepository.save(refund);
+
+        // Effectuer le remboursement via le service de paiement (Stripe, etc.)
+        try {
+            String externalRefundId = stripePaymentService.createRefund(payment.getExternalPaymentId(), amountToRefund);
+            refund.setExternalRefundId(externalRefundId);
+            refund.setStatus("COMPLETED");
+            refund = refundRepository.save(refund);
+
+            // Mettre à jour le statut du paiement si le remboursement est complet
+            if (amountToRefund.compareTo(payment.getAmount()) == 0) {
+                payment.setStatus("REFUNDED");
+                paymentRepository.save(payment);
+            } else {
+                payment.setStatus("PARTIALLY_REFUNDED");
+                paymentRepository.save(payment);
+            }
+
+            // Enregistrer une transaction pour ce remboursement
+            Transaction transaction = new Transaction();
+            transaction.setType("REFUND");
+            transaction.setAmount(amountToRefund);
+            transaction.setPayment(payment);
+            transaction.setDescription("Remboursement pour le paiement #" + payment.getId());
+            transaction.setStatus("COMPLETED");
+            transaction.setCreatedAt(Instant.now());
+            transactionRepository.save(transaction);
+
+            return mapToDTO(refund);
+        } catch (Exception e) {
+            log.error("Erreur lors du remboursement via le service de paiement", e);
+            refund.setStatus("FAILED");
+            refund.setFailureReason(e.getMessage());
+            refundRepository.save(refund);
+            throw new RefundException("Échec du remboursement: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Effectue un remboursement partiel d'un paiement.
+     *
+     * @param paymentId ID du paiement à rembourser partiellement
+     * @param amount Montant à rembourser
+     * @param reason Raison du remboursement
+     * @return DTO du remboursement créé
+     * @throws PaymentException si le paiement n'est pas trouvé ou ne peut pas être remboursé
+     * @throws RefundException si le montant du remboursement est invalide
+     */
+    @Transactional
+    public RefundDTO partialRefund(Long paymentId, BigDecimal amount, String reason) {
+        log.debug("Service de remboursement partiel pour le paiement ID: {}, montant: {}", paymentId, amount);
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RefundException("Le montant du remboursement doit être supérieur à zéro");
+        }
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentException("Paiement non trouvé avec l'ID: " + paymentId));
+
+        // Vérifier si le paiement est remboursable
+        if (!payment.isRefundable()) {
+            throw new PaymentException("Le paiement n'est pas remboursable: " + paymentId);
+        }
+
+        // Vérifier si le montant à rembourser est valide
+        BigDecimal alreadyRefundedAmount = getAlreadyRefundedAmount(paymentId);
+        BigDecimal remainingAmount = payment.getAmount().subtract(alreadyRefundedAmount);
+
+        if (amount.compareTo(remainingAmount) > 0) {
+            throw new RefundException("Le montant du remboursement (" + amount + ") est supérieur au montant restant à rembourser (" + remainingAmount + ")");
+        }
+
+        // Créer le remboursement dans la base de données
+        Refund refund = new Refund();
+        refund.setPayment(payment);
+        refund.setAmount(amount);
+        refund.setReason(reason);
+        refund.setStatus("PENDING");
+        refund.setCreatedAt(Instant.now());
+
+        refund = refundRepository.save(refund);
+
+        // Effectuer le remboursement via le service de paiement (Stripe, etc.)
+        try {
+            String externalRefundId = stripePaymentService.createRefund(payment.getExternalPaymentId(), amount);
+            refund.setExternalRefundId(externalRefundId);
+            refund.setStatus("COMPLETED");
+            refund = refundRepository.save(refund);
+
+            // Mettre à jour le statut du paiement
+            BigDecimal totalRefunded = alreadyRefundedAmount.add(amount);
+            if (totalRefunded.compareTo(payment.getAmount()) == 0) {
+                payment.setStatus("REFUNDED");
+            } else {
+                payment.setStatus("PARTIALLY_REFUNDED");
+            }
+            paymentRepository.save(payment);
+
+            // Enregistrer une transaction pour ce remboursement
+            Transaction transaction = new Transaction();
+            transaction.setType("REFUND");
+            transaction.setAmount(amount);
+            transaction.setPayment(payment);
+            transaction.setDescription("Remboursement partiel pour le paiement #" + payment.getId() + ": " + reason);
+            transaction.setStatus("COMPLETED");
+            transaction.setCreatedAt(Instant.now());
+            transactionRepository.save(transaction);
+
+            return mapToDTO(refund);
+        } catch (Exception e) {
+            log.error("Erreur lors du remboursement partiel via le service de paiement", e);
+            refund.setStatus("FAILED");
+            refund.setFailureReason(e.getMessage());
+            refundRepository.save(refund);
+            throw new RefundException("Échec du remboursement partiel: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Récupère tous les remboursements.
+     *
+     * @return liste de tous les remboursements
+     */
+    @Transactional(readOnly = true)
+    public List<RefundDTO> findAllRefunds() {
+        log.debug("Récupération de tous les remboursements");
+        return refundRepository.findAll().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère une page de remboursements.
+     *
+     * @param pageable options de pagination
+     * @return page de remboursements
+     */
+    @Transactional(readOnly = true)
+    public Page<RefundDTO> findAllRefunds(Pageable pageable) {
+        log.debug("Récupération d'une page de remboursements");
+        return refundRepository.findAll(pageable)
+                .map(this::mapToDTO);
+    }
+
+    /**
+     * Récupère un remboursement par son ID.
+     *
+     * @param id ID du remboursement
+     * @return remboursement trouvé ou empty s'il n'existe pas
+     */
+    @Transactional(readOnly = true)
+    public Optional<RefundDTO> findRefundById(Long id) {
+        log.debug("Récupération du remboursement avec l'ID: {}", id);
+        return refundRepository.findById(id)
+                .map(this::mapToDTO);
+    }
+
+    /**
+     * Récupère tous les remboursements associés à un paiement.
+     *
+     * @param paymentId ID du paiement
+     * @return liste des remboursements pour ce paiement
+     */
+    @Transactional(readOnly = true)
+    public List<RefundDTO> findRefundsByPaymentId(Long paymentId) {
+        log.debug("Récupération des remboursements pour le paiement ID: {}", paymentId);
+        return refundRepository.findByPaymentId(paymentId).stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Annule un remboursement si c'est encore possible.
+     *
+     * @param refundId ID du remboursement à annuler
+     * @return réponse de la demande d'annulation
+     * @throws RefundException si le remboursement ne peut pas être annulé
+     */
+    @Transactional
+    public PaymentResponseDTO cancelRefund(Long refundId) {
+        log.debug("Annulation du remboursement ID: {}", refundId);
+
+        Refund refund = refundRepository.findById(refundId)
+                .orElseThrow(() -> new RefundException("Remboursement non trouvé avec l'ID: " + refundId));
+
+        // Vérifier si le remboursement peut être annulé
+        if (!refund.getStatus().equals("COMPLETED") || refund.getExternalRefundId() == null) {
+            throw new RefundException("Ce remboursement ne peut pas être annulé car son statut est: " + refund.getStatus());
+        }
+
+        // Tenter d'annuler le remboursement via le service de paiement (si supporté)
+        try {
+            boolean cancelled = stripePaymentService.cancelRefund(refund.getExternalRefundId());
+
+            if (cancelled) {
+                refund.setStatus("CANCELLED");
+                refundRepository.save(refund);
+
+                // Mettre à jour le statut du paiement
+                Payment payment = refund.getPayment();
+                BigDecimal remainingRefunded = getAlreadyRefundedAmount(payment.getId()).subtract(refund.getAmount());
+
+                if (remainingRefunded.compareTo(BigDecimal.ZERO) == 0) {
+                    payment.setStatus("COMPLETED"); // ou le statut initial du paiement
+                } else {
+                    payment.setStatus("PARTIALLY_REFUNDED");
+                }
+                paymentRepository.save(payment);
+
+                // Enregistrer une transaction pour cette annulation
+                Transaction transaction = new Transaction();
+                transaction.setType("REFUND_CANCEL");
+                transaction.setAmount(refund.getAmount());
+                transaction.setPayment(payment);
+                transaction.setDescription("Annulation du remboursement #" + refund.getId());
+                transaction.setStatus("COMPLETED");
+                transaction.setCreatedAt(Instant.now());
+                transactionRepository.save(transaction);
+
+                return new PaymentResponseDTO(true, "Remboursement annulé avec succès", null);
+            } else {
+                throw new RefundException("Le fournisseur de paiement n'a pas pu annuler ce remboursement");
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors de l'annulation du remboursement", e);
+            throw new RefundException("Échec de l'annulation du remboursement: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Calcule le montant déjà remboursé pour un paiement.
+     *
+     * @param paymentId ID du paiement
+     * @return montant total déjà remboursé
+     */
+    private BigDecimal getAlreadyRefundedAmount(Long paymentId) {
+        List<Refund> successfulRefunds = refundRepository.findByPaymentIdAndStatus(paymentId, "COMPLETED");
+        return successfulRefunds.stream()
+                .map(Refund::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * Convertit une entité de remboursement en DTO.
+     *
+     * @param refund entité de remboursement
+     * @return DTO de remboursement
+     */
+    private RefundDTO mapToDTO(Refund refund) {
+        RefundDTO dto = new RefundDTO();
+        dto.setId(refund.getId());
+        dto.setPaymentId(refund.getPayment().getId());
+        dto.setAmount(refund.getAmount());
+        dto.setReason(refund.getReason());
+        dto.setStatus(refund.getStatus());
+        dto.setExternalRefundId(refund.getExternalRefundId());
+        dto.setCreatedAt(refund.getCreatedAt());
+        dto.setUpdatedAt(refund.getUpdatedAt());
+        return dto;
+    }
+}

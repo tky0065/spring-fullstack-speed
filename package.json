@@ -30,6 +30,7 @@
   },
   "keywords": [
     "spring-boot",
+    "kotlin",
     "spring",
     "java",
     "vue",
@@ -60,6 +61,7 @@
     "tabtab": "^3.0.2",
     "yeoman-environment": "^4.4.3",
     "yeoman-generator": "^7.5.1",
+    "yeoman-test": "^10.1.1",
     "yosay": "^3.0.0"
   },
   "devDependencies": {

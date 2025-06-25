@@ -1,0 +1,70 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter un plan d'abonnement dans le système de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"metadata"})
+public class PlanDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    private String planId;
+
+    @NotNull
+    @Size(max = 255)
+    private String name;
+
+    private String description;
+
+    @NotNull
+    private BigDecimal amount;
+
+    private String currency;
+
+    @NotNull
+    private String billingInterval;  // 'day', 'week', 'month', 'year'
+
+    private Integer intervalCount;
+
+    private Integer trialPeriodDays;
+
+    private Boolean active;
+
+    private String productId;
+
+    private Integer usageType;  // 0: licensed, 1: metered
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    <% if (providers.includes('stripe')) { %>
+    private String stripePlanId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalPlanId;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private String braintreePlanId;
+    <% } %>
+}

@@ -1,0 +1,81 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter une méthode de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"metadata", "token"})
+public class PaymentMethodDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    private String type;
+
+    @NotNull
+    private String provider;
+
+    private String token;
+
+    private String customerId;
+
+    @Size(max = 255)
+    private String displayName;
+
+    private Boolean isDefault;
+
+    private String fingerprint;
+
+    private String last4;
+
+    private String expiryMonth;
+
+    private String expiryYear;
+
+    private String cardBrand;
+
+    private String cardCountry;
+
+    // Champs spécifiques pour les virements bancaires
+    private String bankName;
+
+    private String bankAccountLast4;
+
+    private String bankRoutingNumber;
+
+    // Champs pour les portefeuilles électroniques
+    private String walletType;
+
+    private String email;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    <% if (providers.includes('stripe')) { %>
+    private String stripePaymentMethodId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalPaymentMethodId;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private String braintreePaymentMethodId;
+    <% } %>
+}

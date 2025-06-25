@@ -5,7 +5,7 @@ Tous les changements notables dans ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-06-21
+## [1.0.1] - 2025-06-21
 
 ### Ajouté
 - Générateur d'applications Spring Boot avec plusieurs options de base de données (H2, MySQL, PostgreSQL, MongoDB)

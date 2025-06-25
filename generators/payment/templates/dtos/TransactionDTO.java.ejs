@@ -1,0 +1,67 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter une transaction de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"metadata"})
+public class TransactionDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    private String transactionId;
+
+    @NotNull
+    private String status;
+
+    @NotNull
+    private BigDecimal amount;
+
+    private String currency;
+
+    private String paymentMethodId;
+
+    private String customerId;
+
+    private Long paymentId;
+
+    private String paymentProvider;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    // Ajout des détails spécifiques à chaque provider
+    <% if (providers.includes('stripe')) { %>
+    private String stripeChargeId;
+    private String stripeBalanceTransactionId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalTransactionId;
+    private String paypalPayerId;
+    <% } %>
+
+    private String description;
+
+    private Boolean refunded;
+
+    private BigDecimal refundedAmount;
+}

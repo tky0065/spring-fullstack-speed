@@ -1,0 +1,57 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+
+/**
+ * DTO pour représenter un paiement.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PaymentDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private Long id;
+    private String paymentId;
+    private BigDecimal amount;
+    private String currency;
+    private String status;
+    private String provider;
+    private String providerTransactionId;
+    private String description;
+    private Instant createdDate;
+    private Instant updatedDate;
+    private Instant completedDate;
+
+    // Informations client
+    private Long customerId;
+    private String customerName;
+    private String customerEmail;
+
+    // Informations méthode de paiement
+    private Long paymentMethodId;
+    private String paymentMethodType;
+    private String paymentMethodDisplay;
+
+    // Métadonnées
+    private String metadata;
+
+    <% if (refunds) { %>
+    // Remboursements
+    private boolean refunded;
+    private BigDecimal refundedAmount;
+    private String refundId;
+    private String refundReason;
+    private Instant refundDate;
+    <% } %>
+}

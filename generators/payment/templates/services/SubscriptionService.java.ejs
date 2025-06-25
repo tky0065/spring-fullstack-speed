@@ -1,0 +1,226 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Subscription;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.domain.Plan;
+import <%= packageName %>.repository.SubscriptionRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les abonnements.
+ */
+@Service
+@Transactional
+public class SubscriptionService {
+
+    private final SubscriptionRepository subscriptionRepository;
+
+    public SubscriptionService(SubscriptionRepository subscriptionRepository) {
+        this.subscriptionRepository = subscriptionRepository;
+    }
+
+    /**
+     * Crée un nouvel abonnement.
+     *
+     * @param subscription L'abonnement à créer
+     * @return L'abonnement créé
+     */
+    @Transactional
+    public Subscription createSubscription(Subscription subscription) {
+        // Initialise les dates de période si non définies
+        if (subscription.getCurrentPeriodStart() == null) {
+            subscription.setCurrentPeriodStart(Instant.now());
+        }
+
+        // Calcule la fin de période en fonction du plan d'abonnement
+        if (subscription.getCurrentPeriodEnd() == null && subscription.getPlan() != null) {
+            Plan plan = subscription.getPlan();
+            Instant currentPeriodStart = subscription.getCurrentPeriodStart();
+            Instant currentPeriodEnd;
+
+            if ("month".equals(plan.getBillingInterval())) {
+                int months = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                // Approximation: un mois = 30 jours
+                currentPeriodEnd = currentPeriodStart.plus(30 * months, ChronoUnit.DAYS);
+            } else if ("year".equals(plan.getBillingInterval())) {
+                int years = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                currentPeriodEnd = currentPeriodStart.plus(365 * years, ChronoUnit.DAYS);
+            } else if ("week".equals(plan.getBillingInterval())) {
+                int weeks = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                currentPeriodEnd = currentPeriodStart.plus(7 * weeks, ChronoUnit.DAYS);
+            } else {
+                int days = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                currentPeriodEnd = currentPeriodStart.plus(days, ChronoUnit.DAYS);
+            }
+
+            subscription.setCurrentPeriodEnd(currentPeriodEnd);
+        }
+
+        return subscriptionRepository.save(subscription);
+    }
+
+    /**
+     * Met à jour un abonnement existant.
+     *
+     * @param subscription L'abonnement à mettre à jour
+     * @return L'abonnement mis à jour
+     */
+    @Transactional
+    public Subscription updateSubscription(Subscription subscription) {
+        return subscriptionRepository.save(subscription);
+    }
+
+    /**
+     * Annule un abonnement.
+     *
+     * @param subscriptionId L'identifiant de l'abonnement
+     * @param cancelImmediately Si true, annule immédiatement, sinon à la fin de la période
+     * @return L'abonnement annulé
+     */
+    @Transactional
+    public Optional<Subscription> cancelSubscription(String subscriptionId, boolean cancelImmediately) {
+        return subscriptionRepository.findBySubscriptionId(subscriptionId)
+                .map(subscription -> {
+                    if (cancelImmediately) {
+                        subscription.setStatus("CANCELED");
+                        subscription.setCanceledAt(Instant.now());
+                        subscription.setEndDate(Instant.now());
+                    } else {
+                        subscription.setCancelAtPeriodEnd(true);
+                        subscription.setCanceledAt(Instant.now());
+                    }
+                    return subscriptionRepository.save(subscription);
+                });
+    }
+
+    /**
+     * Renouvelle un abonnement pour une nouvelle période.
+     *
+     * @param subscriptionId L'identifiant de l'abonnement
+     * @return L'abonnement renouvelé
+     */
+    @Transactional
+    public Optional<Subscription> renewSubscription(String subscriptionId) {
+        return subscriptionRepository.findBySubscriptionId(subscriptionId)
+                .map(subscription -> {
+                    // Vérifie si l'abonnement doit être annulé à la fin de la période
+                    if (Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())) {
+                        subscription.setStatus("CANCELED");
+                        subscription.setEndDate(subscription.getCurrentPeriodEnd());
+                        return subscriptionRepository.save(subscription);
+                    }
+
+                    // Renouvelle pour une nouvelle période
+                    Instant oldPeriodEnd = subscription.getCurrentPeriodEnd();
+                    subscription.setCurrentPeriodStart(oldPeriodEnd);
+
+                    Plan plan = subscription.getPlan();
+                    Instant newPeriodEnd;
+
+                    if ("month".equals(plan.getBillingInterval())) {
+                        int months = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                        newPeriodEnd = oldPeriodEnd.plus(30 * months, ChronoUnit.DAYS);
+                    } else if ("year".equals(plan.getBillingInterval())) {
+                        int years = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                        newPeriodEnd = oldPeriodEnd.plus(365 * years, ChronoUnit.DAYS);
+                    } else if ("week".equals(plan.getBillingInterval())) {
+                        int weeks = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                        newPeriodEnd = oldPeriodEnd.plus(7 * weeks, ChronoUnit.DAYS);
+                    } else {
+                        int days = plan.getBillingIntervalCount() != null ? plan.getBillingIntervalCount() : 1;
+                        newPeriodEnd = oldPeriodEnd.plus(days, ChronoUnit.DAYS);
+                    }
+
+                    subscription.setCurrentPeriodEnd(newPeriodEnd);
+                    subscription.setStatus("ACTIVE");
+
+                    return subscriptionRepository.save(subscription);
+                });
+    }
+
+    /**
+     * Trouve un abonnement par son identifiant unique.
+     *
+     * @param subscriptionId L'identifiant unique de l'abonnement
+     * @return L'abonnement si trouvé
+     */
+    @Transactional(readOnly = true)
+    public Optional<Subscription> findBySubscriptionId(String subscriptionId) {
+        return subscriptionRepository.findBySubscriptionId(subscriptionId);
+    }
+
+    /**
+     * Trouve tous les abonnements pour un client donné.
+     *
+     * @param customer Le client
+     * @return La liste des abonnements
+     */
+    @Transactional(readOnly = true)
+    public List<Subscription> findByCustomer(Customer customer) {
+        return subscriptionRepository.findByCustomer(customer);
+    }
+
+    /**
+     * Trouve tous les abonnements pour un identifiant client donné.
+     *
+     * @param customerId L'ID du client
+     * @return La liste des abonnements
+     */
+    @Transactional(readOnly = true)
+    public List<Subscription> findByCustomerId(Long customerId) {
+        return subscriptionRepository.findByCustomerId(customerId);
+    }
+
+    /**
+     * Trouve les abonnements par statut avec pagination.
+     *
+     * @param status Le statut à rechercher
+     * @param pageable Les informations de pagination
+     * @return Une page d'abonnements avec le statut spécifié
+     */
+    @Transactional(readOnly = true)
+    public Page<Subscription> findByStatus(String status, Pageable pageable) {
+        return subscriptionRepository.findAll(pageable);
+    }
+
+    /**
+     * Trouve les abonnements actifs qui doivent être renouvelés bientôt.
+     *
+     * @param daysInFuture Nombre de jours dans le futur à vérifier
+     * @return La liste des abonnements à renouveler
+     */
+    @Transactional(readOnly = true)
+    public List<Subscription> findSubscriptionsToRenewSoon(int daysInFuture) {
+        Instant futureDate = Instant.now().plus(daysInFuture, ChronoUnit.DAYS);
+        return subscriptionRepository.findActiveSubscriptionsToRenewBefore(futureDate);
+    }
+
+    /**
+     * Trouve les abonnements qui se terminent à la fin de la période en cours.
+     *
+     * @return La liste des abonnements à terminer
+     */
+    @Transactional(readOnly = true)
+    public List<Subscription> findSubscriptionsToCancel() {
+        return subscriptionRepository.findByCancelAtPeriodEndIsTrue();
+    }
+
+    /**
+     * Compte le nombre d'abonnements actifs par plan.
+     *
+     * @param planId L'ID du plan
+     * @return Le nombre d'abonnements actifs
+     */
+    @Transactional(readOnly = true)
+    public Long countActiveSubscriptionsByPlanId(Long planId) {
+        return subscriptionRepository.countActiveSubscriptionsByPlanId(planId);
+    }
+}

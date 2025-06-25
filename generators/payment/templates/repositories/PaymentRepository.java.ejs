@@ -1,0 +1,78 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Payment;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Spring Data JPA repository pour l'entité Payment.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@Repository
+public interface PaymentRepository extends JpaRepository<Payment, Long> {
+
+    /**
+     * Trouve un paiement par son ID unique.
+     *
+     * @param paymentId l'ID du paiement
+     * @return le paiement (optionnel)
+     */
+    Optional<Payment> findByPaymentId(String paymentId);
+
+    /**
+     * Trouve un paiement par sa référence de transaction provider.
+     *
+     * @param providerTransactionId l'ID de transaction du provider
+     * @return le paiement (optionnel)
+     */
+    Optional<Payment> findByProviderTransactionId(String providerTransactionId);
+
+    /**
+     * Trouve tous les paiements d'un client.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des paiements
+     */
+    @Query("SELECT p FROM Payment p WHERE p.customer.id = :customerId ORDER BY p.createdDate DESC")
+    List<Payment> findByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve tous les paiements avec un statut spécifique.
+     *
+     * @param status le statut des paiements
+     * @return la liste des paiements
+     */
+    List<Payment> findByStatus(Payment.PaymentStatus status);
+
+    /**
+     * Trouve tous les paiements créés après une certaine date.
+     *
+     * @param date la date de référence
+     * @return la liste des paiements
+     */
+    List<Payment> findByCreatedDateAfter(Instant date);
+
+    /**
+     * Compte le nombre de paiements pour un client.
+     *
+     * @param customerId l'ID du client
+     * @return le nombre de paiements
+     */
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.customer.id = :customerId")
+    Long countByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve tous les paiements d'une méthode de paiement.
+     *
+     * @param paymentMethodId l'ID de la méthode de paiement
+     * @return la liste des paiements
+     */
+    @Query("SELECT p FROM Payment p WHERE p.paymentMethod.id = :paymentMethodId ORDER BY p.createdDate DESC")
+    List<Payment> findByPaymentMethodId(@Param("paymentMethodId") Long paymentMethodId);
+}

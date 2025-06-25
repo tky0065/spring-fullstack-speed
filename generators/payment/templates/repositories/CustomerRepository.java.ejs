@@ -1,0 +1,81 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Customer;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.List;
+
+/**
+ * Spring Data JPA repository pour l'entité Customer.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@Repository
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
+
+    /**
+     * Trouve un client par son email.
+     *
+     * @param email l'email du client
+     * @return le client (optionnel)
+     */
+    Optional<Customer> findByEmail(String email);
+
+    /**
+     * Trouve un client par son ID externe.
+     *
+     * @param externalId l'ID externe du client
+     * @return le client (optionnel)
+     */
+    Optional<Customer> findByExternalId(String externalId);
+
+    <% if (providers.includes('stripe')) { %>
+    /**
+     * Trouve un client par son ID Stripe.
+     *
+     * @param stripeCustomerId l'ID client Stripe
+     * @return le client (optionnel)
+     */
+    Optional<Customer> findByStripeCustomerId(String stripeCustomerId);
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    /**
+     * Trouve un client par son ID PayPal.
+     *
+     * @param paypalCustomerId l'ID client PayPal
+     * @return le client (optionnel)
+     */
+    Optional<Customer> findByPaypalCustomerId(String paypalCustomerId);
+    <% } %>
+
+    /**
+     * Recherche des clients par nom ou email.
+     *
+     * @param searchTerm le terme de recherche
+     * @return la liste des clients correspondants
+     */
+    @Query("SELECT c FROM Customer c WHERE LOWER(c.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(c.email) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    List<Customer> searchByNameOrEmail(@Param("searchTerm") String searchTerm);
+
+    /**
+     * Trouve les clients ayant effectué au moins un paiement.
+     *
+     * @return la liste des clients
+     */
+    @Query("SELECT DISTINCT c FROM Customer c JOIN c.payments p")
+    List<Customer> findCustomersWithPayments();
+
+    <% if (subscription) { %>
+    /**
+     * Trouve les clients ayant au moins un abonnement actif.
+     *
+     * @return la liste des clients
+     */
+    @Query("SELECT DISTINCT c FROM Customer c JOIN c.subscriptions s WHERE s.status = 'ACTIVE'")
+    List<Customer> findCustomersWithActiveSubscriptions();
+    <% } %>
+}

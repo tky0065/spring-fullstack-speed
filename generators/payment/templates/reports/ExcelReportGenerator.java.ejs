@@ -1,0 +1,272 @@
+package <%= packageName %>.service.reports.generators;
+
+import <%= packageName %>.dto.reports.ReportDTO;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utilitaire pour générer des rapports au format Excel.
+ */
+@Component
+public class ExcelReportGenerator {
+
+    private final Logger log = LoggerFactory.getLogger(ExcelReportGenerator.class);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /**
+     * Génère un rapport Excel à partir des données fournies.
+     *
+     * @param reportDTO le DTO contenant les données du rapport
+     * @return les données binaires du fichier Excel
+     */
+    public byte[] generateReport(ReportDTO reportDTO) {
+        log.debug("Génération d'un rapport Excel pour : {}", reportDTO.getName());
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            // Création des styles
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dateStyle = createDateStyle(workbook);
+            CellStyle numberStyle = createNumberStyle(workbook);
+            CellStyle totalStyle = createTotalStyle(workbook);
+
+            // Création de la feuille principale
+            Sheet sheet = workbook.createSheet("Rapport");
+
+            // Configuration des largeurs de colonnes
+            sheet.setColumnWidth(0, 5000);
+            sheet.setColumnWidth(1, 8000);
+            sheet.setColumnWidth(2, 5000);
+            sheet.setColumnWidth(3, 5000);
+
+            // En-tête du rapport
+            createReportHeader(sheet, reportDTO, headerStyle);
+
+            // Contenu du rapport (à adapter selon le type de rapport)
+            int rowNum = 5; // Commencer après l'en-tête
+
+            // Exemple : données à adapter selon le type de rapport
+            populateReportData(sheet, rowNum, reportDTO, dateStyle, numberStyle, totalStyle);
+
+            // Export en bytes
+            return workbookToByteArray(workbook);
+        } catch (IOException e) {
+            log.error("Erreur lors de la génération du rapport Excel", e);
+            throw new RuntimeException("Erreur lors de la génération du rapport Excel", e);
+        }
+    }
+
+    /**
+     * Génère un rapport Excel à partir de données génériques.
+     *
+     * @param title le titre du rapport
+     * @param headers les en-têtes des colonnes
+     * @param data les données du rapport (liste de maps)
+     * @return les données binaires du fichier Excel
+     */
+    public byte[] generateGenericReport(String title, List<String> headers, List<Map<String, Object>> data) {
+        log.debug("Génération d'un rapport Excel générique : {}", title);
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            // Création des styles
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dateStyle = createDateStyle(workbook);
+            CellStyle numberStyle = createNumberStyle(workbook);
+
+            // Création de la feuille
+            Sheet sheet = workbook.createSheet(title);
+
+            // Ajuster la largeur des colonnes
+            for (int i = 0; i < headers.size(); i++) {
+                sheet.setColumnWidth(i, 5000);
+            }
+
+            // Création de l'en-tête
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.size(); i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers.get(i));
+                cell.setCellStyle(headerStyle);
+            }
+
+            // Remplissage des données
+            int rowNum = 1;
+            for (Map<String, Object> rowData : data) {
+                Row row = sheet.createRow(rowNum++);
+                int cellNum = 0;
+
+                for (String header : headers) {
+                    Cell cell = row.createCell(cellNum++);
+                    Object value = rowData.get(header);
+
+                    if (value == null) {
+                        cell.setCellValue("");
+                    } else if (value instanceof Number) {
+                        cell.setCellValue(((Number) value).doubleValue());
+                        cell.setCellStyle(numberStyle);
+                    } else if (value instanceof java.util.Date) {
+                        cell.setCellValue((java.util.Date) value);
+                        cell.setCellStyle(dateStyle);
+                    } else {
+                        cell.setCellValue(value.toString());
+                    }
+                }
+            }
+
+            return workbookToByteArray(workbook);
+        } catch (IOException e) {
+            log.error("Erreur lors de la génération du rapport Excel générique", e);
+            throw new RuntimeException("Erreur lors de la génération du rapport Excel générique", e);
+        }
+    }
+
+    // Méthodes privées pour la création de styles et la manipulation du classeur Excel
+
+    private CellStyle createHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        font.setColor(IndexedColors.WHITE.getIndex());
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
+    private CellStyle createDateStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("dd/mm/yyyy"));
+        return style;
+    }
+
+    private CellStyle createNumberStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0.00"));
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        return style;
+    }
+
+    private CellStyle createTotalStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        DataFormat format = workbook.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0.00"));
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setBorderTop(BorderStyle.THIN);
+        return style;
+    }
+
+    private void createReportHeader(Sheet sheet, ReportDTO reportDTO, CellStyle headerStyle) {
+        // Titre du rapport
+        Row titleRow = sheet.createRow(0);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue(reportDTO.getName());
+        CellStyle titleStyle = sheet.getWorkbook().createCellStyle();
+        Font titleFont = sheet.getWorkbook().createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 14);
+        titleStyle.setFont(titleFont);
+        titleCell.setCellStyle(titleStyle);
+
+        // Description
+        Row descRow = sheet.createRow(1);
+        Cell descCell = descRow.createCell(0);
+        descCell.setCellValue(reportDTO.getDescription());
+
+        // Période
+        Row periodRow = sheet.createRow(2);
+        Cell periodLabelCell = periodRow.createCell(0);
+        periodLabelCell.setCellValue("Période:");
+        Cell periodValueCell = periodRow.createCell(1);
+        String period = reportDTO.getStartDate().format(DATE_FORMATTER) + " - " + reportDTO.getEndDate().format(DATE_FORMATTER);
+        periodValueCell.setCellValue(period);
+
+        // Ligne vide
+        sheet.createRow(3);
+
+        // En-têtes du tableau de données (à adapter selon le type de rapport)
+        Row headerRow = sheet.createRow(4);
+        String[] headers = {"Date", "Description", "Montant", "Status"};
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+    }
+
+    private void populateReportData(Sheet sheet, int startRow, ReportDTO reportDTO, CellStyle dateStyle, CellStyle numberStyle, CellStyle totalStyle) {
+        // À implémenter selon le type de rapport et les données disponibles
+        // Exemple de données factices pour illustration
+        String[][] data = {
+                {"01/01/2025", "Paiement client A", "1250.00", "COMPLÉTÉ"},
+                {"05/01/2025", "Paiement client B", "780.50", "COMPLÉTÉ"},
+                {"10/01/2025", "Paiement client C", "2300.75", "COMPLÉTÉ"},
+                {"15/01/2025", "Paiement client D", "550.00", "ANNULÉ"},
+                {"20/01/2025", "Paiement client E", "1800.25", "COMPLÉTÉ"}
+        };
+
+        int rowNum = startRow;
+        double total = 0;
+
+        for (String[] rowData : data) {
+            Row row = sheet.createRow(rowNum++);
+
+            // Date
+            Cell dateCell = row.createCell(0);
+            dateCell.setCellValue(rowData[0]);
+            dateCell.setCellStyle(dateStyle);
+
+            // Description
+            Cell descCell = row.createCell(1);
+            descCell.setCellValue(rowData[1]);
+
+            // Montant
+            Cell amountCell = row.createCell(2);
+            double amount = Double.parseDouble(rowData[2]);
+            amountCell.setCellValue(amount);
+            amountCell.setCellStyle(numberStyle);
+
+            // Ne compter que les paiements complétés dans le total
+            if ("COMPLÉTÉ".equals(rowData[3])) {
+                total += amount;
+            }
+
+            // Status
+            Cell statusCell = row.createCell(3);
+            statusCell.setCellValue(rowData[3]);
+        }
+
+        // Ligne de total
+        Row totalRow = sheet.createRow(rowNum + 1);
+        Cell totalLabelCell = totalRow.createCell(1);
+        totalLabelCell.setCellValue("Total:");
+        Cell totalValueCell = totalRow.createCell(2);
+        totalValueCell.setCellValue(total);
+        totalValueCell.setCellStyle(totalStyle);
+    }
+
+    private byte[] workbookToByteArray(Workbook workbook) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (bos) {
+            workbook.write(bos);
+        }
+        return bos.toByteArray();
+    }
+}

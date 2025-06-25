@@ -1,0 +1,52 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Size;
+import java.io.Serializable;
+import java.math.BigDecimal;
+
+/**
+ * DTO pour les requêtes de paiement.
+ * Généré par Spring-Fullstack-Speed.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PaymentRequestDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    @NotNull(message = "Le montant est obligatoire")
+    @DecimalMin(value = "0.01", message = "Le montant doit être supérieur à 0")
+    private BigDecimal amount;
+
+    @Size(min = 3, max = 3, message = "La devise doit être un code de 3 lettres (ex: EUR, USD)")
+    private String currency;
+
+    @Size(max = 255, message = "La description ne peut pas dépasser 255 caractères")
+    private String description;
+
+    @NotNull(message = "L'ID du client est obligatoire")
+    private Long customerId;
+
+    private Long paymentMethodId;
+
+    private String returnUrl;
+
+    private Boolean savePaymentMethod;
+
+    private String metadata;
+
+    <% if (subscription) { %>
+    private Long planId;
+
+    private String interval;  // 'month', 'year', etc.
+    <% } %>
+}

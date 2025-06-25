@@ -1,0 +1,136 @@
+package <%= packageName %>.web.rest;
+
+import <%= packageName %>.domain.Transaction;
+import <%= packageName %>.service.TransactionService;
+import <%= packageName %>.web.rest.errors.BadRequestAlertException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import javax.validation.Valid;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST controller pour gérer les {@link Transaction}.
+ */
+@RestController
+@RequestMapping("/api")
+public class TransactionController {
+
+    private final Logger log = LoggerFactory.getLogger(TransactionController.class);
+
+    private static final String ENTITY_NAME = "transaction";
+
+    @Value("${spring.application.name}")
+    private String applicationName;
+
+    private final TransactionService transactionService;
+
+    public TransactionController(TransactionService transactionService) {
+        this.transactionService = transactionService;
+    }
+
+    /**
+     * {@code POST  /transactions} : Crée une nouvelle transaction.
+     *
+     * @param transaction la transaction à créer.
+     * @return le {@link ResponseEntity} avec status {@code 201 (Created)} et la nouvelle transaction dans le body,
+     * ou avec status {@code 400 (Bad Request)} si la transaction a déjà un ID.
+     * @throws URISyntaxException si l'URI de location syntax est incorrecte.
+     */
+    @PostMapping("/transactions")
+    public ResponseEntity<Transaction> createTransaction(@Valid @RequestBody Transaction transaction) throws URISyntaxException {
+        log.debug("REST request to save Transaction : {}", transaction);
+        if (transaction.getId() != null) {
+            throw new BadRequestAlertException("Une nouvelle transaction ne peut pas déjà avoir un ID", ENTITY_NAME, "idexists");
+        }
+        Transaction result = transactionService.saveTransaction(transaction);
+        return ResponseEntity
+            .created(new URI("/api/transactions/" + result.getId()))
+            .body(result);
+    }
+
+    /**
+     * {@code GET  /transactions} : récupère toutes les transactions.
+     *
+     * @param pageable les informations de pagination.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des transactions dans le body.
+     */
+    @GetMapping("/transactions")
+    public ResponseEntity<List<Transaction>> getAllTransactions(Pageable pageable) {
+        log.debug("REST request to get a page of Transactions");
+        Page<Transaction> page = transactionService.findByStatus(null, pageable);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Total-Count", Long.toString(page.getTotalElements()));
+        return ResponseEntity.ok().headers(headers).body(page.getContent());
+    }
+
+    /**
+     * {@code GET  /transactions/:id} : récupère la transaction avec l'id "id".
+     *
+     * @param id l'id de la transaction à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la transaction dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/transactions/{id}")
+    public ResponseEntity<Transaction> getTransaction(@PathVariable Long id) {
+        log.debug("REST request to get Transaction : {}", id);
+        Optional<Transaction> transaction = transactionService.findByTransactionId(id.toString());
+        return transaction.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /transactions/by-transaction-id/:transactionId} : récupère la transaction avec le transactionId spécifié.
+     *
+     * @param transactionId l'id unique de la transaction à récupérer.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la transaction dans le body,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/transactions/by-transaction-id/{transactionId}")
+    public ResponseEntity<Transaction> getTransactionByTransactionId(@PathVariable String transactionId) {
+        log.debug("REST request to get Transaction by transactionId : {}", transactionId);
+        Optional<Transaction> transaction = transactionService.findByTransactionId(transactionId);
+        return transaction.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * {@code GET  /transactions/customer/:customerId} : récupère les transactions pour un client donné.
+     *
+     * @param customerId l'id du client.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la liste des transactions dans le body.
+     */
+    @GetMapping("/transactions/customer/{customerId}")
+    public ResponseEntity<List<Transaction>> getTransactionsByCustomer(@PathVariable Long customerId) {
+        log.debug("REST request to get Transactions by Customer : {}", customerId);
+        List<Transaction> transactions = transactionService.findByCustomerId(customerId);
+        return ResponseEntity.ok().body(transactions);
+    }
+
+    /**
+     * {@code PUT  /transactions/:id/status} : met à jour le statut d'une transaction existante.
+     *
+     * @param id l'id de la transaction à mettre à jour.
+     * @param status le nouveau statut.
+     * @return le {@link ResponseEntity} avec status {@code 200 (OK)} et la transaction mise à jour,
+     * ou avec status {@code 404 (Not Found)}.
+     */
+    @PutMapping("/transactions/{id}/status")
+    public ResponseEntity<Transaction> updateTransactionStatus(@PathVariable Long id, @RequestParam String status) {
+        log.debug("REST request to update Transaction status : {}, {}", id, status);
+        Optional<Transaction> result = transactionService.updateTransactionStatus(id.toString(), status);
+        return result.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+}

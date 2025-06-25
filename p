@@ -1,5 +1,5 @@
 base toi sur les fichier dans le dossier guidline pour continue les tasks, n'oublie pas de marker les tasks terminer,pour les tests tu deja dans bonn e dossier tu na pas besoin de faire cd
-si tu modifie les fichiers assure toi de la coerrence des types et la repercution dans les autres fichiers .
+si tu modifie les fichiers assure toi de la coerrence des types et la repercution dans les autres fichiers . avant de commencer les tasks, je veux que tu fasses un `tree -a generators` pour voir les fichiers qui existent avant de commencer
 
 
 
@@ -23,3 +23,39 @@ Je vais continuer l'implémentation de la commande sfs generate pour le Module 9
 
 Je veux ameliorer tous les code (templet java) fait un todo list pour faire les mise a jour:
   # Utilisation de lombok pour réduire le boilerplate code
+
+
+
+
+
+
+### Module 10.3 : Qualité du Code (pas important pour le moment)
+- [ ] Configurer SonarQube integration
+- [ ] Implémenter les règles de qualité
+- [ ] Créer les pre-commit hooks
+- [ ] Configurer les linters
+- [ ] Implémenter dependency scanning
+- [ ] Créer les rapports de qualité
+- [ ] Configurer security scanning
+- [ ] Implémenter performance monitoring
+- [ ] Créer les code reviews automatiques
+- [ ] Configurer les métriques
+- [ ] Automatiser la génération de rapports
+- [ ] Tester la pipeline qualité
+
+
+
+
+### Module 9.2 : Gestion des Templates (NE PAS FAIRE POUR LE MOMENT)
+- [ ] Créer le système de versioning templates
+- [ ] Implémenter le téléchargement de templates
+- [ ] Créer le cache des templates
+- [ ] Implémenter la mise à jour automatique
+- [ ] Créer le registry des templates
+- [ ] Implémenter les templates custom
+- [ ] Configurer les sources de templates
+- [ ] Créer la validation des templates
+- [ ] Implémenter le rollback de templates
+- [ ] Configurer la compression
+- [ ] Créer les tests de templates
+- [ ] Documenter le système de templates

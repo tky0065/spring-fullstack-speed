@@ -1,0 +1,138 @@
+package <%= packageName %>.service;
+
+import <%= packageName %>.domain.Transaction;
+import <%= packageName %>.domain.Customer;
+import <%= packageName %>.repository.TransactionRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Service pour gérer les transactions de paiement.
+ */
+@Service
+@Transactional
+public class TransactionService {
+
+    private final TransactionRepository transactionRepository;
+
+    public TransactionService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
+    }
+
+    /**
+     * Enregistre une nouvelle transaction.
+     *
+     * @param transaction La transaction à enregistrer
+     * @return La transaction enregistrée
+     */
+    @Transactional
+    public Transaction saveTransaction(Transaction transaction) {
+        return transactionRepository.save(transaction);
+    }
+
+    /**
+     * Met à jour le statut d'une transaction.
+     *
+     * @param transactionId L'ID de la transaction
+     * @param newStatus Le nouveau statut
+     * @return La transaction mise à jour
+     */
+    @Transactional
+    public Optional<Transaction> updateTransactionStatus(String transactionId, String newStatus) {
+        return transactionRepository.findByTransactionId(transactionId)
+                .map(transaction -> {
+                    transaction.setStatus(newStatus);
+                    if ("COMPLETED".equals(newStatus)) {
+                        transaction.setProcessedDate(Instant.now());
+                    }
+                    return transactionRepository.save(transaction);
+                });
+    }
+
+    /**
+     * Recherche une transaction par son identifiant unique.
+     *
+     * @param transactionId L'identifiant unique de la transaction
+     * @return La transaction si trouvée
+     */
+    @Transactional(readOnly = true)
+    public Optional<Transaction> findByTransactionId(String transactionId) {
+        return transactionRepository.findByTransactionId(transactionId);
+    }
+
+    /**
+     * Recherche toutes les transactions pour un client donné.
+     *
+     * @param customer Le client
+     * @return La liste des transactions
+     */
+    @Transactional(readOnly = true)
+    public List<Transaction> findByCustomer(Customer customer) {
+        return transactionRepository.findByCustomer(customer);
+    }
+
+    /**
+     * Recherche toutes les transactions pour un identifiant client donné.
+     *
+     * @param customerId L'ID du client
+     * @return La liste des transactions
+     */
+    @Transactional(readOnly = true)
+    public List<Transaction> findByCustomerId(Long customerId) {
+        return transactionRepository.findByCustomerId(customerId);
+    }
+
+    /**
+     * Recherche les transactions par statut avec pagination.
+     *
+     * @param status Le statut à rechercher
+     * @param pageable Les informations de pagination
+     * @return Une page de transactions avec le statut spécifié
+     */
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByStatus(String status, Pageable pageable) {
+        return transactionRepository.findAll(pageable);
+    }
+
+    /**
+     * Recherche les transactions créées entre deux dates.
+     *
+     * @param startDate La date de début
+     * @param endDate La date de fin
+     * @return La liste des transactions créées dans l'intervalle
+     */
+    @Transactional(readOnly = true)
+    public List<Transaction> findByCreatedDateBetween(Instant startDate, Instant endDate) {
+        return transactionRepository.findByCreatedDateBetween(startDate, endDate);
+    }
+
+    /**
+     * Calcule le montant total des transactions pour un client donné.
+     *
+     * @param customerId L'ID du client
+     * @return Le montant total des transactions
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal calculateTotalTransactionAmount(Long customerId) {
+        return transactionRepository.sumCompletedTransactionAmountByCustomerId(customerId);
+    }
+
+    /**
+     * Recherche une transaction par sa référence provider.
+     *
+     * @param providerReference La référence du provider
+     * @return La transaction si trouvée
+     */
+    @Transactional(readOnly = true)
+    public Optional<Transaction> findByProviderReference(String providerReference) {
+        return transactionRepository.findByProviderReference(providerReference);
+    }
+}

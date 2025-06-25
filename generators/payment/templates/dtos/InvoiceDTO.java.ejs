@@ -1,0 +1,80 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.Instant;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter une facture dans le système de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"metadata"})
+public class InvoiceDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    private String invoiceId;
+
+    private String customerId;
+
+    private String subscriptionId;
+
+    @NotNull
+    private String status; // draft, open, paid, uncollectible, void
+
+    @NotNull
+    private BigDecimal amount;
+
+    private BigDecimal amountPaid;
+
+    private BigDecimal amountDue;
+
+    private String currency;
+
+    private Instant dueDate;
+
+    private Instant periodStart;
+
+    private Instant periodEnd;
+
+    private String invoicePdf;
+
+    private Boolean paid;
+
+    private Instant paidAt;
+
+    private String paymentMethodId;
+
+    private Long paymentId;
+
+    private String receiptNumber;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    <% if (providers.includes('stripe')) { %>
+    private String stripeInvoiceId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalInvoiceId;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private String braintreeInvoiceId;
+    <% } %>
+}

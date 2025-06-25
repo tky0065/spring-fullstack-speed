@@ -1,0 +1,106 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.PaymentEvent;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité PaymentEvent.
+ */
+@Repository
+public interface PaymentEventRepository extends JpaRepository<PaymentEvent, Long> {
+
+    /**
+     * Trouve un événement de paiement par son identifiant unique.
+     *
+     * @param eventId l'identifiant unique de l'événement
+     * @return l'événement si trouvé
+     */
+    Optional<PaymentEvent> findByEventId(String eventId);
+
+    /**
+     * Trouve les événements par provider.
+     *
+     * @param provider le provider (stripe, paypal, etc.)
+     * @return la liste des événements pour ce provider
+     */
+    List<PaymentEvent> findByProvider(String provider);
+
+    /**
+     * Trouve les événements par type.
+     *
+     * @param eventType le type d'événement
+     * @return la liste des événements de ce type
+     */
+    List<PaymentEvent> findByEventType(String eventType);
+
+    /**
+     * Trouve les événements par provider et type.
+     *
+     * @param provider le provider
+     * @param eventType le type d'événement
+     * @return la liste des événements correspondants
+     */
+    List<PaymentEvent> findByProviderAndEventType(String provider, String eventType);
+
+    /**
+     * Trouve les événements par statut.
+     *
+     * @param status le statut (RECEIVED, PROCESSED, FAILED)
+     * @return la liste des événements avec ce statut
+     */
+    List<PaymentEvent> findByStatus(String status);
+
+    /**
+     * Trouve les événements créés entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des événements créés dans l'intervalle
+     */
+    List<PaymentEvent> findByCreatedDateBetween(Instant startDate, Instant endDate);
+
+    /**
+     * Trouve les événements traités entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des événements traités dans l'intervalle
+     */
+    List<PaymentEvent> findByProcessedDateBetween(Instant startDate, Instant endDate);
+
+    /**
+     * Trouve les derniers événements reçus, ordonnés par date de création décroissante.
+     *
+     * @param limit le nombre maximum d'événements à retourner
+     * @return la liste des derniers événements
+     */
+    List<PaymentEvent> findTop10ByOrderByCreatedDateDesc();
+
+    /**
+     * Trouve les événements non traités, ordonnés par date de création.
+     *
+     * @return la liste des événements non traités
+     */
+    List<PaymentEvent> findByStatusNotAndProcessedDateIsNullOrderByCreatedDateAsc(String status);
+
+    /**
+     * Trouve les événements avec erreur.
+     *
+     * @return la liste des événements en erreur
+     */
+    List<PaymentEvent> findByStatusAndErrorMessageIsNotNull(String status);
+
+    /**
+     * Trouve un événement par sa référence externe chez le provider.
+     *
+     * @param providerEventId l'ID de l'événement chez le provider
+     * @return l'événement si trouvé
+     */
+    Optional<PaymentEvent> findByProviderEventId(String providerEventId);
+}

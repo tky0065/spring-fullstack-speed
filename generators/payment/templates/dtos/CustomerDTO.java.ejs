@@ -1,0 +1,73 @@
+package <%= packageName %>.service.dto;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.Serializable;
+import java.time.Instant;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+
+/**
+ * DTO pour représenter un client dans le système de paiement.
+ */
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"metadata"})
+public class CustomerDTO implements Serializable {
+
+    private Long id;
+
+    @NotNull
+    @Size(max = 255)
+    private String name;
+
+    @Email
+    @NotNull
+    private String email;
+
+    private String phone;
+
+    private String description;
+
+    private String externalCustomerId;
+
+    private String defaultPaymentMethodId;
+
+    private Boolean active;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    @Size(max = 1000)
+    private String metadata;
+
+    private String billingAddressLine1;
+
+    private String billingAddressLine2;
+
+    private String billingCity;
+
+    private String billingState;
+
+    private String billingPostalCode;
+
+    private String billingCountry;
+
+    <% if (providers.includes('stripe')) { %>
+    private String stripeCustomerId;
+    <% } %>
+
+    <% if (providers.includes('paypal')) { %>
+    private String paypalCustomerId;
+    <% } %>
+
+    <% if (providers.includes('braintree')) { %>
+    private String braintreeCustomerId;
+    <% } %>
+}

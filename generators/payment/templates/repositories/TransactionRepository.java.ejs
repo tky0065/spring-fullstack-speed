@@ -1,0 +1,96 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.domain.Transaction;
+import <%= packageName %>.domain.Customer;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository Spring Data JPA pour l'entité Transaction.
+ */
+@Repository
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    /**
+     * Trouve une transaction par son identifiant unique.
+     *
+     * @param transactionId l'identifiant unique de la transaction
+     * @return la transaction si trouvée
+     */
+    Optional<Transaction> findByTransactionId(String transactionId);
+
+    /**
+     * Trouve toutes les transactions pour un client donné.
+     *
+     * @param customer le client
+     * @return la liste des transactions
+     */
+    List<Transaction> findByCustomer(Customer customer);
+
+    /**
+     * Trouve toutes les transactions pour un identifiant client donné.
+     *
+     * @param customerId l'ID du client
+     * @return la liste des transactions
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.customer.id = :customerId")
+    List<Transaction> findByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve les transactions par statut.
+     *
+     * @param status le statut à rechercher
+     * @return la liste des transactions avec le statut spécifié
+     */
+    List<Transaction> findByStatus(String status);
+
+    /**
+     * Trouve les transactions créées entre deux dates.
+     *
+     * @param startDate la date de début
+     * @param endDate la date de fin
+     * @return la liste des transactions créées dans l'intervalle
+     */
+    List<Transaction> findByCreatedDateBetween(Instant startDate, Instant endDate);
+
+    /**
+     * Trouve les transactions pour un mode de paiement spécifique.
+     *
+     * @param paymentMethodType le type de méthode de paiement
+     * @return la liste des transactions
+     */
+    List<Transaction> findByPaymentMethodType(String paymentMethodType);
+
+    /**
+     * Calcule le montant total des transactions pour un client donné.
+     *
+     * @param customerId l'ID du client
+     * @return le montant total des transactions
+     */
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.customer.id = :customerId AND t.status = 'COMPLETED'")
+    BigDecimal sumCompletedTransactionAmountByCustomerId(@Param("customerId") Long customerId);
+
+    /**
+     * Trouve les transactions avec un montant supérieur à la valeur donnée.
+     *
+     * @param amount le montant minimum
+     * @return la liste des transactions
+     */
+    List<Transaction> findByAmountGreaterThan(BigDecimal amount);
+
+    /**
+     * Trouve les transactions avec une référence de provider spécifique.
+     *
+     * @param providerReference la référence du provider
+     * @return une transaction optionnelle si trouvée
+     */
+    Optional<Transaction> findByProviderReference(String providerReference);
+}

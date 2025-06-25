@@ -45,6 +45,7 @@ Le tableau suivant présente tous les générateurs disponibles et leur utilisat
 | Add | Ajoute des fonctionnalités à un projet existant | `sfs add` |
 | Search | Ajoute des fonctionnalités de recherche | `sfs search` |
 | Notification | Ajoute un système de notifications | `sfs notification` |
+| Payment | Ajoute un système de paiement complet | `sfs payment` |
 | Serve | Lance l'application en mode développement | `sfs serve` |
 | Doctor | Diagnostique les problèmes potentiels | `sfs doctor` |
 | Upgrade | Met à niveau le projet vers les dernières versions | `sfs upgrade` |
@@ -133,7 +134,7 @@ Le générateur CRUD (`sfs crud`) crée des opérations CRUD pour une entité ex
 | `--pageable` | Ajouter le support de la pagination | `false` | `--pageable=true` |
 | `--dto` | Utiliser des DTOs | `true` | `--dto=true` |
 | `--api-prefix` | Préfixe des points API | `/api` | `--api-prefix=/v1/api` |
-| `--validation` | Ajouter la validation des données | `true` | `--validation=true` |
+| `--validation` | Ajouter la validation des donn��es | `true` | `--validation=true` |
 | `--swagger` | Ajouter des annotations Swagger | `false` | `--swagger=true` |
 
 ### Exemples
@@ -146,7 +147,7 @@ sfs crud --entity=Product --repository=true --service=true --controller=true --r
 
 ## Générateur de DTOs
 
-Le générateur de DTOs (`sfs dtos`) crée des objets de transfert de données pour une entité.
+Le gén��rateur de DTOs (`sfs dtos`) crée des objets de transfert de données pour une entité.
 
 ### Options spécifiques
 
@@ -316,6 +317,64 @@ La commande `sfs upgrade` met à niveau votre projet vers les dernières version
 ```bash
 sfs upgrade --spring-boot=3.0.0 --frontend-deps=true --backend-deps=true --dry-run=true
 ```
+
+## Générateur de paiement
+
+Le générateur de paiement (`sfs payment`) ajoute un système complet de paiement à votre application, avec support pour différentes passerelles de paiement (Stripe, PayPal, etc.) et fonctionnalités avancées comme les abonnements.
+
+### Options spécifiques
+
+| Option | Description | Valeur par défaut | Exemple |
+|--------|-------------|-------------------|---------|
+| `--provider` | Providers de paiement à intégrer | `stripe` | `--provider=stripe,paypal` |
+| `--subscription` | Intégrer le support des abonnements | `false` | `--subscription=true` |
+| `--webhook` | Configurer les webhooks pour les événements | `true` | `--webhook=false` |
+| `--invoicing` | Ajouter le système de facturation | `false` | `--invoicing=true` |
+| `--taxes` | Configurer la gestion des taxes | `false` | `--taxes=true` |
+| `--refunds` | Implémenter la gestion des remboursements | `false` | `--refunds=true` |
+| `--reporting` | Générer des rapports financiers | `false` | `--reporting=true` |
+| `--package-name` | Nom du package pour le système de paiement | `[base].payment` | `--package-name=com.example.payment` |
+| `--skip-install` | Ignorer l'installation des dépendances | `false` | `--skip-install=true` |
+| `--lombok` | Utiliser Lombok pour réduire le boilerplate code | `true` | `--lombok=false` |
+
+### Exemples
+
+Ajouter un système de paiement complet avec Stripe et PayPal, incluant les abonnements et la facturation :
+
+```bash
+sfs payment --provider=stripe,paypal --subscription=true --webhook=true --invoicing=true --taxes=true
+```
+
+Ajouter uniquement l'intégration Stripe basique :
+
+```bash
+sfs payment --provider=stripe --subscription=false --invoicing=false
+```
+
+### Classes générées avec Lombok
+
+Le générateur de paiement crée les classes DTO suivantes, toutes utilisant Lombok pour réduire le code boilerplate :
+
+- **PaymentDTO** : Représente une transaction de paiement
+- **TransactionDTO** : Représente une transaction financière détaillée
+- **PaymentMethodDTO** : Représente une méthode de paiement (carte, virement, etc.)
+- **CustomerDTO** : Représente un client dans le système de paiement
+- **PaymentRequestDTO** : Pour effectuer des demandes de paiement
+- **PaymentResponseDTO** : Pour les réponses aux demandes de paiement
+
+Avec l'option `--subscription=true` :
+- **SubscriptionDTO** : Représente un abonnement
+- **PlanDTO** : Représente un plan d'abonnement
+
+Avec l'option `--invoicing=true` :
+- **InvoiceDTO** : Représente une facture
+- **InvoiceItemDTO** : Représente un élément de facture
+
+Les annotations Lombok utilisées incluent :
+- `@Data` : Génère les getters, setters, equals, hashCode et toString
+- `@NoArgsConstructor` : Génère un constructeur sans arguments
+- `@EqualsAndHashCode` : Personnalise la génération des méthodes equals et hashCode
+- `@ToString` : Personnalise la génération de la méthode toString
 
 ## Mode interactif vs Mode non-interactif
 
