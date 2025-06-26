@@ -16,6 +16,11 @@ jwt.expirationMs=${JWT_EXPIRATION_MS:86400000}
 jwt.refreshExpirationMs=${JWT_REFRESH_EXPIRATION_MS:604800000}
 <% } %>
 
+# Configuration JWT
+jwt.secret=your_jwt_secret_key***********************************
+jwt.expirationMs=3600000
+jwt.refreshExpirationMs=604800000
+
 # Configuration serveur pour résoudre le problème de port déjà utilisé
 server.port=${SERVER_PORT:8080}
 server.error.whitelabel.enabled=false

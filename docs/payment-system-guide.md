@@ -1,12 +1,15 @@
-# Guide du Système de Paiement (version 1.0.2)
+# Guide du Système de Paiement (version 1.0.3
+)
 
 ## Introduction
 
 Le système de paiement de Spring-Fullstack-Speed fournit une solution complète pour intégrer différentes passerelles de paiement dans votre application. Cette documentation explique comment utiliser les fonctionnalités du système de paiement, y compris la gestion des remboursements et la génération de rapports financiers.
 
-## Nouveautés de la version 1.0.2
+## Nouveautés de la version 1.0.3
 
-La version 1.0.2 apporte plusieurs améliorations importantes au système de paiement :
+
+La version 1.0.3
+ apporte plusieurs améliorations importantes au système de paiement :
 
 - **Sécurité renforcée** : Support complet pour l'authentification 3D Secure 2.0 et conformité PSD2
 - **Support international** : Prise en charge de plus de 135 devises et méthodes de paiement locales
@@ -33,8 +36,10 @@ Le système prend en charge les fournisseurs suivants :
 - **Stripe** : Intégration complète avec l'API Stripe pour les paiements par carte et autres méthodes
 - **PayPal** : Support des paiements via PayPal et PayPal Express Checkout
 - **Braintree** : Support pour des fonctionnalités de paiement avancées
-- **Adyen** (nouveau en 1.0.2) : Intégration pour les paiements internationaux
-- **Mollie** (nouveau en 1.0.2) : Solution de paiement européenne populaire
+- **Adyen** (nouveau en 1.0.3
+) : Intégration pour les paiements internationaux
+- **Mollie** (nouveau en 1.0.3
+) : Solution de paiement européenne populaire
 
 ## Fonctionnalités
 
@@ -46,8 +51,10 @@ Le système gère plusieurs types de paiements :
 - Paiements récurrents (abonnements)
 - Paiements différés
 - Paiements par lots
-- Paiements mobiles (Apple Pay, Google Pay) - *nouveau en 1.0.2*
-- Paiements par QR code - *nouveau en 1.0.2*
+- Paiements mobiles (Apple Pay, Google Pay) - *nouveau en 1.0.3
+*
+- Paiements par QR code - *nouveau en 1.0.3
+*
 
 ```java
 // Exemple de création d'un paiement
@@ -68,8 +75,10 @@ Le système permet de générer et gérer des factures liées aux paiements :
 - Envoi automatique par email
 - Suivi des factures (payées, en attente, annulées)
 - Historique des factures
-- Factures multilingues - *nouveau en 1.0.2*
-- Modèles de factures personnalisables - *nouveau en 1.0.2*
+- Factures multilingues - *nouveau en 1.0.3
+*
+- Modèles de factures personnalisables - *nouveau en 1.0.3
+*
 
 ```java
 // Exemple de génération d'une facture
@@ -86,8 +95,10 @@ Gestion complète des abonnements pour les paiements récurrents :
 - Notifications de renouvellement
 - Gestion des upgrades/downgrades
 - Annulations et pauses d'abonnements
-- Essais gratuits avec conversion automatique - *nouveau en 1.0.2*
-- Tarification dynamique - *nouveau en 1.0.2*
+- Essais gratuits avec conversion automatique - *nouveau en 1.0.3
+*
+- Tarification dynamique - *nouveau en 1.0.3
+*
 
 ```java
 // Exemple de création d'un abonnement
@@ -108,8 +119,10 @@ Le système offre des fonctionnalités complètes pour les remboursements :
 - Remboursements partiels
 - Justifications des remboursements
 - Suivi des remboursements
-- Remboursements programmés - *nouveau en 1.0.2*
-- Politiques de remboursement configurables - *nouveau en 1.0.2*
+- Remboursements programmés - *nouveau en 1.0.3
+*
+- Politiques de remboursement configurables - *nouveau en 1.0.3
+*
 
 ```java
 // Exemple de remboursement complet
@@ -131,9 +144,12 @@ Le système peut générer plusieurs types de rapports financiers :
 - Rapports de transactions
 - Rapports clients
 - Exports en PDF et Excel
-- Tableaux de bord interactifs - *nouveau en 1.0.2*
-- Prévisions de revenus - *nouveau en 1.0.2*
-- Analyse par segment client - *nouveau en 1.0.2*
+- Tableaux de bord interactifs - *nouveau en 1.0.3
+*
+- Prévisions de revenus - *nouveau en 1.0.3
+*
+- Analyse par segment client - *nouveau en 1.0.3
+*
 
 ```java
 // Exemple de génération d'un rapport de revenus
@@ -152,19 +168,10 @@ reportingService.exportReportToPdf(report, "revenue_report.pdf");
 ### Configuration de base
 
 Pour activer le système de paiement, vous devez ajouter la dépendance suivante à votre projet :
+ 
+```shell
+ sfs payment
 
-```xml
-<!-- Pour Maven -->
-<dependency>
-    <groupId>com.sfs</groupId>
-    <artifactId>sfs-payment</artifactId>
-    <version>1.0.2</version>
-</dependency>
-```
-
-```groovy
-// Pour Gradle
-implementation 'com.sfs:sfs-payment:1.0.2'
 ```
 
 ### Configuration de Stripe

@@ -1,0 +1,130 @@
+# Configuration Spring Boot pour <%= appName %>
+# Généré par Spring-Fullstack-Speed (SFS)
+
+# Configuration de l'application
+spring.application.name=<%= appName %>
+spring.profiles.active=dev
+
+# Configuration serveur
+server.port=8080
+server.error.whitelabel.enabled=false
+server.compression.enabled=true
+server.compression.mimje-types=text/html,text/xml,text/plain,text/css,application/javascript,application/json
+server.compression.min-response-size=1024
+server.servlet.context-path=/
+server.servlet.session.cookie.http-only=true
+server.servlet.session.cookie.secure=true
+
+<% if (database === 'MongoDB') { %>
+# Configuration MongoDB
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=<%= appName %>
+spring.data.mongodb.auto-index-creation=true
+spring.data.mongodb.uuid-representation=standard
+<% } else { %>
+# Configuration Datasource
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.idle-timeout=30000
+spring.datasource.hikari.pool-name=<%= appName %>HikariCP
+spring.datasource.hikari.max-lifetime=2000000
+spring.datasource.hikari.connection-timeout=30000
+<% } %>
+
+<% if (database !== 'MongoDB') { %>
+# Configuration JPA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+<% if (database === 'MySQL') { %>
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+# Optimisations MySQL
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+spring.jpa.properties.hibernate.batch_versioned_data=true
+spring.jpa.properties.hibernate.batch_size=30
+<% } else if (database === 'PostgreSQL') { %>
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+# Optimisations PostgreSQL
+spring.jpa.properties.hibernate.jdbc.batch_size=25
+spring.jpa.properties.hibernate.jdbc.batch_versioned_data=true
+spring.jpa.properties.hibernate.jdbc.order_inserts=true
+spring.jpa.properties.hibernate.jdbc.order_updates=true
+spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false
+spring.jpa.properties.hibernate.default_schema=public
+<% } else if (database === 'H2') { %>
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+<% } %>
+spring.jpa.open-in-view=false
+<% } %>
+
+<% if (additionalFeatures.includes('redis')) { %>
+# Configuration Redis
+spring.redis.host=localhost
+spring.redis.port=6379
+spring.redis.timeout=2000
+spring.cache.type=redis
+spring.cache.redis.time-to-live=3600000
+spring.cache.redis.cache-null-values=false
+<% } %>
+
+<% if (frontendFramework === 'Thymeleaf') { %>
+# Configuration Thymeleaf
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+spring.thymeleaf.mode=HTML
+spring.thymeleaf.encoding=UTF-8
+spring.thymeleaf.cache=false
+<% } else if (frontendFramework === 'JTE') { %>
+# Configuration JTE
+gg.jte.developmentMode=true
+gg.jte.templateLocation=src/main/resources/templates
+<% } %>
+
+# Configuration des messages internationaux
+spring.messages.basename=i18n/messages
+spring.messages.encoding=UTF-8
+spring.messages.cache-duration=3600
+
+<% if (additionalFeatures.includes('openapi')) { %>
+# Configuration OpenAPI/Swagger
+springdoc.api-docs.path=/api-docs
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.enabled=true
+springdoc.swagger-ui.url=/api-docs
+springdoc.swagger-ui.operationsSorter=alpha
+springdoc.swagger-ui.tagsSorter=alpha
+springdoc.swagger-ui.disable-swagger-default-url=true
+springdoc.swagger-ui.display-request-duration=true
+springdoc.packages-to-scan=<%= packageName %>.controller
+springdoc.paths-to-match=/api/**
+springdoc.show-actuator=true
+springdoc.default-produces-media-type=application/json
+<% } %>
+
+<% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+# Configuration JWT
+jwt.secret=${JWT_SECRET:<%= Buffer.from(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)).toString('base64') %>}
+jwt.expirationMs=3600000
+jwt.refreshExpirationMs=604800000
+<% } %>
+
+
+# Configuration JWT
+jwt.secret=your_jwt_secret_key********************************************
+jwt.expirationMs=3600000
+jwt.refreshExpirationMs=604800000
+
+# Configuration logging
+logging.level.root=INFO
+logging.level.<%= packageName %>=DEBUG
+logging.level.org.hibernate.SQL=INFO
+logging.level.org.springframework.web=INFO
+logging.file.name=${LOG_PATH:/tmp}/logs/<%= appName %>.log
+
+# Configurations spécifiques aux profils sont à définir dans
+# application-dev.properties, application-test.properties, et application-prod.properties

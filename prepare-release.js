@@ -8,8 +8,9 @@
  * 2. Vérifie que le code TypeScript compile sans erreurs
  * 3. Nettoie le répertoire dist
  * 4. Recompile le projet
- * 5. Crée un package de test
- * 6. Affiche un résumé des étapes suivantes pour la publication
+ * 5. Met à jour la version dans toute la documentation
+ * 6. Crée un package de test
+ * 7. Affiche un résumé des étapes suivantes pour la publication
  */
 
 import { exec, execSync } from 'child_process';
@@ -19,6 +20,7 @@ import { fileURLToPath } from 'url';
 import { promisify } from 'util';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
+import { VERSION } from './config/version.js';
 
 const execPromise = promisify(exec);
 
@@ -236,7 +238,14 @@ async function main() {
     }
     printSuccess('Projet compilé avec succès');
 
-    // 5. Créer un package de test
+    // 5. Mettre à jour la version dans toute la documentation
+    printStepTitle('Mise à jour de la version dans la documentation');
+    if (!runCommand('npm run update-version-docs')) {
+      printErrorAndExit('La mise à jour de la version dans la documentation a échoué');
+    }
+    printSuccess('Version mise à jour dans la documentation');
+
+    // 6. Créer un package de test
     printStepTitle('Création d\'un package de test');
 
     // Lire package.json pour obtenir les informations du package
@@ -257,10 +266,10 @@ async function main() {
     }
     printSuccess(`Package de test créé : ${packageFile}`);
 
-    // 6. Vérifier le contenu du package
+    // 7. Vérifier le contenu du package
     await checkPackageContent(packageFile);
 
-    // 7. Afficher un résumé et les étapes suivantes
+    // 8. Afficher un résumé et les étapes suivantes
     console.log(`\n${colors.bright}${colors.green}✅ PRÉPARATION TERMINÉE AVEC SUCCÈS !${colors.reset}\n`);
     console.log(`Le package de test a été créé : ${colors.cyan}${packageFile}${colors.reset}`);
 

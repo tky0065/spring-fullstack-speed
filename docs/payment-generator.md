@@ -1,4 +1,4 @@
-# Documentation du générateur de paiement (version 1.0.2)
+# Documentation du générateur de paiement (version 1.0.3)
 
 Ce document décrit en détail le générateur de paiement de Spring-Fullstack-Speed et comment l'utiliser pour ajouter rapidement un système de paiement complet à votre application.
 
@@ -6,7 +6,7 @@ Ce document décrit en détail le générateur de paiement de Spring-Fullstack-S
 
 Le générateur de paiement (`sfs payment`) vous permet d'intégrer facilement des fonctionnalités de paiement avancées dans votre application Spring Boot. Il supporte plusieurs fournisseurs de paiement tels que Stripe et PayPal, ainsi que des fonctionnalités comme les abonnements, la facturation et les remboursements.
 
-## Nouveautés de la version 1.0.2
+## Nouveautés de la version 1.0.3
 
 - **Support pour Adyen et Mollie** : Intégration de deux nouveaux fournisseurs de paiement
 - **Paiements mobiles** : Génération automatique du code pour Apple Pay et Google Pay
@@ -217,7 +217,7 @@ Le générateur ajoute automatiquement les dépendances nécessaires dans votre 
 <dependency>
     <groupId>com.sfs</groupId>
     <artifactId>sfs-payment-core</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
 </dependency>
 
 <!-- Dépendance Stripe (si Stripe est sélectionné) -->

@@ -27,6 +27,12 @@ springdoc.paths-to-match=/api/**
 springdoc.swagger-ui.disable-swagger-default-url=true
 <% } %>
 
+
+# Configuration JWT
+jwt.secret=your_jwt_secret_key**************************
+jwt.expirationMs=3600000
+jwt.refreshExpirationMs=604800000
+
 # Permettre à l'application de trouver automatiquement un port disponible si le port configuré est occupé
 server.port=${SERVER_PORT:0}
 spring.web.resources.add-mappings=true

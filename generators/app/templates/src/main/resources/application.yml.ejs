@@ -122,8 +122,8 @@ springdoc:
 <% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
 # Configuration JWT
 jwt:
-  secret: ${JWT_SECRET:<%= Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) %>}
-  expirationMs: 86400000  # 24 heures en millisecondes
+  secret: ${JWT_SECRET:<%= Buffer.from(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)).toString('base64') %>}
+  expirationMs: 3600000  # 1 heure en millisecondes
   refreshExpirationMs: 604800000  # 7 jours en millisecondes
 <% } %>
 

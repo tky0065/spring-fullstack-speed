@@ -1,4 +1,5 @@
-# Spring-Fullstack-Speed (SFS) - v1.0.2
+# Spring-Fullstack-Speed (SFS) - v1.0.4
+
 
 > Générateur rapide d'applications fullstack avec Spring Boot et divers frameworks frontend
 
@@ -12,7 +13,8 @@ SFS est un générateur de code CLI basé sur Yeoman qui permet de créer rapide
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/tky0065/spring-fullstack-speed/blob/main/docs/contributing.md)
 [![Documentation](https://img.shields.io/badge/docs-available-blue.svg)](https://github.com/tky0065/spring-fullstack-speed/tree/main/docs)
 
-## 🆕 Nouveautés de la version 1.0.2
+## 🆕 Nouveautés de la version 1.0.4
+
 
 - **Système de paiement complet** : Intégration facile avec Stripe, PayPal et autres passerelles de paiement
 - **Gestion des abonnements** : Support pour les plans d'abonnement et paiements récurrents
