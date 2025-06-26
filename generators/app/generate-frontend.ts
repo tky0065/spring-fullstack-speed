@@ -515,6 +515,7 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
         // Création des répertoires pour JTE dans src/main/jte
         ensureDirectoryExists(generator, "src/main/jte");
         ensureDirectoryExists(generator, "src/main/jte/layouts");
+        ensureDirectoryExists(generator, "src/main/jte/pages");
 
         // Créer le fichier .jteroot vide dans le dossier src/main/jte
         fs.writeFileSync(generator.destinationPath('src/main/jte/.jteroot'), '');
@@ -535,7 +536,7 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
         // Copie des templates JTE pour les pages
         generator.fs.copyTpl(
           generator.templatePath('frontend/jte/home.jte.ejs'),
-          generator.destinationPath('src/main/jte/home.jte'),
+          generator.destinationPath('src/main/jte/pages/home.jte'),
           templateData
         );
 
@@ -543,19 +544,77 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
         if (templateData.includeAuth) {
           generator.fs.copyTpl(
             generator.templatePath('frontend/jte/login.jte.ejs'),
-            generator.destinationPath('src/main/jte/login.jte'),
+            generator.destinationPath('src/main/jte/pages/login.jte'),
             templateData
           );
 
           generator.fs.copyTpl(
             generator.templatePath('frontend/jte/register.jte.ejs'),
-            generator.destinationPath('src/main/jte/register.jte'),
+            generator.destinationPath('src/main/jte/pages/register.jte'),
             templateData
           );
         }
-      }
 
-      generator.log(chalk.green(`✅ Configuration frontend ${frontendType} générée avec succès!`));
+        // Création du contrôleur pour la gestion de la connexion et la page d'accueil
+        const mainPath = `src/main/java/${templateData.javaPackagePath}`;
+        ensureDirectoryExists(generator, `${mainPath}/controller`);
+
+        const loginControllerContent = `package ${templateData.packageName}.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+/**
+ * Contrôleur pour gérer les pages principales du site
+ * Gère les requêtes pour la page d'accueil et les pages d'authentification
+ */
+@Controller
+public class LoginController {
+
+    @GetMapping("/login")
+    public String login(HttpServletRequest request, Model model,
+                        @RequestParam(value = "error", required = false) String error,
+                        @RequestParam(value = "logout", required = false) String logout) {
+        if (error != null) {
+            model.addAttribute("error", true);
+            model.addAttribute("errorMessage", "Nom d'utilisateur ou mot de passe invalide");
+        }
+
+        if (logout != null) {
+            model.addAttribute("logout", true);
+            model.addAttribute("logoutMessage", "Vous avez été déconnecté avec succès");
+        }
+
+        // Afficher la page login avec le formulaire qui soumet vers /authenticate
+        model.addAttribute("loginProcessUrl", "/authenticate");
+        return "pages/login";
+    }
+
+    @GetMapping({"/", "/home"})
+    public String home(Model model) {
+        // Ajouter des attributs au modèle si nécessaire
+        model.addAttribute("pageTitle", "Accueil");
+        return "pages/home";
+    }
+    
+    @GetMapping("/register")
+    public String register(Model model) {
+        model.addAttribute("pageTitle", "Inscription");
+        return "pages/register";
+    }
+}`;
+
+        // Écriture du fichier LoginController.java
+        generator.fs.write(
+          generator.destinationPath(`${mainPath}/controller/LoginController.java`),
+          loginControllerContent
+        );
+
+        generator.log(chalk.green(`✅ LoginController généré avec succès pour JTE`));
+      }
     } else {
       generator.log(chalk.yellow(`⚠️ Pas de configuration frontend spécifique pour ${frontendType}.`));
     }

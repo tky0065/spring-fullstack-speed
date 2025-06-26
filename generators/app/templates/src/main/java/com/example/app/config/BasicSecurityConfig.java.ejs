@@ -38,8 +38,13 @@ public class BasicSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
 
             // Configuration de la gestion de session
+<% if (frontendFramework === 'Thymeleaf' || frontendFramework === 'JTE') { %>
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+<% } else { %>
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+<% } %>
 
             // Configuration des règles d'autorisation
             .authorizeHttpRequests(authorize -> authorize
@@ -76,12 +81,17 @@ public class BasicSecurityConfig {
             // Configuration pour les formulaires de login avec Thymeleaf/JTE
             .formLogin(form -> form
                 .loginPage("/login")
+                .loginProcessingUrl("/authenticate")
                 .defaultSuccessUrl("/home", true)
+                .failureUrl("/login?error=true")
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessUrl("/login?logout")
+                .invalidateHttpSession(true)
+                .clearAuthentication(true)
+                .deleteCookies("JSESSIONID")
                 .permitAll()
             )
 <% } %>;
