@@ -1,5 +1,51 @@
 package <%= packageName %>.entity;
 
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import lombok.Getter;
+import lombok.Setter;
+import <%= packageName %>.entity.Role;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Entité User représentant un utilisateur dans le système avec MongoDB.
+ */
+@Document(collection = "users")
+@Getter
+@Setter
+public class User extends BaseEntity {
+
+    @Indexed(unique = true)
+    private String username;
+
+    private String password;
+
+    @Indexed(unique = true)
+    private String email;
+
+    private String firstName;
+
+    private String lastName;
+
+    private boolean enabled = true;
+
+    @DBRef
+    private Set<Role> roles = new HashSet<>();
+
+    // Méthodes utilitaires
+    public void addRole(Role role) {
+        this.roles.add(role);
+    }
+
+    public void removeRole(Role role) {
+        this.roles.remove(role);
+    }
+<% } else { %>
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -50,4 +96,5 @@ public class User extends BaseEntity {
     public void removeRole(Role role) {
         this.roles.remove(role);
     }
+<% } %>
 }

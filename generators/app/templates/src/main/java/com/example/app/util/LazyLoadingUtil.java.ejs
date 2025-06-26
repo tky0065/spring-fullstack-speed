@@ -1,5 +1,143 @@
-package com.example.app.util;
+package <%= packageName %>.util;
 
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.bson.types.ObjectId;
+
+import java.util.Collection;
+import java.util.function.Consumer;
+
+/**
+ * Utilitaire pour gérer le chargement des documents MongoDB
+ * Permet de charger des relations à la demande (similaire au lazy loading)
+ */
+@Component
+public class LazyLoadingUtil {
+
+    private final MongoTemplate mongoTemplate;
+
+    public LazyLoadingUtil(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
+    }
+
+    /**
+     * Vérifie si un document ou une liste a des éléments
+     *
+     * @param object l'objet à vérifier
+     * @return true si l'objet est initialisé et non vide
+     */
+    public boolean isInitialized(Object object) {
+        if (object == null) {
+            return false;
+        }
+        if (object instanceof Collection) {
+            return !((Collection<?>) object).isEmpty();
+        }
+        return true;
+    }
+
+    /**
+     * Vérifie si une collection est initialisée
+     *
+     * @param collection la collection à vérifier
+     * @return true si la collection est initialisée et non vide
+     */
+    public boolean isCollectionInitialized(Collection<?> collection) {
+        return collection != null && !collection.isEmpty();
+    }
+
+    /**
+     * Force le chargement d'une référence
+     *
+     * @param proxy la référence à charger
+     */
+    @Transactional(readOnly = true)
+    public void initialize(Object proxy) {
+        // MongoDB charge déjà les documents complets, cette méthode existe pour compatibilité
+    }
+
+    /**
+     * Force le chargement d'une collection
+     *
+     * @param collection la collection à charger
+     */
+    @Transactional(readOnly = true)
+    public void initializeCollection(Collection<?> collection) {
+        // MongoDB charge déjà les collections complètes, cette méthode existe pour compatibilité
+    }
+
+    /**
+     * Charge à nouveau un document MongoDB
+     *
+     * @param entity le document à recharger
+     * @param <T> le type de l'entité
+     * @return le document rechargé
+     */
+    @Transactional
+    public <T> T reattach(T entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        try {
+            // Tenter d'obtenir l'ID du document via réflexion
+            Class<?> clazz = entity.getClass();
+            Object id = clazz.getMethod("getId").invoke(entity);
+
+            if (id == null) {
+                return entity;
+            }
+
+            // Recharger le document depuis MongoDB
+            @SuppressWarnings("unchecked")
+            T reloaded = (T) mongoTemplate.findById(id, clazz);
+            return reloaded != null ? reloaded : entity;
+        } catch (Exception e) {
+            // En cas d'erreur, retourner l'entité originale
+            return entity;
+        }
+    }
+
+    /**
+     * Exécute une action sur un document dans un contexte transactionnel
+     *
+     * @param entity le document sur lequel effectuer l'action
+     * @param action l'action à effectuer
+     * @param <T> le type du document
+     */
+    @Transactional(readOnly = true)
+    public <T> void doWithEntity(T entity, Consumer<T> action) {
+        if (entity != null) {
+            action.accept(entity);
+        }
+    }
+
+    /**
+     * Charge un document avec ses références
+     *
+     * @param entityClass la classe du document
+     * @param id l'identifiant du document
+     * @param fields les champs à charger explicitement
+     * @param <T> le type du document
+     * @return le document chargé avec ses références
+     */
+    @Transactional(readOnly = true)
+    public <T> T loadEntityWithRelations(Class<T> entityClass, String id, String... fields) {
+        if (id == null) {
+            return null;
+        }
+
+        // Charger le document
+        return mongoTemplate.findById(id, entityClass);
+
+        // Note: MongoDB charge automatiquement les références DBRef
+        // lors de l'accès aux propriétés, donc pas besoin de chargement explicite
+    }
+<% } else { %>
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -133,4 +271,5 @@ public class LazyLoadingUtil {
 
         return entity;
     }
+<% } %>
 }

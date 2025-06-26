@@ -1,5 +1,44 @@
 package <%= packageName %>.entity;
 
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Entité Role représentant un rôle d'utilisateur dans le système avec MongoDB.
+ */
+@Document(collection = "roles")
+@Getter
+@Setter
+public class Role extends BaseEntity {
+
+    @Indexed(unique = true)
+    private String name;
+
+    // Constructeur par défaut
+    public Role() {
+    }
+
+    // Constructeur avec nom du rôle
+    public Role(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Role role = (Role) o;
+        return name.equals(role.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+<% } else { %>
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -39,4 +78,5 @@ public class Role extends BaseEntity {
     public int hashCode() {
         return name.hashCode();
     }
+<% } %>
 }

@@ -1,9 +1,14 @@
 package <%= packageName %>.repository;
 
 import <%= packageName %>.entity.Example;
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+<% } else { %>
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+<% } %>
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -11,15 +16,23 @@ import java.util.Optional;
 
 /**
  * Repository pour gérer l'entité Example
+<% if (database === 'MongoDB') { %>
+ * Utilise Spring Data MongoDB pour simplifier l'accès aux données
+<% } else { %>
  * Utilise Spring Data JPA pour simplifier l'accès aux données
+<% } %>
  */
 @Repository
+<% if (database === 'MongoDB') { %>
+public interface ExampleRepository extends MongoRepository<Example, String> {
+<% } else { %>
 public interface ExampleRepository extends JpaRepository<Example, Long> {
+<% } %>
 
     /**
      * Trouve un exemple par son nom
      * @param name le nom à rechercher
-     * @return l'exemple trouvé, ou empty si aucun n'existe
+     * @return un Optional contenant l'exemple s'il existe
      */
     Optional<Example> findByName(String name);
 
@@ -30,10 +43,20 @@ public interface ExampleRepository extends JpaRepository<Example, Long> {
     List<Example> findByActiveTrue();
 
     /**
-     * Trouve tous les exemples dont le nom contient la chaîne spécifiée (insensible à la casse)
-     * @param namePart partie du nom à rechercher
+     * Trouve tous les exemples dont le nom contient le texte donné
+<% if (database === 'MongoDB') { %>
+     * Utilise une requête MongoDB
+<% } else { %>
+     * Utilise une requête JPQL
+<% } %>
+     * @param text le texte à rechercher dans le nom
      * @return liste des exemples correspondants
      */
-    @Query("SELECT e FROM Example e WHERE LOWER(e.name) LIKE LOWER(CONCAT('%', :namePart, '%'))")
-    List<Example> findByNameContainingIgnoreCase(@Param("namePart") String namePart);
+<% if (database === 'MongoDB') { %>
+    @Query("{'name': {$regex: ?0, $options: 'i'}}")
+    List<Example> findByNameContainingIgnoreCase(String text);
+<% } else { %>
+    @Query("SELECT e FROM Example e WHERE LOWER(e.name) LIKE LOWER(CONCAT('%', :text, '%'))")
+    List<Example> findByNameContainingIgnoreCase(@Param("text") String text);
+<% } %>
 }

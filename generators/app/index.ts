@@ -31,7 +31,8 @@ import {
   generateApplicationProperties,
   generateBaseDirectories,
   generateMavenOrGradle,
-  generateServices
+  generateServices,
+  generateRepositories
 } from "./generator-methods.js";
 import { postGenerationChecksAndAdvice } from "./post-generation-checks.js";
 import { increaseEventListenerLimit } from "../../utils/event-listener-fix.js";
@@ -272,6 +273,7 @@ export default class AppGenerator extends BaseGenerator {
       generateApplicationProperties(this, templateData);
       generateBaseDirectories(this, templateData);
       generateServices(this, templateData);
+      generateRepositories(this, templateData);
 
       // Générer la configuration Docker si demandée
       if (templateData.additionalFeatures.includes('docker')) {
@@ -299,9 +301,11 @@ export default class AppGenerator extends BaseGenerator {
       }
 
       // Génération frontend si nécessaire
-      if (templateData.frontendFramework !== 'Aucun (API seulement)') {
+      if (templateData.frontendFramework && templateData.frontendFramework !== 'Aucun (API seulement)') {
         // Générer le frontend quelle que soit l'option choisie (React, Vue, Angular, Thymeleaf ou JTE)
         generateFrontend(this, templateData);
+      } else {
+        this.log(chalk.blue("Mode API seulement sélectionné, génération du frontend ignorée."));
       }
     } catch (error) {
       this.log(chalk.red("Une erreur s'est produite lors de la génération des fichiers:"));

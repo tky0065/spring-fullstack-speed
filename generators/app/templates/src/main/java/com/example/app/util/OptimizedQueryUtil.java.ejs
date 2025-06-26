@@ -100,25 +100,28 @@ public class OptimizedQueryUtil {
      * Précharge des entités liées en une seule requête (évite le problème N+1)
      */
     @Transactional(readOnly = true)
-    public <T> List<T> findAllWithEagerRelationships(Class<T> entityClass, String... relations) {
-        StringBuilder jpql = new StringBuilder("SELECT DISTINCT e FROM " + entityClass.getSimpleName() + " e");
+    public <T> List<T> preloadRelations(Class<T> entityClass, String relation) {
+        String jpql = String.format("SELECT e FROM %s e LEFT JOIN FETCH e.%s",
+                entityClass.getSimpleName(), relation);
 
-        // Ajouter des jointures fetch pour chaque relation
-        for (String relation : relations) {
-            jpql.append(" LEFT JOIN FETCH e.").append(relation);
-        }
-
-        Query query = entityManager.createQuery(jpql.toString(), entityClass);
-        return query.getResultList();
+        return entityManager.createQuery(jpql, entityClass).getResultList();
     }
 
     /**
-     * Tronque une requête SQL pour la journalisation
+     * Exécute une requête avec une projection spécifique
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executeProjectionQuery(String jpql, Class<T> resultClass) {
+        return entityManager.createQuery(jpql, resultClass).getResultList();
+    }
+
+    /**
+     * Tronque une requête SQL pour l'affichage dans les logs
      */
     private String truncateSqlForLogging(String sql) {
-        if (sql.length() > 100) {
-            return sql.substring(0, 97) + "...";
+        if (sql == null) {
+            return "null";
         }
-        return sql;
+        return sql.length() > 500 ? sql.substring(0, 500) + "..." : sql;
     }
 }

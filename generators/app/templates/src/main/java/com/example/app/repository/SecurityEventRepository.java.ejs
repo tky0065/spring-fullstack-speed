@@ -1,0 +1,45 @@
+package <%= packageName %>.repository;
+
+import <%= packageName %>.audit.SecurityEvent;
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.mongodb.repository.MongoRepository;
+<% } else { %>
+import org.springframework.data.jpa.repository.JpaRepository;
+<% } %>
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Repository pour gérer les événements de sécurité
+ */
+@Repository
+<% if (database === 'MongoDB') { %>
+public interface SecurityEventRepository extends MongoRepository<SecurityEvent, String> {
+<% } else { %>
+public interface SecurityEventRepository extends JpaRepository<SecurityEvent, Long> {
+<% } %>
+
+    /**
+     * Trouve tous les événements pour un utilisateur donné
+     * @param principal l'identifiant de l'utilisateur
+     * @return la liste des événements
+     */
+    List<SecurityEvent> findByPrincipal(String principal);
+
+    /**
+     * Trouve les événements entre deux dates
+     * @param start début de la période
+     * @param end fin de la période
+     * @return la liste des événements
+     */
+    List<SecurityEvent> findByTimestampBetween(Instant start, Instant end);
+
+    /**
+     * Trouve les événements d'un type spécifique
+     * @param type le type d'événement
+     * @return la liste des événements
+     */
+    List<SecurityEvent> findByType(String type);
+}

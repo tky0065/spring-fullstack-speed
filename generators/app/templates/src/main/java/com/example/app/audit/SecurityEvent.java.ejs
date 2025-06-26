@@ -1,5 +1,43 @@
-package com.example.app.audit;
+package <%= packageName %>.audit;
 
+<% if (database === 'MongoDB') { %>
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Entité pour stocker les événements d'audit de sécurité
+ * Capture les actions importantes liées à la sécurité dans l'application
+ */
+@Document(collection = "security_events")
+public class SecurityEvent {
+
+    @Id
+    private String id;
+
+    private String principal;
+
+    private String type;
+
+    private Instant timestamp;
+
+    private String description;
+
+    private String outcome;
+
+    private String sourceIp;
+
+    private String userAgent;
+
+    private String requestUri;
+
+    private String httpMethod;
+
+    private Map<String, Object> metadata = new HashMap<>();
+
+<% } else { %>
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.type.SqlTypes;
@@ -49,6 +87,7 @@ public class SecurityEvent {
     @JdbcType(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> metadata = new HashMap<>();
+<% } %>
 
     // Constructeur par défaut
     public SecurityEvent() {
@@ -63,7 +102,16 @@ public class SecurityEvent {
         this.outcome = outcome;
     }
 
-    // Getters et setters
+    // Getters et Setters
+    <% if (database === 'MongoDB') { %>
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+    <% } else { %>
     public Long getId() {
         return id;
     }
@@ -71,6 +119,7 @@ public class SecurityEvent {
     public void setId(Long id) {
         this.id = id;
     }
+    <% } %>
 
     public String getPrincipal() {
         return principal;
@@ -153,6 +202,9 @@ public class SecurityEvent {
     }
 
     public void addMetadata(String key, Object value) {
+        if (this.metadata == null) {
+            this.metadata = new HashMap<>();
+        }
         this.metadata.put(key, value);
     }
 }

@@ -59,6 +59,10 @@ public class ApiError {
         addSubError(new ApiValidationError(object, message));
     }
 
+    /**
+     * Ajoute des erreurs de validation issues des erreurs de champ
+     * @param fieldErrors liste des erreurs de champ
+     */
     public void addValidationErrors(List<FieldError> fieldErrors) {
         fieldErrors.forEach(this::addValidationError);
     }
@@ -72,7 +76,11 @@ public class ApiError {
         );
     }
 
-    public void addValidationErrors(List<ObjectError> globalErrors) {
+    /**
+     * Ajoute des erreurs de validation issues des erreurs d'objet
+     * @param globalErrors liste des erreurs d'objet
+     */
+    public void addGlobalValidationErrors(List<ObjectError> globalErrors) {
         globalErrors.forEach(this::addValidationError);
     }
 
@@ -101,63 +109,7 @@ public class ApiError {
         );
     }
 
-    // Classes internes pour représenter les sous-erreurs
-    abstract static class ApiSubError {
-    }
-
-    static class ApiValidationError extends ApiSubError {
-        private String object;
-        private String field;
-        private Object rejectedValue;
-        private String message;
-
-        ApiValidationError(String object, String message) {
-            this.object = object;
-            this.message = message;
-        }
-
-        ApiValidationError(String object, String field, Object rejectedValue, String message) {
-            this.object = object;
-            this.field = field;
-            this.rejectedValue = rejectedValue;
-            this.message = message;
-        }
-
-        // Getters et Setters
-        public String getObject() {
-            return object;
-        }
-
-        public void setObject(String object) {
-            this.object = object;
-        }
-
-        public String getField() {
-            return field;
-        }
-
-        public void setField(String field) {
-            this.field = field;
-        }
-
-        public Object getRejectedValue() {
-            return rejectedValue;
-        }
-
-        public void setRejectedValue(Object rejectedValue) {
-            this.rejectedValue = rejectedValue;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-    }
-
-    // Getters et Setters
+    // Getters and Setters
     public HttpStatus getStatus() {
         return status;
     }
@@ -196,5 +148,66 @@ public class ApiError {
 
     public void setSubErrors(List<ApiSubError> subErrors) {
         this.subErrors = subErrors;
+    }
+
+    /**
+     * Classe abstraite pour représenter les sous-erreurs API
+     */
+    abstract static class ApiSubError {
+    }
+
+    /**
+     * Classe pour représenter les erreurs de validation API
+     */
+    static class ApiValidationError extends ApiSubError {
+        private String object;
+        private String field;
+        private Object rejectedValue;
+        private String message;
+
+        ApiValidationError(String object, String field, Object rejectedValue, String message) {
+            this.object = object;
+            this.field = field;
+            this.rejectedValue = rejectedValue;
+            this.message = message;
+        }
+
+        ApiValidationError(String object, String message) {
+            this.object = object;
+            this.message = message;
+        }
+
+        // Getters et Setters
+        public String getObject() {
+            return object;
+        }
+
+        public void setObject(String object) {
+            this.object = object;
+        }
+
+        public String getField() {
+            return field;
+        }
+
+        public void setField(String field) {
+            this.field = field;
+        }
+
+        public Object getRejectedValue() {
+            return rejectedValue;
+        }
+
+        public void setRejectedValue(Object rejectedValue) {
+            this.rejectedValue = rejectedValue;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
     }
 }

@@ -21,100 +21,69 @@ export function generateAuth(generator: any, templateData: TemplateData) {
 
     // Créer les répertoires nécessaires
     ensureDirectoryExists(generator, `${mainPath}/security`);
-    ensureDirectoryExists(generator, `${mainPath}/security/jwt`);
-    ensureDirectoryExists(generator, `${mainPath}/security/model`);
-    ensureDirectoryExists(generator, `${mainPath}/security/service`);
-    ensureDirectoryExists(generator, `${mainPath}/security/config`);
     ensureDirectoryExists(generator, `${mainPath}/controller`);
     ensureDirectoryExists(generator, `${mainPath}/dto`);
     ensureDirectoryExists(generator, `${mainPath}/entity`);
     ensureDirectoryExists(generator, `${mainPath}/repository`);
     ensureDirectoryExists(generator, `${mainPath}/exception`);
     ensureDirectoryExists(generator, `${mainPath}/util`);
-
-    // Copier les fichiers de sécurité communs
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/security/SecurityConfig.java.ejs'),
-      generator.destinationPath(`${mainPath}/security/config/WebSecurityConfig.java`),
-      templateData
-    );
-
-    // Copier tous les controllers disponibles
-    const controllerFiles = [
-      'AuthController.java.ejs',
-      'DashboardController.java.ejs',
-      'ExampleController.java.ejs',
-      'PaginatedUserController.java.ejs',
-      'SecurityController.java.ejs'
-    ];
-
-    controllerFiles.forEach(file => {
-      try {
-        generator.fs.copyTpl(
-          generator.templatePath(`src/main/java/com/example/app/controller/${file}`),
-          generator.destinationPath(`${mainPath}/controller/${file.replace('.ejs', '')}`),
-          templateData
-        );
-      } catch (error) {
-        // Si un fichier spécifique a un problème, ne pas arrêter le processus complet
-        generator.log(chalk.yellow(`⚠️ Impossible de copier le controller ${file}: ${error}`));
-      }
-    });
-
-    // Générer les modèles User et Role dans security/model
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/entity/User.java.ejs'),
-      generator.destinationPath(`${mainPath}/security/model/User.java`),
-      templateData
-    );
-
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/entity/Role.java.ejs'),
-      generator.destinationPath(`${mainPath}/security/model/Role.java`),
-      templateData
-    );
-
-    // Générer les entités exemples
-    try {
-      if (templateData.database === 'MongoDB') {
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/entity/MongoExample.java.ejs'),
-          generator.destinationPath(`${mainPath}/entity/Example.java`),
-          templateData
-        );
-      } else {
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/entity/Example.java.ejs'),
-          generator.destinationPath(`${mainPath}/entity/Example.java`),
-          templateData
-        );
-      }
-    } catch (error) {
-      generator.log(chalk.yellow(`⚠️ Impossible de générer l'entité Example: ${error}`));
-    }
-
-    // Générer les repositories pour User et Role
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/repository/UserRepository.java.ejs'),
-      generator.destinationPath(`${mainPath}/repository/UserRepository.java`),
-      templateData
-    );
-
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/repository/RoleRepository.java.ejs'),
-      generator.destinationPath(`${mainPath}/repository/RoleRepository.java`),
-      templateData
-    );
-
-    // Ajouter le service d'authentification
-    generator.fs.copyTpl(
-      generator.templatePath('src/main/java/com/example/app/security/AuthEntryPointJwt.java.ejs'),
-      generator.destinationPath(`${mainPath}/security/AuthEntryPointJwt.java`),
-      templateData
-    );
+    ensureDirectoryExists(generator, `${mainPath}/audit`); // Ajout du répertoire pour les audits
 
     // Pour JWT (par défaut ou si spécifié)
     if (!templateData.authType || templateData.authType === 'JWT') {
+      // Créer les répertoires spécifiques à JWT
+      ensureDirectoryExists(generator, `${mainPath}/security/jwt`);
+      ensureDirectoryExists(generator, `${mainPath}/security/model`);
+      ensureDirectoryExists(generator, `${mainPath}/security/service`);
+      ensureDirectoryExists(generator, `${mainPath}/security/config`);
+
+      // Copier les fichiers de sécurité communs
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/config/BasicSecurityConfig.java.ejs'),
+        generator.destinationPath(`${mainPath}/security/config/BasicSecurityConfig.java`),
+        templateData
+      );
+
+      // Copier uniquement le contrôleur d'authentification
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/controller/AuthController.java.ejs'),
+        generator.destinationPath(`${mainPath}/controller/AuthController.java`),
+        templateData
+      );
+
+      // Générer les modèles User et Role dans security/model
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/entity/User.java.ejs'),
+        generator.destinationPath(`${mainPath}/security/model/User.java`),
+        templateData
+      );
+
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/entity/Role.java.ejs'),
+        generator.destinationPath(`${mainPath}/security/model/Role.java`),
+        templateData
+      );
+
+      // Générer les repositories pour User et Role
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/repository/UserRepository.java.ejs'),
+        generator.destinationPath(`${mainPath}/repository/UserRepository.java`),
+        templateData
+      );
+
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/repository/RoleRepository.java.ejs'),
+        generator.destinationPath(`${mainPath}/repository/RoleRepository.java`),
+        templateData
+      );
+
+      // Ajouter le service d'authentification
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/security/AuthEntryPointJwt.java.ejs'),
+        generator.destinationPath(`${mainPath}/security/AuthEntryPointJwt.java`),
+        templateData
+      );
+
       // Utiliser directement les templates sans le préfixe 'src/main/java/com/example/app/'
       generator.fs.copyTpl(
         generator.templatePath('src/main/java/com/example/app/security/jwt/JwtTokenProvider.java.ejs'),
@@ -183,72 +152,120 @@ export function generateAuth(generator: any, templateData: TemplateData) {
       ];
 
       utilFiles.forEach(utilFile => {
-        generator.fs.copyTpl(
-          generator.templatePath(`src/main/java/com/example/app/util/${utilFile}`),
-          generator.destinationPath(`${mainPath}/util/${utilFile.replace('.ejs', '')}`),
-          templateData
-        );
+        try {
+          generator.fs.copyTpl(
+            generator.templatePath(`src/main/java/com/example/app/util/${utilFile}`),
+            generator.destinationPath(`${mainPath}/util/${utilFile.replace('.ejs', '')}`),
+            templateData
+          );
+        } catch (error) {
+          generator.log(chalk.yellow(`⚠️ Impossible de copier le fichier utilitaire ${utilFile}: ${error}`));
+        }
+      });
+    }
+
+    // Si OAuth2 est explicitement activé
+    if (templateData.authType === 'OAuth2' || templateData.authType === 'JWT+OAuth2') {
+      ensureDirectoryExists(generator, `${mainPath}/security/oauth2`);
+
+      // Copier les fichiers OAuth2
+      const oauth2Files = [
+        'CustomOAuth2UserService.java.ejs',
+        'OAuth2AuthenticationSuccessHandler.java.ejs',
+        'OAuth2AuthenticationFailureHandler.java.ejs',
+        'OAuth2UserInfo.java.ejs',
+        'OAuth2UserInfoFactory.java.ejs',
+        'GoogleOAuth2UserInfo.java.ejs',
+        'FacebookOAuth2UserInfo.java.ejs',
+        'GithubOAuth2UserInfo.java.ejs'
+      ];
+
+      oauth2Files.forEach(file => {
+        try {
+          generator.fs.copyTpl(
+            generator.templatePath(`src/main/java/com/example/app/security/oauth2/${file}`),
+            generator.destinationPath(`${mainPath}/security/oauth2/${file.replace('.ejs', '')}`),
+            templateData
+          );
+        } catch (error) {
+          generator.log(chalk.yellow(`⚠️ Impossible de copier le fichier OAuth2 ${file}: ${error}`));
+        }
       });
 
-      // Si OAuth2 est activé, ajouter la configuration et les services nécessaires
-      if (templateData.oauth2Enabled) {
-        ensureDirectoryExists(generator, `${mainPath}/security/oauth2`);
-
-        // Copier les fichiers OAuth2
+      // Ajouter la configuration OAuth2 dans application.yml
+      try {
         generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/CustomOAuth2UserService.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/CustomOAuth2UserService.java`),
+          generator.templatePath('src/main/resources/oauth2.yml.ejs'),
+          generator.destinationPath('src/main/resources/oauth2.yml'),
           templateData
         );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/OAuth2AuthenticationSuccessHandler.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/OAuth2AuthenticationSuccessHandler.java`),
-          templateData
-        );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/OAuth2AuthenticationFailureHandler.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/OAuth2AuthenticationFailureHandler.java`),
-          templateData
-        );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/OAuth2UserInfo.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/OAuth2UserInfo.java`),
-          templateData
-        );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/OAuth2UserInfoFactory.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/OAuth2UserInfoFactory.java`),
-          templateData
-        );
-
-        // Copier les implémentations spécifiques des providers
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/GoogleOAuth2UserInfo.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/GoogleOAuth2UserInfo.java`),
-          templateData
-        );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/FacebookOAuth2UserInfo.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/FacebookOAuth2UserInfo.java`),
-          templateData
-        );
-
-        generator.fs.copyTpl(
-          generator.templatePath('src/main/java/com/example/app/security/oauth2/GithubOAuth2UserInfo.java.ejs'),
-          generator.destinationPath(`${mainPath}/security/oauth2/GithubOAuth2UserInfo.java`),
-          templateData
-        );
+      } catch (error) {
+        generator.log(chalk.yellow('⚠️ Impossible de générer la configuration OAuth2: ' + error));
       }
     }
 
-    generator.log(chalk.green("✅ Fichiers d'authentification générés avec succès!"));
+    // Générer les entités exemples - uniquement si une base de données est configurée
+    if (templateData.database && templateData.database !== 'Aucune') {
+      try {
+        if (templateData.database === 'MongoDB') {
+          generator.fs.copyTpl(
+            generator.templatePath('src/main/java/com/example/app/entity/MongoExample.java.ejs'),
+            generator.destinationPath(`${mainPath}/entity/Example.java`),
+            templateData
+          );
+        } else {
+          generator.fs.copyTpl(
+            generator.templatePath('src/main/java/com/example/app/entity/Example.java.ejs'),
+            generator.destinationPath(`${mainPath}/entity/Example.java`),
+            templateData
+          );
+        }
+      } catch (error) {
+        generator.log(chalk.yellow(`⚠️ Impossible de générer l'entité Example: ${error}`));
+      }
+    }
+
+    // Ajouter les fichiers d'audit
+    try {
+      // Copier les fichiers d'audit
+      const auditFiles = [
+        'SecurityEvent.java.ejs'
+      ];
+
+      auditFiles.forEach(file => {
+        try {
+          generator.fs.copyTpl(
+            generator.templatePath(`src/main/java/com/example/app/audit/${file}`),
+            generator.destinationPath(`${mainPath}/audit/${file.replace('.ejs', '')}`),
+            templateData
+          );
+        } catch (error) {
+          generator.log(chalk.yellow(`⚠️ Impossible de copier le fichier d'audit ${file}: ${error}`));
+        }
+      });
+
+      // Copier le repository d'événement de sécurité
+      try {
+        generator.fs.copyTpl(
+          generator.templatePath('src/main/java/com/example/app/repository/SecurityEventRepository.java.ejs'),
+          generator.destinationPath(`${mainPath}/repository/SecurityEventRepository.java`),
+          templateData
+        );
+      } catch (error) {
+        generator.log(chalk.yellow(`⚠️ Impossible de copier le fichier SecurityEventRepository: ${error}`));
+      }
+
+    } catch (error) {
+      generator.log(chalk.yellow(`⚠️ Impossible de générer les fichiers d'audit: ${error}`));
+    }
+
+    generator.log(chalk.green('✅ Configuration de sécurité générée avec succès.'));
+
   } catch (error) {
     generator.log(chalk.red(`❌ Erreur lors de la génération des fichiers d'authentification: ${error}`));
-    // En cas d'erreur, continuer sans bloquer la génération globale
+    // Afficher la trace complète de l'erreur en mode debug
+    if (process.env.DEBUG) {
+      console.error(error);
+    }
   }
 }

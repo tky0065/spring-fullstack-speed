@@ -1,4 +1,4 @@
-package <%= packageName %>.security.model;
+package <%= packageName %><% if (securityModelPath) { %>.<%= securityModelPath %><% } else { %>.security.model<% } %>;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;

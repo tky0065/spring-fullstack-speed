@@ -1,7 +1,7 @@
 package com.example.app.service;
 
-import com.example.app.entity.Product;
-import com.example.app.repository.ProductRepository;
+import com.example.app.entity.Example;
+import com.example.app.repository.ExampleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
@@ -14,91 +14,90 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service de gestion des produits avec utilisation du cache
+ * Service de gestion des exemples avec utilisation du cache
  * Exemple d'implémentation des annotations de cache Spring
  */
 @Service
-public class ProductService {
+public class ExampleService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
-    private final ProductRepository productRepository;
+    private static final Logger logger = LoggerFactory.getLogger(ExampleService.class);
+    private final ExampleRepository exampleRepository;
 
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
+    public ExampleService(ExampleRepository exampleRepository) {
+        this.exampleRepository = exampleRepository;
     }
 
     /**
-     * Récupère un produit par son ID
-     * La méthode utilise le cache "products" pour éviter des requêtes répétées à la base de données
+     * Récupère un exemple par son ID
+     * Utilise le cache pour optimiser les performances
      *
-     * @param id ID du produit
-     * @return le produit s'il existe
+     * @param id L'identifiant de l'exemple
+     * @return L'exemple ou vide si non trouvé
      */
-    @Cacheable(value = "products", key = "#id")
-    public Optional<Product> findById(Long id) {
-        logger.info("Recherche du produit avec l'ID: {}", id);
-        // Cette requête ne sera exécutée que si le produit n'est pas dans le cache
-        return productRepository.findById(id);
+    @Cacheable(value = "examples", key = "#id")
+    public Optional<Example> findById(Long id) {
+        logger.debug("Recherche de l'exemple avec ID: {}", id);
+        return exampleRepository.findById(id);
     }
 
     /**
-     * Récupère tous les produits par catégorie
-     * La méthode utilise le cache "productsByCategory" avec une clé basée sur la catégorie
+     * Récupère tous les exemples
      *
-     * @param category la catégorie des produits
-     * @return liste de produits de cette catégorie
+     * @return Liste des exemples
      */
-    @Cacheable(value = "productsByCategory", key = "#category")
-    public List<Product> findByCategory(String category) {
-        logger.info("Recherche des produits dans la catégorie: {}", category);
-        return productRepository.findByCategory(category);
+    @Cacheable("examples")
+    public List<Example> findAll() {
+        logger.debug("Récupération de tous les exemples");
+        return exampleRepository.findAll();
     }
 
     /**
-     * Crée ou met à jour un produit
-     * La méthode utilise @CachePut pour mettre à jour le cache automatiquement
+     * Crée un nouvel exemple
      *
-     * @param product le produit à sauvegarder
-     * @return le produit sauvegardé
+     * @param example L'exemple à créer
+     * @return L'exemple créé avec son ID
      */
-    @CachePut(value = "products", key = "#result.id")
     @Transactional
-    public Product save(Product product) {
-        logger.info("Sauvegarde du produit: {}", product.getName());
-        return productRepository.save(product);
+    public Example create(Example example) {
+        logger.debug("Création d'un nouvel exemple");
+        return exampleRepository.save(example);
     }
 
     /**
-     * Supprime un produit et le retire du cache
+     * Met à jour un exemple existant
+     * Met également à jour l'entrée en cache
      *
-     * @param id l'ID du produit à supprimer
+     * @param id      L'identifiant de l'exemple
+     * @param example Les nouvelles données
+     * @return L'exemple mis à jour
      */
-    @CacheEvict(value = "products", key = "#id")
+    @CachePut(value = "examples", key = "#id")
     @Transactional
-    public void deleteById(Long id) {
-        logger.info("Suppression du produit avec l'ID: {}", id);
-        productRepository.deleteById(id);
+    public Example update(Long id, Example example) {
+        logger.debug("Mise à jour de l'exemple avec ID: {}", id);
+
+        example.setId(id); // S'assurer que l'ID est correctement défini
+        return exampleRepository.save(example);
     }
 
     /**
-     * Supprime tous les produits d'une catégorie et nettoie le cache correspondant
+     * Supprime un exemple
+     * Évince également l'entrée du cache
      *
-     * @param category la catégorie à supprimer
+     * @param id L'identifiant de l'exemple à supprimer
      */
-    @CacheEvict(value = "productsByCategory", key = "#category")
+    @CacheEvict(value = "examples", key = "#id")
     @Transactional
-    public void deleteByCategory(String category) {
-        logger.info("Suppression des produits de la catégorie: {}", category);
-        productRepository.deleteByCategory(category);
+    public void delete(Long id) {
+        logger.debug("Suppression de l'exemple avec ID: {}", id);
+        exampleRepository.deleteById(id);
     }
 
     /**
-     * Vide tous les caches de produits
-     * Utile après des opérations de masse ou lors des mises à jour de données
+     * Vide le cache des exemples
      */
-    @CacheEvict(value = {"products", "productsByCategory"}, allEntries = true)
-    public void clearProductCaches() {
-        logger.info("Nettoyage de tous les caches de produits");
-        // Le nettoyage est géré par Spring Cache via l'annotation
+    @CacheEvict(value = "examples", allEntries = true)
+    public void clearCache() {
+        logger.info("Vidage du cache des exemples");
     }
 }

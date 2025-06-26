@@ -1,0 +1,105 @@
+package <%= packageName %>.util;
+
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utilitaire pour exécuter des requêtes MongoDB optimisées
+ * Utilisé pour les cas où les méthodes standard de Spring Data MongoDB ne sont pas assez performantes
+ */
+@Component
+public class MongoOptimizedQueryUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(MongoOptimizedQueryUtil.class);
+    private final MongoTemplate mongoTemplate;
+
+    public MongoOptimizedQueryUtil(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
+    }
+
+    /**
+     * Exécute une requête MongoDB optimisée avec pagination
+     *
+     * @param entityClass la classe de l'entité
+     * @param page le numéro de page (base 0)
+     * @param size la taille de la page
+     * @param <T> le type du résultat
+     * @return la liste des résultats paginés
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executePaginatedQuery(Class<T> entityClass, int page, int size) {
+        Query query = new Query();
+        query.with(PageRequest.of(page, size));
+
+        long startTime = System.nanoTime();
+        List<T> results = mongoTemplate.find(query, entityClass);
+        long endTime = System.nanoTime();
+
+        logger.debug("Requête MongoDB paginée exécutée en {} ms", (endTime - startTime) / 1_000_000);
+        return results;
+    }
+
+    /**
+     * Exécute une requête MongoDB filtrée avec pagination
+     *
+     * @param entityClass la classe de l'entité
+     * @param field le champ à filtrer
+     * @param value la valeur du filtre
+     * @param page le numéro de page (base 0)
+     * @param size la taille de la page
+     * @param <T> le type du résultat
+     * @return la liste des résultats paginés et filtrés
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executeFilteredQuery(Class<T> entityClass, String field, Object value, int page, int size) {
+        Query query = new Query(Criteria.where(field).is(value));
+        query.with(PageRequest.of(page, size));
+
+        long startTime = System.nanoTime();
+        List<T> results = mongoTemplate.find(query, entityClass);
+        long endTime = System.nanoTime();
+
+        logger.debug("Requête MongoDB filtrée exécutée en {} ms", (endTime - startTime) / 1_000_000);
+        return results;
+    }
+
+    /**
+     * Exécute une requête avec projection (sélection de champs spécifiques)
+     *
+     * @param entityClass la classe de l'entité
+     * @param fields les champs à inclure
+     * @param <T> le type du résultat
+     * @return la liste des résultats avec projection
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> executeProjectionQuery(Class<T> entityClass, String... fields) {
+        Query query = new Query();
+        for (String field : fields) {
+            query.fields().include(field);
+        }
+
+        return mongoTemplate.find(query, entityClass);
+    }
+
+    /**
+     * Obtient la liste complète des documents d'une collection
+     *
+     * @param entityClass la classe de l'entité
+     * @param <T> le type du résultat
+     * @return la liste complète des documents
+     */
+    @Transactional(readOnly = true)
+    public <T> List<T> findAll(Class<T> entityClass) {
+        return mongoTemplate.findAll(entityClass);
+    }
+}

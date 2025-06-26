@@ -1,6 +1,10 @@
 package <%= packageName %>.controller;
 
+<% if (database === 'MongoDB') { %>
 import <%= packageName %>.entity.Role;
+<% } else { %>
+import <%= packageName %>.entity.Role;
+<% } %>
 import <%= packageName %>.entity.User;
 import <%= packageName %>.repository.RoleRepository;
 import <%= packageName %>.repository.UserRepository;
@@ -21,10 +25,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+<% if (authType === 'OAuth2' || authType === 'JWT+OAuth2') { %>
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+<% } %>
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+<% if (authType === 'OAuth2' || authType === 'JWT+OAuth2') { %>
 import org.springframework.security.oauth2.core.user.OAuth2User;
+<% } %>
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -128,6 +136,7 @@ public class AuthController {
         return ResponseEntity.ok().body(Map.of("message", "Utilisateur enregistré avec succès!"));
     }
 
+<% if (authType === 'OAuth2' || authType === 'JWT+OAuth2') { %>
     /**
      * Endpoint pour obtenir des informations sur l'utilisateur actuellement connecté via OAuth2
      */
@@ -141,6 +150,35 @@ public class AuthController {
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal OAuth2User principal) {
         return ResponseEntity.ok(principal.getAttributes());
     }
+<% } else { %>
+    /**
+     * Endpoint pour obtenir des informations sur l'utilisateur actuellement connecté
+     */
+    @GetMapping("/user/me")
+    @Operation(summary = "Obtenir les informations de l'utilisateur connecté",
+            description = "Récupère les informations de l'utilisateur actuellement authentifié")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Informations récupérées avec succès"),
+            @ApiResponse(responseCode = "401", description = "Utilisateur non authentifié")
+    })
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Non authentifié"));
+        }
+
+        User user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Utilisateur non trouvé"));
+
+        return ResponseEntity.ok(Map.of(
+            "id", user.getId(),
+            "username", user.getUsername(),
+            "email", user.getEmail(),
+            "firstName", user.getFirstName(),
+            "lastName", user.getLastName()
+        ));
+    }
+<% } %>
 
     /**
      * Endpoint pour la déconnexion

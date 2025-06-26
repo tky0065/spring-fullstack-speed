@@ -317,6 +317,33 @@ export function generateBaseDirectories(generator: any, templateData: TemplateDa
       );
     }
 
+    // Génération des classes de base essentielles
+    generator.log(chalk.yellow("📄 Génération des classes de base..."));
+
+    // Génération de BaseEntity
+    try {
+      generator.fs.copyTpl(
+        generator.templatePath("src/main/java/com/example/app/entity/BaseEntity.java.ejs"),
+        generator.destinationPath(`${mainPath}/entity/BaseEntity.java`),
+        templateData
+      );
+      generator.log(chalk.green("✅ Classe BaseEntity générée avec succès"));
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération de BaseEntity: ${error}`));
+    }
+
+    // Génération de BaseRepository
+    try {
+      generator.fs.copyTpl(
+        generator.templatePath("src/main/java/com/example/app/repository/BaseRepository.java.ejs"),
+        generator.destinationPath(`${mainPath}/repository/BaseRepository.java`),
+        templateData
+      );
+      generator.log(chalk.green("✅ Interface BaseRepository générée avec succès"));
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération de BaseRepository: ${error}`));
+    }
+
     generator.log(chalk.green("✅ Structure des répertoires créée avec succès."));
   } catch (error) {
     generator.log(chalk.red(`❌ Erreur lors de la création des répertoires: ${error}`));
@@ -785,7 +812,6 @@ export function generateServices(generator: any, templateData: TemplateData) {
   // Liste des services à copier
   const services = [
     'ExampleService.java.ejs',
-    'ProductService.java.ejs',
     'SecurityAuditService.java.ejs'
   ];
 
@@ -809,4 +835,149 @@ export function generateServices(generator: any, templateData: TemplateData) {
       generator.log(chalk.red(`❌ Erreur lors de la génération du service ${service}: ${error}`));
     }
   });
+}
+
+/**
+ * Génère les repositories de base pour le projet
+ * @param generator Référence au générateur Yeoman
+ * @param templateData Les données du template
+ */
+export function generateRepositories(generator: any, templateData: TemplateData) {
+  generator.log(chalk.blue('Génération des repositories...'));
+
+  // Chemin du dossier principal Java
+  const mainPath = `src/main/java/${templateData.javaPackagePath}`;
+
+  // Chemin vers le répertoire des repositories
+  const repositoryPath = `${mainPath}/repository`;
+
+  // Créer le répertoire des repositories s'il n'existe pas
+  ensureDirectoryExists(generator, repositoryPath);
+
+  // Liste des repositories à copier
+  const repositories = [
+    'BaseRepository.java.ejs',
+    'ExampleRepository.java.ejs',
+    'RoleRepository.java.ejs',
+    'UserRepository.java.ejs'
+  ];
+
+  // Si la base de données est MongoDB, ajouter le repository MongoDB au lieu de l'ExampleRepository standard
+  if (templateData.database === 'MongoDB') {
+    // Remplacer ExampleRepository par MongoExampleRepository pour MongoDB
+    const index = repositories.indexOf('ExampleRepository.java.ejs');
+    if (index !== -1) {
+      repositories[index] = 'MongoExampleRepository.java.ejs';
+    }
+  }
+
+  // Copier chaque fichier de repository
+  repositories.forEach(repository => {
+    try {
+      let templatePath = generator.templatePath(`src/main/java/com/example/app/repository/${repository}`);
+      let outputFileName = repository.replace('.ejs', '');
+
+      // Cas spécial pour MongoExampleRepository
+      if (repository === 'MongoExampleRepository.java.ejs') {
+        outputFileName = 'ExampleRepository.java'; // Renommer en ExampleRepository.java
+      }
+
+      // Vérifier si le fichier de template existe
+      if (fs.existsSync(templatePath)) {
+        generator.fs.copyTpl(
+          templatePath,
+          generator.destinationPath(`${repositoryPath}/${outputFileName}`),
+          templateData
+        );
+        generator.log(chalk.green(`✅ Repository ${outputFileName} généré avec succès`));
+      } else {
+        generator.log(chalk.yellow(`⚠️ Template du repository ${repository} introuvable`));
+      }
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération du repository ${repository}: ${error}`));
+    }
+  });
+}
+
+/**
+ * Génère les classes utilitaires adaptées à la base de données choisie
+ * @param generator Référence au générateur
+ * @param templateData Les données du template
+ */
+export function generateUtilities(generator: any, templateData: TemplateData) {
+  generator.log(chalk.blue("Génération des classes utilitaires..."));
+
+  const mainPath = `src/main/java/${templateData.javaPackagePath}`;
+  const utilPath = `${mainPath}/util`;
+
+  // Créer le répertoire des utilitaires s'il n'existe pas
+  ensureDirectoryExists(generator, utilPath);
+
+  // Liste commune des utilitaires à copier pour toutes les bases de données
+  const commonUtilFiles = [
+    'ApiError.java.ejs',
+    'AppUtils.java.ejs',
+    'DateTimeUtils.java.ejs',
+    'LoggingUtils.java.ejs',
+    'StringUtils.java.ejs',
+    'PaginationUtil.java.ejs'
+  ];
+
+  // Copier les fichiers utilitaires communs
+  commonUtilFiles.forEach(utilFile => {
+    try {
+      const templatePath = generator.templatePath(`src/main/java/com/example/app/util/${utilFile}`);
+      if (fs.existsSync(templatePath)) {
+        generator.fs.copyTpl(
+          templatePath,
+          generator.destinationPath(`${utilPath}/${utilFile.replace('.ejs', '')}`),
+          templateData
+        );
+        generator.log(chalk.green(`✅ Utilitaire ${utilFile.replace('.ejs', '')} généré avec succès`));
+      } else {
+        generator.log(chalk.yellow(`⚠️ Template de l'utilitaire ${utilFile} introuvable`));
+      }
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération de l'utilitaire ${utilFile}: ${error}`));
+    }
+  });
+
+  // Utilitaires spécifiques à la base de données
+  if (templateData.database === 'MongoDB') {
+    // Utiliser les classes optimisées pour MongoDB
+    try {
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/util/MongoOptimizedQueryUtil.java.ejs'),
+        generator.destinationPath(`${utilPath}/OptimizedQueryUtil.java`),
+        templateData
+      );
+      generator.log(chalk.green(`✅ Utilitaire MongoOptimizedQueryUtil généré sous le nom OptimizedQueryUtil.java`));
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération de MongoOptimizedQueryUtil: ${error}`));
+    }
+  } else {
+    // Utiliser les classes JPA standard
+    try {
+      generator.fs.copyTpl(
+        generator.templatePath('src/main/java/com/example/app/util/OptimizedQueryUtil.java.ejs'),
+        generator.destinationPath(`${utilPath}/OptimizedQueryUtil.java`),
+        templateData
+      );
+      generator.log(chalk.green(`✅ Utilitaire OptimizedQueryUtil généré avec succès`));
+    } catch (error) {
+      generator.log(chalk.red(`❌ Erreur lors de la génération d'OptimizedQueryUtil: ${error}`));
+    }
+  }
+
+  // Gérer LazyLoadingUtil en fonction de la base de données
+  try {
+    generator.fs.copyTpl(
+      generator.templatePath('src/main/java/com/example/app/util/LazyLoadingUtil.java.ejs'),
+      generator.destinationPath(`${utilPath}/LazyLoadingUtil.java`),
+      templateData
+    );
+    generator.log(chalk.green(`✅ Utilitaire LazyLoadingUtil généré avec succès`));
+  } catch (error) {
+    generator.log(chalk.red(`❌ Erreur lors de la génération de LazyLoadingUtil: ${error}`));
+  }
 }
