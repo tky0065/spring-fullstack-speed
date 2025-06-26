@@ -1,5 +1,143 @@
-package com.example.app.util;
+package <%= packageName %>.util;
 
+<% if (database === 'MongoDB') { %>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utilitaire pour exécuter des requêtes MongoDB optimisées
+ * Utilisé pour les cas où les méthodes standard de Spring Data MongoDB ne sont pas assez performantes
+ */
+@Component
+public class OptimizedQueryUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(OptimizedQueryUtil.class);
+    private final MongoTemplate mongoTemplate;
+
+    public OptimizedQueryUtil(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
+    }
+
+    /**
+     * Exécute une requête MongoDB optimisée avec pagination
+     *
+     * @param entityClass la classe de l'entité à récupérer
+     * @param criteria les critères de la requête
+     * @param page le numéro de page (base 0)
+     * @param size la taille de la page
+     * @param sortField le champ pour trier les résultats
+     * @param <T> le type du résultat
+     * @return la liste des résultats paginés
+     */
+    public <T> List<T> executePaginatedQuery(Class<T> entityClass,
+                                           Criteria criteria,
+                                           int page, int size,
+                                           String sortField) {
+        Query query = new Query();
+        if (criteria != null) {
+            query.addCriteria(criteria);
+        }
+
+        // Appliquer la pagination
+        query.with(PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, sortField)));
+
+        // Mesurer le temps d'exécution
+        long startTime = System.nanoTime();
+        List<T> results = mongoTemplate.find(query, entityClass);
+        long endTime = System.nanoTime();
+
+        logger.debug("Requête MongoDB exécutée en {} ms pour l'entité {}",
+                (endTime - startTime) / 1_000_000,
+                entityClass.getSimpleName());
+
+        return results;
+    }
+
+    /**
+     * Exécute une requête d'agrégation MongoDB optimisée
+     * (équivalent des jointures SQL mais utilisant le framework d'agrégation MongoDB)
+     *
+     * @param entityClass la classe de l'entité à agréger
+     * @param operations les opérations d'agrégation
+     * @param outputClass la classe du résultat
+     * @return la liste des résultats agrégés
+     */
+    public <T, R> List<R> executeOptimizedAggregation(Class<T> entityClass,
+                                                   List<AggregationOperation> operations,
+                                                   Class<R> outputClass) {
+        // Créer l'agrégation
+        TypedAggregation<T> aggregation = Aggregation.newAggregation(entityClass, operations);
+
+        // Mesurer le temps d'exécution
+        long startTime = System.nanoTime();
+        List<R> results = mongoTemplate.aggregate(aggregation, outputClass).getMappedResults();
+        long endTime = System.nanoTime();
+
+        logger.debug("Agrégation MongoDB exécutée en {} ms pour l'entité {}",
+                (endTime - startTime) / 1_000_000,
+                entityClass.getSimpleName());
+
+        return results;
+    }
+
+    /**
+     * Effectue des opérations de recherche en lot pour optimiser les performances
+     *
+     * @param entityClass la classe de l'entité à rechercher
+     * @param batchSize la taille du lot
+     * @param fieldName le nom du champ pour la recherche
+     * @param values la liste des valeurs à rechercher
+     * @return la liste des entités trouvées
+     */
+    public <T> List<T> batchFindByField(Class<T> entityClass, int batchSize,
+                                      String fieldName, List<?> values) {
+        List<T> results = new ArrayList<>();
+
+        // Traiter par lots pour éviter les requêtes trop volumineuses
+        for (int i = 0; i < values.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, values.size());
+            List<?> batch = values.subList(i, end);
+
+            Query query = new Query(Criteria.where(fieldName).in(batch));
+            results.addAll(mongoTemplate.find(query, entityClass));
+        }
+
+        return results;
+    }
+
+    /**
+     * Utilise l'API de bulk operations de MongoDB pour des mises à jour multiples efficaces
+     *
+     * @param entities la liste des entités à sauvegarder
+     * @param <T> le type des entités
+     */
+    public <T> void bulkSave(List<T> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return;
+        }
+
+        long startTime = System.nanoTime();
+        mongoTemplate.insertAll(entities);
+        long endTime = System.nanoTime();
+
+        logger.debug("Opération en masse exécutée en {} ms pour {} entités",
+                (endTime - startTime) / 1_000_000,
+                entities.size());
+    }
+<% } else { %>
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.hibernate.Session;
@@ -100,28 +238,54 @@ public class OptimizedQueryUtil {
      * Précharge des entités liées en une seule requête (évite le problème N+1)
      */
     @Transactional(readOnly = true)
-    public <T> List<T> preloadRelations(Class<T> entityClass, String relation) {
-        String jpql = String.format("SELECT e FROM %s e LEFT JOIN FETCH e.%s",
-                entityClass.getSimpleName(), relation);
+    public <T> List<T> findAllWithEagerRelationships(String entityName, String... relationships) {
+        StringBuilder jpql = new StringBuilder("SELECT DISTINCT e FROM " + entityName + " e");
 
-        return entityManager.createQuery(jpql, entityClass).getResultList();
+        for (String relationship : relationships) {
+            jpql.append(" LEFT JOIN FETCH e.").append(relationship);
+        }
+
+        return entityManager.createQuery(jpql.toString(), (Class<T>) Object.class)
+                .getResultList();
     }
 
     /**
-     * Exécute une requête avec une projection spécifique
+     * Exécute une opération en masse (insert, update, delete) de manière optimisée
      */
-    @Transactional(readOnly = true)
-    public <T> List<T> executeProjectionQuery(String jpql, Class<T> resultClass) {
-        return entityManager.createQuery(jpql, resultClass).getResultList();
+    @Transactional
+    public int executeBulkOperation(String sql, Map<String, Object> params) {
+        Query query = entityManager.createNativeQuery(sql);
+
+        // Appliquer les paramètres
+        if (params != null) {
+            params.forEach(query::setParameter);
+        }
+
+        // Optimisations pour les opérations en masse
+        Session session = entityManager.unwrap(Session.class);
+        session.setJdbcBatchSize(100);
+
+        // Exécuter l'opération
+        long startTime = System.nanoTime();
+        int result = query.executeUpdate();
+        long endTime = System.nanoTime();
+
+        logger.debug("Opération en masse exécutée en {} ms: {} (lignes affectées: {})",
+                (endTime - startTime) / 1_000_000,
+                truncateSqlForLogging(sql),
+                result);
+
+        return result;
     }
 
     /**
-     * Tronque une requête SQL pour l'affichage dans les logs
+     * Tronque une requête SQL longue pour le logging
      */
     private String truncateSqlForLogging(String sql) {
-        if (sql == null) {
-            return "null";
+        if (sql.length() > 200) {
+            return sql.substring(0, 197) + "...";
         }
-        return sql.length() > 500 ? sql.substring(0, 500) + "..." : sql;
+        return sql;
     }
+<% } %>
 }

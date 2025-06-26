@@ -88,7 +88,7 @@ public class SecurityConfig {
                 // Ressources publiques
                 .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
                 // Documentation Swagger/OpenAPI
-                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/api-docs").permitAll()
                 // Console H2 en mode dev
                 .requestMatchers("/h2-console/**").permitAll()
                 <% if (frontendFramework === 'Thymeleaf' || frontendFramework === 'JTE') { %>

@@ -99,6 +99,34 @@ gg:
     encoding: UTF-8
     cache-duration: 3600
 
+<% if (additionalFeatures.includes('openapi')) { %>
+# Configuration OpenAPI/Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    url: /api-docs
+    operationsSorter: alpha
+    tagsSorter: alpha
+    disable-swagger-default-url: true
+    display-request-duration: true
+  packages-to-scan: <%= packageName %>.controller
+  paths-to-match: /api/**
+  show-actuator: true
+  default-produces-media-type: application/json
+<% } %>
+
+<% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+# Configuration JWT
+jwt:
+  secret: ${JWT_SECRET:<%= Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) %>}
+  expirationMs: 86400000  # 24 heures en millisecondes
+  refreshExpirationMs: 604800000  # 7 jours en millisecondes
+<% } %>
+
 # Configuration de l'application
 app:
   frontend: <%= frontendFramework.toLowerCase() %>
@@ -227,6 +255,9 @@ spring:
 # Configuration serveur
 server:
   port: ${SERVER_PORT:8080}
+  error:
+    whitelabel:
+      enabled: false
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
@@ -237,6 +268,16 @@ server:
       cookie:
         http-only: true
         secure: true
+
+# Permettre à l'application de chercher un port disponible si le port configuré est occupé
+spring:
+  web:
+    resources:
+      add-mappings: true
+  boot:
+    admin:
+      client:
+        enabled: false
 
 # Logging configuration
 logging:

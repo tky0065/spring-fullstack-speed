@@ -30,14 +30,14 @@ public class JwtTokenProvider {
 
     private static final String AUTHORITIES_KEY = "auth";
 
-    @Value("${app.security.jwt.secret:ThisIsAVerySecureKeyThatShouldBeChangedInProduction}")
+    @Value("${jwt.secret:ThisIsAVerySecureKeyThatShouldBeChangedInProduction}")
     private String jwtSecret;
 
-    @Value("${app.security.jwt.token-validity-in-seconds:86400}")
-    private long tokenValidityInSeconds;
+    @Value("${jwt.expirationMs:86400000}")
+    private long tokenValidityInMilliseconds;
 
-    @Value("${app.security.jwt.token-validity-in-seconds-for-remember-me:2592000}")
-    private long tokenValidityInSecondsForRememberMe;
+    @Value("${jwt.refreshExpirationMs:604800000}")
+    private long tokenValidityInMillisecondsForRememberMe;
 
     private Key key;
 
@@ -54,9 +54,9 @@ public class JwtTokenProvider {
         long now = (new Date()).getTime();
         Date validity;
         if (rememberMe) {
-            validity = new Date(now + this.tokenValidityInSecondsForRememberMe * 1000);
+            validity = new Date(now + this.tokenValidityInMillisecondsForRememberMe);
         } else {
-            validity = new Date(now + this.tokenValidityInSeconds * 1000);
+            validity = new Date(now + this.tokenValidityInMilliseconds);
         }
 
         return Jwts.builder()

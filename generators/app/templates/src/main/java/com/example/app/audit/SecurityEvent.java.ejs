@@ -39,7 +39,7 @@ public class SecurityEvent {
 
 <% } else { %>
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.HashMap;
@@ -84,7 +84,7 @@ public class SecurityEvent {
     @Column(name = "http_method", length = 10)
     private String httpMethod;
 
-    @JdbcType(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> metadata = new HashMap<>();
 <% } %>

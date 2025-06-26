@@ -10,3 +10,14 @@ spring.datasource.password=
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
 spring.jpa.hibernate.ddl-auto=create-drop
 
+<% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+# JWT Configuration - Fixed values for consistent testing
+jwt.secret=test_jwt_secret_key_for_consistent_unit_tests_results
+jwt.expirationMs=3600000
+jwt.refreshExpirationMs=86400000
+<% } %>
+
+# Configuration serveur pour les tests - utiliser un port aléatoire pour éviter les conflits
+server.port=0
+server.error.whitelabel.enabled=false
+spring.web.resources.add-mappings=true

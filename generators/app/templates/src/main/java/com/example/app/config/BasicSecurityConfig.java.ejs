@@ -2,10 +2,14 @@ package <%= packageName %>.security.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 <% if (frontendFramework !== 'Aucun (API seulement)') { %>
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -43,7 +47,7 @@ public class BasicSecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
 <% if (additionalFeatures.includes('openapi')) { %>
                 // Swagger / OpenAPI endpoints
-                .requestMatchers("/docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**", "/api-docs", "/v3/api-docs").permitAll()
 <% } %>
 <% if (additionalFeatures.includes('prometheus')) { %>
                 // Actuator endpoints
@@ -68,5 +72,24 @@ public class BasicSecurityConfig {
 <% } %>;
 
         return http.build();
+    }
+
+    /**
+     * Expose l'AuthenticationManager comme un bean Spring
+     * Nécessaire pour l'injection dans le AuthController
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    /**
+     * Configure l'encodeur de mot de passe pour l'application
+     * Utilise BCrypt pour sécuriser les mots de passe
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

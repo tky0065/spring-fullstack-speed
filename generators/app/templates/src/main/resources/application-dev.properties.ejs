@@ -8,3 +8,26 @@ spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
 <% } %>
 
+<% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+# JWT Configuration
+jwt.secret=${JWT_SECRET:<%= Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) %>}
+jwt.expirationMs=86400000
+jwt.refreshExpirationMs=604800000
+<% } %>
+
+<% if (additionalFeatures.includes('openapi')) { %>
+# OpenAPI/Swagger Configuration
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.url=/api-docs
+springdoc.swagger-ui.enabled=true
+springdoc.api-docs.enabled=true
+springdoc.packages-to-scan=<%= packageName %>.controller
+springdoc.paths-to-match=/api/**
+springdoc.swagger-ui.disable-swagger-default-url=true
+<% } %>
+
+# Permettre à l'application de trouver automatiquement un port disponible si le port configuré est occupé
+server.port=${SERVER_PORT:0}
+spring.web.resources.add-mappings=true
+spring.boot.admin.client.enabled=false
