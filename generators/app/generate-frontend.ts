@@ -14,6 +14,19 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
   try {
     const frontendType = templateData.frontendFramework.toLowerCase();
 
+    // Gestion spécifique pour JTE (moteur de template Java)
+    if (frontendType === 'jte') {
+      generator.log(chalk.blue(`Configuration du moteur de template JTE...`));
+
+      // Créer la structure de dossiers pour JTE
+      ensureDirectoryExists(generator, "src/main/jte");
+
+      // Créer le fichier .jteroot vide dans le dossier src/main/jte
+      fs.writeFileSync(generator.destinationPath('src/main/jte/.jteroot'), '');
+
+      generator.log(chalk.green(`Structure de dossiers JTE créée avec succès.`));
+    }
+
     if (frontendType === 'react' || frontendType === 'vue.js' || frontendType === 'vue' || frontendType === 'angular') {
       // Créer le répertoire frontend
       ensureDirectoryExists(generator, "frontend");
@@ -499,27 +512,30 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
           templateData
         );
       } else if (frontendType === 'jte') {
-        // Création des répertoires pour JTE dans src/main/resources/jte
-        ensureDirectoryExists(generator, "src/main/resources/jte");
-        ensureDirectoryExists(generator, "src/main/resources/jte/layouts");
+        // Création des répertoires pour JTE dans src/main/jte
+        ensureDirectoryExists(generator, "src/main/jte");
+        ensureDirectoryExists(generator, "src/main/jte/layouts");
+
+        // Créer le fichier .jteroot vide dans le dossier src/main/jte
+        fs.writeFileSync(generator.destinationPath('src/main/jte/.jteroot'), '');
 
         // Copie des templates JTE pour les layouts
         generator.fs.copyTpl(
           generator.templatePath('frontend/jte/layouts/default.jte.ejs'),
-          generator.destinationPath('src/main/resources/jte/layouts/default.jte'),
+          generator.destinationPath('src/main/jte/layouts/default.jte'),
           templateData
         );
 
         generator.fs.copyTpl(
           generator.templatePath('frontend/jte/layouts/main.jte.ejs'),
-          generator.destinationPath('src/main/resources/jte/layouts/main.jte'),
+          generator.destinationPath('src/main/jte/layouts/main.jte'),
           templateData
         );
 
         // Copie des templates JTE pour les pages
         generator.fs.copyTpl(
           generator.templatePath('frontend/jte/home.jte.ejs'),
-          generator.destinationPath('src/main/resources/jte/home.jte'),
+          generator.destinationPath('src/main/jte/home.jte'),
           templateData
         );
 
@@ -527,13 +543,13 @@ export function generateFrontend(generator: any, templateData: TemplateData) {
         if (templateData.includeAuth) {
           generator.fs.copyTpl(
             generator.templatePath('frontend/jte/login.jte.ejs'),
-            generator.destinationPath('src/main/resources/jte/login.jte'),
+            generator.destinationPath('src/main/jte/login.jte'),
             templateData
           );
 
           generator.fs.copyTpl(
             generator.templatePath('frontend/jte/register.jte.ejs'),
-            generator.destinationPath('src/main/resources/jte/register.jte'),
+            generator.destinationPath('src/main/jte/register.jte'),
             templateData
           );
         }
