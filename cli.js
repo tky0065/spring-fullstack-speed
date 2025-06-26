@@ -141,7 +141,6 @@ ${chalk.yellow('Options:')}
 // Affichage de la version si demandée
 if (args.includes('--version') || args.includes('-v')) {
   try {
-    // Solution compatible avec Windows pour obtenir la version
     const packageJsonPath = path.join(__dirname, 'package.json');
     const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     console.log(`SFS version ${packageData.version}`);

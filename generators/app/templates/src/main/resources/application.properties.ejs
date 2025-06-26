@@ -81,7 +81,23 @@ spring.thymeleaf.cache=false
 <% } else if (frontendFramework === 'JTE') { %>
 # Configuration JTE
 gg.jte.developmentMode=true
+gg.jte.usePrecompiledTemplates=<%= environment === 'prod' ? 'true' : 'false' %>
 gg.jte.templateLocation=src/main/resources/templates
+gg.jte.binaryStaticContent=<%= environment === 'prod' ? 'true' : 'false' %>
+gg.jte.htmlCommentsPreserved=false
+gg.jte.htmlInjection=true
+
+# Configuration de sécurité pour JTE
+spring.security.contentSecurityPolicy=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
+spring.security.requestRejectedHandler=handleWhenDenied
+<% if (environment === 'prod') { %>
+spring.security.headers.contentSecurityPolicy.policy-directives=default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:
+spring.security.headers.frameOptions=DENY
+spring.security.headers.xssProtection=1; mode=block
+spring.security.headers.contentTypeOptions=nosniff
+<% } else { %>
+spring.security.headers.frameOptions=SAMEORIGIN
+<% } %>
 <% } %>
 
 # Configuration des messages internationaux
@@ -106,18 +122,12 @@ springdoc.show-actuator=true
 springdoc.default-produces-media-type=application/json
 <% } %>
 
-<% if (!authType || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+<% if (additionalFeatures && additionalFeatures.includes('authentication') || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
 # Configuration JWT
 jwt.secret=${JWT_SECRET:<%= Buffer.from(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)).toString('base64') %>}
 jwt.expirationMs=3600000
 jwt.refreshExpirationMs=604800000
 <% } %>
-
-
-# Configuration JWT
-jwt.secret=your_jwt_secret_key********************************************
-jwt.expirationMs=3600000
-jwt.refreshExpirationMs=604800000
 
 # Configuration logging
 logging.level.root=INFO

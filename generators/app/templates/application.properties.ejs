@@ -1,5 +1,6 @@
 # Configuration de l'application <%= appName %>
 spring.application.name=<%= appName %>
+spring.profiles.active=dev
 
 # Configuration du serveur
 server.port=8080
@@ -8,6 +9,12 @@ server.port=8080
 server.address=0.0.0.0
 <% } %>
 server.servlet.context-path=/
+server.error.whitelabel.enabled=false
+server.compression.enabled=true
+server.compression.mimje-types=text/html,text/xml,text/plain,text/css,application/javascript,application/json
+server.compression.min-response-size=1024
+server.servlet.session.cookie.http-only=true
+server.servlet.session.cookie.secure=true
 
 # Configuration de la base de données
 <% if (database === 'H2') { %>
@@ -25,17 +32,35 @@ spring.datasource.url=jdbc:mysql://localhost:3306/<%= appName.toLowerCase().repl
 spring.datasource.driverClassName=com.mysql.cj.jdbc.Driver
 spring.datasource.username=root
 spring.datasource.password=password
-spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+# Optimisations MySQL
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+spring.jpa.properties.hibernate.batch_versioned_data=true
+spring.jpa.properties.hibernate.batch_size=30
 <% } else if (database === 'PostgreSQL') { %>
 # Configuration PostgreSQL
 spring.datasource.url=jdbc:postgresql://localhost:5432/<%= appName.toLowerCase().replace(/-/g, '_') %>
 spring.datasource.driverClassName=org.postgresql.Driver
 spring.datasource.username=postgres
 spring.datasource.password=postgres
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+# Optimisations PostgreSQL
+spring.jpa.properties.hibernate.jdbc.batch_size=25
+spring.jpa.properties.hibernate.jdbc.batch_versioned_data=true
+spring.jpa.properties.hibernate.jdbc.order_inserts=true
+spring.jpa.properties.hibernate.jdbc.order_updates=true
+spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false
+spring.jpa.properties.hibernate.default_schema=public
 <% } else if (database === 'MongoDB') { %>
 # Configuration MongoDB
-spring.data.mongodb.uri=mongodb://localhost:27017/<%= appName.toLowerCase().replace(/-/g, '_') %>
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=<%= appName %>
+spring.data.mongodb.auto-index-creation=true
+spring.data.mongodb.uuid-representation=standard
 <% } %>
 
 <% if (database !== 'MongoDB') { %>
@@ -43,28 +68,68 @@ spring.data.mongodb.uri=mongodb://localhost:27017/<%= appName.toLowerCase().repl
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
 <% } %>
 
-# Configuration Logging
-logging.level.root=INFO
-logging.level.<%= packageName %>=DEBUG
+<% if (additionalFeatures && additionalFeatures.includes('redis')) { %>
+# Configuration Redis
+spring.redis.host=localhost
+spring.redis.port=6379
+spring.redis.timeout=2000
+spring.cache.type=redis
+spring.cache.redis.time-to-live=3600000
+spring.cache.redis.cache-null-values=false
+<% } %>
+
+<% if (frontendFramework === 'Thymeleaf') { %>
+# Configuration Thymeleaf
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+spring.thymeleaf.mode=HTML
+spring.thymeleaf.encoding=UTF-8
+spring.thymeleaf.cache=false
+<% } else if (frontendFramework === 'JTE') { %>
+# Configuration JTE
+gg.jte.developmentMode=true
+gg.jte.usePrecompiledTemplates=<%= environment === 'prod' ? 'true' : 'false' %>
+gg.jte.templateLocation=src/main/resources/templates
+gg.jte.binaryStaticContent=<%= environment === 'prod' ? 'true' : 'false' %>
+gg.jte.htmlCommentsPreserved=false
+gg.jte.htmlInjection=true
+
+# Configuration de sécurité pour JTE
+spring.security.contentSecurityPolicy=default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:
+spring.security.requestRejectedHandler=handleWhenDenied
+<% if (environment === 'prod') { %>
+spring.security.headers.contentSecurityPolicy.policy-directives=default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:
+spring.security.headers.frameOptions=DENY
+spring.security.headers.xssProtection=1; mode=block
+spring.security.headers.contentTypeOptions=nosniff
+<% } else { %>
+spring.security.headers.frameOptions=SAMEORIGIN
+<% } %>
+<% } %>
+
+# Configuration des messages internationaux
+spring.messages.basename=i18n/messages
+spring.messages.encoding=UTF-8
+spring.messages.cache-duration=3600
 
 <% if (additionalFeatures && additionalFeatures.includes('openapi')) { %>
-# Configuration Swagger/OpenAPI
+# Configuration OpenAPI/Swagger
 springdoc.api-docs.path=/api-docs
+springdoc.api-docs.enabled=true
 springdoc.swagger-ui.path=/swagger-ui.html
-springdoc.swagger-ui.operationsSorter=method
-<% } %>
-
-<% if (environment === 'dev') { %>
-# Configuration spécifique à l'environnement de développement
-spring.devtools.restart.enabled=true
-<% } %>
-
-<% if (environment === 'prod') { %>
-# Configuration spécifique à l'environnement de production
-spring.devtools.restart.enabled=false
-server.error.include-stacktrace=never
+springdoc.swagger-ui.enabled=true
+springdoc.swagger-ui.url=/api-docs
+springdoc.swagger-ui.operationsSorter=alpha
+springdoc.swagger-ui.tagsSorter=alpha
+springdoc.swagger-ui.disable-swagger-default-url=true
+springdoc.swagger-ui.display-request-duration=true
+springdoc.packages-to-scan=<%= packageName %>.controller
+springdoc.paths-to-match=/api/**
+springdoc.show-actuator=true
+springdoc.default-produces-media-type=application/json
 <% } %>
 
 <% if (additionalFeatures && additionalFeatures.includes('elasticsearch')) { %>
@@ -79,6 +144,19 @@ spring.elasticsearch.password=changeme
 #spring.elasticsearch.cluster-name=my-cluster
 <% } %>
 
-jwt.secret=your_jwt_secret_key
-jwt.expirationMs=3600
+<% if (additionalFeatures && additionalFeatures.includes('authentication') || authType === 'JWT' || authType === 'JWT+OAuth2') { %>
+# Configuration JWT
+jwt.secret=${JWT_SECRET:<%= Buffer.from(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)).toString('base64') %>}
+jwt.expirationMs=3600000
 jwt.refreshExpirationMs=604800000
+<% } %>
+
+# Configuration logging
+logging.level.root=INFO
+logging.level.<%= packageName %>=DEBUG
+logging.level.org.hibernate.SQL=INFO
+logging.level.org.springframework.web=INFO
+logging.file.name=${LOG_PATH:/tmp}/logs/<%= appName %>.log
+
+# Configurations spécifiques aux profils sont à définir dans
+# application-dev.properties, application-test.properties, et application-prod.properties

@@ -57,7 +57,10 @@ public class BasicSecurityConfig {
                 // Console H2 (uniquement en développement)
                 .requestMatchers("/h2-console/**").permitAll()
 <% } %>
-<% if (frontendFramework !== 'Aucun (API seulement)') { %>
+<% if (frontendFramework === 'Thymeleaf' || frontendFramework === 'JTE') { %>
+                // Pages publiques accessibles sans authentification pour Thymeleaf/JTE
+                .requestMatchers("/", "/home", "/login", "/register", "/error", "/assets/**", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+<% } else if (frontendFramework !== 'Aucun (API seulement)') { %>
                 // Ressources statiques pour le frontend
                 .requestMatchers("/", "/index.html", "/static/**", "/*.js", "/*.css", "/*.ico", "/*.json").permitAll()
 <% } %>
@@ -68,6 +71,18 @@ public class BasicSecurityConfig {
             // Configuration spéciale pour la console H2
             .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.sameOrigin())
+            )
+<% } %><% if (frontendFramework === 'Thymeleaf' || frontendFramework === 'JTE') { %>
+            // Configuration pour les formulaires de login avec Thymeleaf/JTE
+            .formLogin(form -> form
+                .loginPage("/login")
+                .defaultSuccessUrl("/home", true)
+                .permitAll()
+            )
+            .logout(logout -> logout
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                .logoutSuccessUrl("/login?logout")
+                .permitAll()
             )
 <% } %>;
 
