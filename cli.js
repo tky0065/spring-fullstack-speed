@@ -9,6 +9,7 @@ import { createEnv } from "yeoman-environment";
 import chalk from "chalk";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import { COMMAND_ALIASES } from "./dist/generators/index.js";
 
 // Récupération du chemin du fichier actuel en module ESM
@@ -69,6 +70,18 @@ const availableGenerators = [
   { name: 'container', path: './dist/generators/container/index.js' }
 ];
 
+// Liste des générateurs valides pour vérification
+const validGenerators = new Set(availableGenerators.map(g => g.name));
+
+// Vérification si la commande existe avant de continuer
+if (generatorName !== "app" && !validGenerators.has(generatorName) &&
+    !args.includes('--help') && !args.includes('-h') &&
+    !args.includes('--version') && !args.includes('-v')) {
+  console.error(chalk.red(`Commande inconnue "${generatorName}"`));
+  console.log(`Utilisez ${chalk.green('sfs --help')} pour voir la liste des commandes disponibles.`);
+  process.exit(1);
+}
+
 // Enregistrer chaque générateur avec un namespace spécifique
 for (const generator of availableGenerators) {
   try {
@@ -127,10 +140,23 @@ ${chalk.yellow('Options:')}
 
 // Affichage de la version si demandée
 if (args.includes('--version') || args.includes('-v')) {
-  const packageJson = await import('./package.json', { assert: { type: 'json' } });
-  console.log(`SFS version ${packageJson.default.version}`);
-  process.exit(0);
+  try {
+    // Solution compatible avec Windows pour obtenir la version
+    const packageJsonPath = path.join(__dirname, 'package.json');
+    const packageData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    console.log(`SFS version ${packageData.version}`);
+    process.exit(0);
+  } catch (error) {
+    console.error(chalk.red(`Erreur lors de la récupération de la version: ${error.message}`));
+    process.exit(1);
+  }
 }
+
+// Gestion du signal d'interruption (Ctrl+C)
+process.on('SIGINT', () => {
+  console.log(chalk.yellow('\nOpération annulée par l\'utilisateur.'));
+  process.exit(0);
+});
 
 // Exécution du générateur demandé
 try {
@@ -143,7 +169,8 @@ try {
     }
   });
 } catch (err) {
-  console.error(chalk.red(`Générateur "${generatorName}" non trouvé.`));
-  console.error('Utilisez "sfs --help" pour voir la liste des générateurs disponibles.');
+  console.error(chalk.red(`Erreur inattendue lors de l'exécution de la commande "${generatorName}":`));
+  console.error(err);
+  console.log(`Utilisez ${chalk.green('sfs --help')} pour voir la liste des commandes disponibles.`);
   process.exit(1);
 }

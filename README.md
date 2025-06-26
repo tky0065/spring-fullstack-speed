@@ -62,7 +62,7 @@ npx @enokdev/spring-fullstack-speed
 - **Java** : JDK 17 ou supérieure
 - **Maven** ou **Gradle** : pour la compilation des projets Spring Boot
 
-## ⚡ Démarrage Rapide
+## ⚡ Démarrage Rapide  
 
 Pour générer rapidement une application complète avec une interface utilisateur React et une base de données PostgreSQL :
 
@@ -71,6 +71,11 @@ Pour générer rapidement une application complète avec une interface utilisate
 npm install -g @enokdev/spring-fullstack-speed
 
 # Création d'un nouveau projet
+
+sfs 
+
+ou
+
 sfs app --name=my-awesome-app --package=com.example.myapp --db=postgresql --frontend=react
 
 # Génération d'une entité
